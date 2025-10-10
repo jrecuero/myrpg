@@ -16,21 +16,30 @@ import (
 	"github.com/jrecuero/myrpg/internal/gfx"
 )
 
+const (
+	PlayerEntityName     = "Player"     // Name constant for the player entity
+	BackgroundEntityName = "Background" // Name constant for the background entity
+)
+
 // Game represents the state of the game using an ECS architecture.
 type Game struct {
-	Player *ecs.Entity   // The player entity
-	world  *ecs.World    // The game world containing all entities
-	BG     *ebiten.Image // The background image
+	world *ecs.World // The game world containing all entities
 }
 
 func NewGame() *Game {
-	// Load background image
-	bg, _, err := ebitenutil.NewImageFromFile("assets/backgrounds/background.png")
+	world := ecs.NewWorld()
+
+	// Load background sprite
+	backgroundSprite, err := gfx.NewSpriteFromFile("assets/backgrounds/background.png", 800, 600)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("failed to load background sprite:", err)
 	}
 
-	world := ecs.NewWorld()
+	// Create background entity
+	background := ecs.NewEntity(BackgroundEntityName)
+	background.AddComponent(ecs.ComponentTransform, ecs.NewTransform(0, 0, 800, 600))
+	background.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(backgroundSprite, 1.0, 0, 0))
+	world.AddEntity(background)
 
 	// Load player sprite
 	playerSprite, err := gfx.NewSpriteFromFile("assets/sprites/player.png", 32, 32)
@@ -45,7 +54,7 @@ func NewGame() *Game {
 	}
 
 	// Create player entity
-	player := ecs.NewEntity("Player")
+	player := ecs.NewEntity(PlayerEntityName)
 	player.AddComponent(ecs.ComponentTransform, ecs.NewTransform(100, 100, 32, 32))
 	player.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(playerSprite, 1.0, 0, 0))
 	player.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
@@ -59,14 +68,19 @@ func NewGame() *Game {
 	world.AddEntity(enemy)
 
 	return &Game{
-		Player: player,
-		world:  world,
-		BG:     bg,
+		world: world,
 	}
 }
 
 func (g *Game) Update() error {
-	playerT := g.Player.Transform()
+	player := g.world.FindByName(PlayerEntityName)
+	if player == nil {
+		return nil // No player found, skip update
+	}
+	playerT := player.Transform()
+	if playerT == nil {
+		return nil // Player has no transform component
+	}
 	oldX, oldY := playerT.X, playerT.Y
 	speed := 2.0
 
@@ -87,7 +101,7 @@ func (g *Game) Update() error {
 	// Check for collisions with other entities
 	for _, entity := range g.world.GetEntities() {
 		// Skip player
-		if entity == g.Player {
+		if entity.Name == PlayerEntityName {
 			continue
 		}
 		// Skip entities without a collider
@@ -105,12 +119,24 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Draw background
-	op := &ebiten.DrawImageOptions{}
-	screen.DrawImage(g.BG, op)
+	// Draw background first
+	background := g.world.FindByName(BackgroundEntityName)
+	if background != nil {
+		spriteC := background.Sprite()
+		if spriteC != nil {
+			transform := background.Transform()
+			if transform != nil {
+				gfx.DrawSprite(screen, spriteC.Sprite, transform.X, transform.Y, spriteC.Scale)
+			}
+		}
+	}
 
-	// Draw all entities
+	// Draw all other entities
 	for _, entity := range g.world.GetEntities() {
+		// Skip background as it's already drawn
+		if entity.Name == BackgroundEntityName {
+			continue
+		}
 		spriteC := entity.Sprite()
 		if spriteC == nil {
 			continue // Skip entities without a sprite
