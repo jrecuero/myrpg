@@ -69,3 +69,25 @@ func (e *Entity) Transform() *Transform {
 	}
 	return nil
 }
+
+// Sprite retrieves the SpriteComponent from the entity.
+// returns a pointer to the SpriteComponent or nil if not found.
+func (e *Entity) Sprite() *SpriteComponent {
+	if comp, exists := e.GetComponent(ComponentSprite); exists {
+		if sprite, ok := comp.(*SpriteComponent); ok {
+			return sprite
+		}
+	}
+	return nil
+}
+
+// Collider retrieves the ColliderComponent from the entity.
+// returns a pointer to the ColliderComponent or nil if not found.
+func (e *Entity) Collider() *ColliderComponent {
+	if comp, exists := e.GetComponent(ComponentCollider); exists {
+		if collider, ok := comp.(*ColliderComponent); ok {
+			return collider
+		}
+	}
+	return nil
+}

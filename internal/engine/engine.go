@@ -19,7 +19,7 @@ import (
 // Game represents the state of the game using an ECS architecture.
 type Game struct {
 	Player *ecs.Entity   // The player entity
-	Enemy  *ecs.Entity   // The enemy entity
+	world  *ecs.World    // The game world containing all entities
 	BG     *ebiten.Image // The background image
 }
 
@@ -29,6 +29,8 @@ func NewGame() *Game {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	world := ecs.NewWorld()
 
 	// Load player sprite
 	playerSprite, err := gfx.NewSpriteFromFile("assets/sprites/player.png", 32, 32)
@@ -47,16 +49,18 @@ func NewGame() *Game {
 	player.AddComponent(ecs.ComponentTransform, ecs.NewTransform(100, 100, 32, 32))
 	player.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(playerSprite, 1.0, 0, 0))
 	player.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
+	world.AddEntity(player)
 
 	// Create enemy entity
 	enemy := ecs.NewEntity()
 	enemy.AddComponent(ecs.ComponentTransform, ecs.NewTransform(200, 200, 32, 32))
 	enemy.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(enemySprite, 1.0, 0, 0))
 	enemy.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
+	world.AddEntity(enemy)
 
 	return &Game{
 		Player: player,
-		Enemy:  enemy,
+		world:  world,
 		BG:     bg,
 	}
 }
@@ -80,10 +84,21 @@ func (g *Game) Update() error {
 		playerT.X += speed
 	}
 
-	// Simple collision detection with enemy
-	if CheckCollision(g.Player.Transform().Bounds(), g.Enemy.Transform().Bounds()) {
-		playerT.X, playerT.Y = oldX, oldY // Revert to old position on collision
-		log.Printf("Collision detected between player and enemy at (%.2f, %.2f)", playerT.X, playerT.Y)
+	// Check for collisions with other entities
+	for _, entity := range g.world.GetEntities() {
+		// Skip player
+		if entity == g.Player {
+			continue
+		}
+		// Skip entities without a collider
+		if entity.Collider() == nil {
+			continue
+		}
+		// Simple AABB collision detection
+		if CheckCollision(playerT.Bounds(), entity.Transform().Bounds()) {
+			playerT.X, playerT.Y = oldX, oldY // Revert to old position on collision
+			log.Printf("Collision detected between player and entity at (%.2f, %.2f)", playerT.X, playerT.Y)
+		}
 	}
 
 	return nil
@@ -94,21 +109,18 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	screen.DrawImage(g.BG, op)
 
-	// Draw player
-	playerT := g.Player.Transform()
-	playerS, ok := g.Player.GetComponent("sprite")
-	if !ok {
-		log.Fatal("player entity missing sprite component")
+	// Draw all entities
+	for _, entity := range g.world.GetEntities() {
+		spriteC := entity.Sprite()
+		if spriteC == nil {
+			continue // Skip entities without a sprite
+		}
+		transform := entity.Transform()
+		if transform == nil {
+			continue // Skip entities without a transform
+		}
+		gfx.DrawSprite(screen, spriteC.Sprite, transform.X, transform.Y, spriteC.Scale)
 	}
-	gfx.DrawSprite(screen, playerS.(*ecs.SpriteComponent).Sprite, playerT.X, playerT.Y, playerS.(*ecs.SpriteComponent).Scale)
-
-	// Draw enemy
-	enemyT := g.Enemy.Transform()
-	enemyS, ok := g.Enemy.GetComponent("sprite")
-	if !ok {
-		log.Fatal("enemy entity missing sprite component")
-	}
-	gfx.DrawSprite(screen, enemyS.(*ecs.SpriteComponent).Sprite, enemyT.X, enemyT.Y, enemyS.(*ecs.SpriteComponent).Scale)
 
 	// Display instructions
 	ebitenutil.DebugPrint(screen, "Use arrow keys to move the player")
