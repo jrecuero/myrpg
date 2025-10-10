@@ -5,6 +5,7 @@ import (
 
 	"github.com/jrecuero/myrpg/cmd/myrpg/game/constants"
 	"github.com/jrecuero/myrpg/internal/ecs"
+	"github.com/jrecuero/myrpg/internal/ecs/components"
 	"github.com/jrecuero/myrpg/internal/gfx"
 )
 
@@ -18,8 +19,8 @@ func CreateMainBackground() *ecs.Entity {
 
 	// Create background entity
 	background := ecs.NewEntity(constants.BackgroundEntityName)
-	background.AddComponent(ecs.ComponentTransform, ecs.NewTransform(0, 0, 800, 600))
-	background.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(backgroundSprite, 1.0, 0, 0))
+	background.AddComponent(ecs.ComponentTransform, components.NewTransform(0, 0, 800, 600))
+	background.AddComponent(ecs.ComponentSprite, components.NewSpriteComponent(backgroundSprite, 1.0, 0, 0))
 	background.AddTag(ecs.TagBackground)
 	
 	return background

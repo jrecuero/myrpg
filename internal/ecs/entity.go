@@ -7,7 +7,10 @@
 // manages visual representation, and the ColliderComponent defines collision properties.
 package ecs
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+	"github.com/jrecuero/myrpg/internal/ecs/components"
+)
 
 type Entity struct {
 	ID         int64                  // Unique identifier for the entity
@@ -66,9 +69,9 @@ func (e *Entity) HasComponent(name string) bool {
 
 // Transform retrieves the Transform component from the entity.
 // returns a pointer to the Transform component or nil if not found.
-func (e *Entity) Transform() *Transform {
+func (e *Entity) Transform() *components.Transform {
 	if comp, exists := e.GetComponent(ComponentTransform); exists {
-		if transform, ok := comp.(*Transform); ok {
+		if transform, ok := comp.(*components.Transform); ok {
 			return transform
 		}
 	}
@@ -77,9 +80,9 @@ func (e *Entity) Transform() *Transform {
 
 // Sprite retrieves the SpriteComponent from the entity.
 // returns a pointer to the SpriteComponent or nil if not found.
-func (e *Entity) Sprite() *SpriteComponent {
+func (e *Entity) Sprite() *components.SpriteComponent {
 	if comp, exists := e.GetComponent(ComponentSprite); exists {
-		if sprite, ok := comp.(*SpriteComponent); ok {
+		if sprite, ok := comp.(*components.SpriteComponent); ok {
 			return sprite
 		}
 	}
@@ -88,9 +91,9 @@ func (e *Entity) Sprite() *SpriteComponent {
 
 // Collider retrieves the ColliderComponent from the entity.
 // returns a pointer to the ColliderComponent or nil if not found.
-func (e *Entity) Collider() *ColliderComponent {
+func (e *Entity) Collider() *components.ColliderComponent {
 	if comp, exists := e.GetComponent(ComponentCollider); exists {
-		if collider, ok := comp.(*ColliderComponent); ok {
+		if collider, ok := comp.(*components.ColliderComponent); ok {
 			return collider
 		}
 	}
@@ -99,9 +102,9 @@ func (e *Entity) Collider() *ColliderComponent {
 
 // RPGStats retrieves the RPGStatsComponent from the entity.
 // returns a pointer to the RPGStatsComponent or nil if not found.
-func (e *Entity) RPGStats() *RPGStatsComponent {
+func (e *Entity) RPGStats() *components.RPGStatsComponent {
 	if comp, exists := e.GetComponent(ComponentRPGStats); exists {
-		if stats, ok := comp.(*RPGStatsComponent); ok {
+		if stats, ok := comp.(*components.RPGStatsComponent); ok {
 			return stats
 		}
 	}
