@@ -90,6 +90,31 @@ func (w *World) FindByName(name string) *Entity {
 	return nil
 }
 
+// FindWithTag finds all entities that have a specific tag.
+// tag is the tag string to search for.
+// returns a slice of pointers to Entity that have the specified tag.
+func (w *World) FindWithTag(tag string) []*Entity {
+	var result []*Entity
+	for _, e := range w.entities {
+		if e.HasTag(tag) {
+			result = append(result, e)
+		}
+	}
+	return result
+}
+
+// FindFirstWithTag finds the first entity that has a specific tag.
+// tag is the tag string to search for.
+// returns a pointer to the first Entity found with the tag, or nil if not found.
+func (w *World) FindFirstWithTag(tag string) *Entity {
+	for _, e := range w.entities {
+		if e.HasTag(tag) {
+			return e
+		}
+	}
+	return nil
+}
+
 // Clear removes all entities from the world.
 // returns nothing.
 func (w *World) Clear() {

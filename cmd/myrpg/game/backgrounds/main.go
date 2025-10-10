@@ -20,6 +20,7 @@ func CreateMainBackground() *ecs.Entity {
 	background := ecs.NewEntity(constants.BackgroundEntityName)
 	background.AddComponent(ecs.ComponentTransform, ecs.NewTransform(0, 0, 800, 600))
 	background.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(backgroundSprite, 1.0, 0, 0))
+	background.AddTag(ecs.TagBackground)
 	
 	return background
 }

@@ -21,6 +21,7 @@ func CreatePlayer() *ecs.Entity {
 	player.AddComponent(ecs.ComponentTransform, ecs.NewTransform(100, 100, 32, 32))
 	player.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(playerSprite, 1.0, 0, 0))
 	player.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
+	player.AddTag(ecs.TagPlayer)
 	
 	return player
 }
@@ -38,6 +39,25 @@ func CreateEnemy(x, y float64) *ecs.Entity {
 	enemy.AddComponent(ecs.ComponentTransform, ecs.NewTransform(x, y, 32, 32))
 	enemy.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(enemySprite, 1.0, 0, 0))
 	enemy.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
+	enemy.AddTag(ecs.TagEnemy)
 	
 	return enemy
+}
+
+// CreatePlayerAtPosition creates a player entity at the specified position with a custom name
+func CreatePlayerAtPosition(name string, x, y float64) *ecs.Entity {
+	// Load player sprite
+	playerSprite, err := gfx.NewSpriteFromFile("assets/sprites/player.png", 32, 32)
+	if err != nil {
+		log.Fatal("failed to load player sprite:", err)
+	}
+
+	// Create player entity with custom name
+	player := ecs.NewEntity(name)
+	player.AddComponent(ecs.ComponentTransform, ecs.NewTransform(x, y, 32, 32))
+	player.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(playerSprite, 1.0, 0, 0))
+	player.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
+	player.AddTag(ecs.TagPlayer)
+	
+	return player
 }

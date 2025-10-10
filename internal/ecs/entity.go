@@ -13,6 +13,7 @@ type Entity struct {
 	ID         int64                  // Unique identifier for the entity
 	Name       string                 // Name of the entity
 	components map[string]interface{} // Components associated with the entity
+	tags       map[string]bool        // Tags associated with the entity
 }
 
 var (
@@ -28,6 +29,7 @@ func NewEntity(name string) *Entity {
 		ID:         id,
 		Name:       name,
 		components: make(map[string]interface{}),
+		tags:       make(map[string]bool),
 	}
 }
 
@@ -93,4 +95,34 @@ func (e *Entity) Collider() *ColliderComponent {
 		}
 	}
 	return nil
+}
+
+// AddTag adds a tag to the entity.
+// tag is the tag string to add.
+func (e *Entity) AddTag(tag string) {
+	e.tags[tag] = true
+}
+
+// RemoveTag removes a tag from the entity.
+// tag is the tag string to remove.
+func (e *Entity) RemoveTag(tag string) {
+	delete(e.tags, tag)
+}
+
+// HasTag checks if the entity has a specific tag.
+// tag is the tag string to check.
+// returns true if the entity has the tag, false otherwise.
+func (e *Entity) HasTag(tag string) bool {
+	_, exists := e.tags[tag]
+	return exists
+}
+
+// GetTags returns all tags associated with the entity.
+// returns a slice of tag strings.
+func (e *Entity) GetTags() []string {
+	tags := make([]string, 0, len(e.tags))
+	for tag := range e.tags {
+		tags = append(tags, tag)
+	}
+	return tags
 }

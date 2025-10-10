@@ -12,3 +12,12 @@ const (
 	ComponentSprite    = "sprite"
 	ComponentCollider  = "collider"
 )
+
+// Common entity tags
+const (
+	TagPlayer     = "player"
+	TagEnemy      = "enemy"
+	TagBackground = "background"
+	TagNPC        = "npc"
+	TagProjectile = "projectile"
+)

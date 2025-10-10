@@ -23,10 +23,12 @@ func main() {
 	background := backgrounds.CreateMainBackground()
 	game.AddEntity(background)
 
-	// Create and add player entity
-	player := entities.CreatePlayer()
-	game.AddEntity(player)
-	game.SetPlayerEntity(player) // Set player for input handling
+	// Create and add player entities (multiple players!)
+	player1 := entities.CreatePlayer() // Default player at (100, 100)
+	game.AddEntity(player1)
+	
+	player2 := entities.CreatePlayerAtPosition("Player2", 150, 100) // Second player
+	game.AddEntity(player2)
 
 	// Create and add enemy entity
 	enemy := entities.CreateEnemy(200, 200)

@@ -18,16 +18,14 @@ import (
 
 // Game represents the state of the game using an ECS architecture.
 type Game struct {
-	world        *ecs.World   // The game world containing all entities
-	playerEntity *ecs.Entity  // Reference to the player entity for input handling
+	world *ecs.World // The game world containing all entities
 }
 
 // NewGame creates a new game instance with an empty world
 func NewGame() *Game {
 	world := ecs.NewWorld()
 	return &Game{
-		world:        world,
-		playerEntity: nil,
+		world: world,
 	}
 }
 
@@ -36,50 +34,51 @@ func (g *Game) AddEntity(entity *ecs.Entity) {
 	g.world.AddEntity(entity)
 }
 
-// SetPlayerEntity sets which entity should be controlled by player input
-func (g *Game) SetPlayerEntity(entity *ecs.Entity) {
-	g.playerEntity = entity
-}
-
 func (g *Game) Update() error {
-	if g.playerEntity == nil {
-		return nil // No player entity set
-	}
-	playerT := g.playerEntity.Transform()
-	if playerT == nil {
-		return nil // Player has no transform component
-	}
-	oldX, oldY := playerT.X, playerT.Y
-	speed := 2.0
-
-	// Handle player movement
-	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
-		playerT.Y -= speed
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
-		playerT.Y += speed
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
-		playerT.X -= speed
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
-		playerT.X += speed
-	}
-
-	// Check for collisions with other entities
-	for _, entity := range g.world.GetEntities() {
-		// Skip player
-		if entity == g.playerEntity {
-			continue
+	// Get all player entities
+	players := g.world.FindWithTag(ecs.TagPlayer)
+	
+	// Handle input for each player (for now, all players respond to same input)
+	// In a real game, you'd want different input handling for different players
+	for _, player := range players {
+		playerT := player.Transform()
+		if playerT == nil {
+			continue // Skip players without transform
 		}
-		// Skip entities without a collider
-		if entity.Collider() == nil {
-			continue
+		
+		oldX, oldY := playerT.X, playerT.Y
+		speed := 2.0
+
+		// Handle player movement
+		if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
+			playerT.Y -= speed
 		}
-		// Simple AABB collision detection
-		if CheckCollision(playerT.Bounds(), entity.Transform().Bounds()) {
-			playerT.X, playerT.Y = oldX, oldY // Revert to old position on collision
-			log.Printf("Collision detected between player and entity at (%.2f, %.2f)", playerT.X, playerT.Y)
+		if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
+			playerT.Y += speed
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
+			playerT.X -= speed
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
+			playerT.X += speed
+		}
+
+		// Check for collisions with other entities
+		for _, entity := range g.world.GetEntities() {
+			// Skip the player itself
+			if entity == player {
+				continue
+			}
+			// Skip entities without a collider
+			if entity.Collider() == nil {
+				continue
+			}
+			// Simple AABB collision detection
+			if CheckCollision(playerT.Bounds(), entity.Transform().Bounds()) {
+				playerT.X, playerT.Y = oldX, oldY // Revert to old position on collision
+				log.Printf("Collision detected between player '%s' and entity '%s' at (%.2f, %.2f)", 
+					player.Name, entity.Name, playerT.X, playerT.Y)
+			}
 		}
 	}
 
