@@ -11,6 +11,7 @@ import "sync/atomic"
 
 type Entity struct {
 	ID         int64                  // Unique identifier for the entity
+	Name       string                 // Name of the entity
 	components map[string]interface{} // Components associated with the entity
 }
 
@@ -18,12 +19,14 @@ var (
 	maxEntityID int64 = 0 // Global counter for generating unique entity IDs
 )
 
-// NewEntity creates a new entity with a unique ID and initializes its components map.
+// NewEntity creates a new entity with a unique ID and name, and initializes its components map.
+// name is the name to assign to the entity.
 // returns a pointer to the newly created Entity.
-func NewEntity() *Entity {
+func NewEntity(name string) *Entity {
 	id := atomic.AddInt64(&maxEntityID, 1)
 	return &Entity{
 		ID:         id,
+		Name:       name,
 		components: make(map[string]interface{}),
 	}
 }

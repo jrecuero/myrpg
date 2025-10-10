@@ -34,6 +34,19 @@ func (w *World) RemoveEntity(entity *Entity) {
 	}
 }
 
+// RemoveByName removes an entity from the world by its name.
+// name is the name of the entity to be removed.
+// returns true if an entity was found and removed, false otherwise.
+func (w *World) RemoveByName(name string) bool {
+	for i, e := range w.entities {
+		if e.Name == name {
+			w.entities = append(w.entities[:i], w.entities[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
 // GetEntities returns all entities in the world.
 // returns a slice of pointers to Entity representing all entities in the world.
 func (w *World) GetEntities() []*Entity {
@@ -59,6 +72,18 @@ func (w *World) FindWithComponent(name string) []*Entity {
 func (w *World) FindByID(id int64) *Entity {
 	for _, e := range w.entities {
 		if e.ID == id {
+			return e
+		}
+	}
+	return nil
+}
+
+// FindByName finds an entity by its name.
+// name is the name of the entity to search for.
+// returns a pointer to the Entity if found, or nil if not found.
+func (w *World) FindByName(name string) *Entity {
+	for _, e := range w.entities {
+		if e.Name == name {
 			return e
 		}
 	}

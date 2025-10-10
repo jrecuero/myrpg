@@ -45,14 +45,14 @@ func NewGame() *Game {
 	}
 
 	// Create player entity
-	player := ecs.NewEntity()
+	player := ecs.NewEntity("Player")
 	player.AddComponent(ecs.ComponentTransform, ecs.NewTransform(100, 100, 32, 32))
 	player.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(playerSprite, 1.0, 0, 0))
 	player.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
 	world.AddEntity(player)
 
 	// Create enemy entity
-	enemy := ecs.NewEntity()
+	enemy := ecs.NewEntity("Enemy")
 	enemy.AddComponent(ecs.ComponentTransform, ecs.NewTransform(200, 200, 32, 32))
 	enemy.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(enemySprite, 1.0, 0, 0))
 	enemy.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
