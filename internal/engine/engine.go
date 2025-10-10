@@ -16,68 +16,36 @@ import (
 	"github.com/jrecuero/myrpg/internal/gfx"
 )
 
-const (
-	PlayerEntityName     = "Player"     // Name constant for the player entity
-	BackgroundEntityName = "Background" // Name constant for the background entity
-)
-
 // Game represents the state of the game using an ECS architecture.
 type Game struct {
-	world *ecs.World // The game world containing all entities
+	world        *ecs.World   // The game world containing all entities
+	playerEntity *ecs.Entity  // Reference to the player entity for input handling
 }
 
+// NewGame creates a new game instance with an empty world
 func NewGame() *Game {
 	world := ecs.NewWorld()
-
-	// Load background sprite
-	backgroundSprite, err := gfx.NewSpriteFromFile("assets/backgrounds/background.png", 800, 600)
-	if err != nil {
-		log.Fatal("failed to load background sprite:", err)
-	}
-
-	// Create background entity
-	background := ecs.NewEntity(BackgroundEntityName)
-	background.AddComponent(ecs.ComponentTransform, ecs.NewTransform(0, 0, 800, 600))
-	background.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(backgroundSprite, 1.0, 0, 0))
-	world.AddEntity(background)
-
-	// Load player sprite
-	playerSprite, err := gfx.NewSpriteFromFile("assets/sprites/player.png", 32, 32)
-	if err != nil {
-		log.Fatal("failed to load player sprite:", err)
-	}
-
-	// Load enemy sprite
-	enemySprite, err := gfx.NewSpriteFromFile("assets/sprites/enemy.png", 32, 32)
-	if err != nil {
-		log.Fatal("failed to load enemy sprite:", err)
-	}
-
-	// Create player entity
-	player := ecs.NewEntity(PlayerEntityName)
-	player.AddComponent(ecs.ComponentTransform, ecs.NewTransform(100, 100, 32, 32))
-	player.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(playerSprite, 1.0, 0, 0))
-	player.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
-	world.AddEntity(player)
-
-	// Create enemy entity
-	enemy := ecs.NewEntity("Enemy")
-	enemy.AddComponent(ecs.ComponentTransform, ecs.NewTransform(200, 200, 32, 32))
-	enemy.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(enemySprite, 1.0, 0, 0))
-	enemy.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
-	world.AddEntity(enemy)
-
 	return &Game{
-		world: world,
+		world:        world,
+		playerEntity: nil,
 	}
+}
+
+// AddEntity adds an entity to the game world
+func (g *Game) AddEntity(entity *ecs.Entity) {
+	g.world.AddEntity(entity)
+}
+
+// SetPlayerEntity sets which entity should be controlled by player input
+func (g *Game) SetPlayerEntity(entity *ecs.Entity) {
+	g.playerEntity = entity
 }
 
 func (g *Game) Update() error {
-	player := g.world.FindByName(PlayerEntityName)
-	if player == nil {
-		return nil // No player found, skip update
+	if g.playerEntity == nil {
+		return nil // No player entity set
 	}
-	playerT := player.Transform()
+	playerT := g.playerEntity.Transform()
 	if playerT == nil {
 		return nil // Player has no transform component
 	}
@@ -101,7 +69,7 @@ func (g *Game) Update() error {
 	// Check for collisions with other entities
 	for _, entity := range g.world.GetEntities() {
 		// Skip player
-		if entity.Name == PlayerEntityName {
+		if entity == g.playerEntity {
 			continue
 		}
 		// Skip entities without a collider
@@ -119,24 +87,9 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Draw background first
-	background := g.world.FindByName(BackgroundEntityName)
-	if background != nil {
-		spriteC := background.Sprite()
-		if spriteC != nil {
-			transform := background.Transform()
-			if transform != nil {
-				gfx.DrawSprite(screen, spriteC.Sprite, transform.X, transform.Y, spriteC.Scale)
-			}
-		}
-	}
-
-	// Draw all other entities
+	// Draw all entities in the order they were added to the world
+	// (assuming background entities are added first for proper layering)
 	for _, entity := range g.world.GetEntities() {
-		// Skip background as it's already drawn
-		if entity.Name == BackgroundEntityName {
-			continue
-		}
 		spriteC := entity.Sprite()
 		if spriteC == nil {
 			continue // Skip entities without a sprite
