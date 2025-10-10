@@ -11,15 +11,15 @@ import (
 
 // CreateMainBackground creates the main background entity for the game
 func CreateMainBackground() *ecs.Entity {
-	// Load background sprite
-	backgroundSprite, err := gfx.NewSpriteFromFile("assets/backgrounds/background.png", 800, 600)
+	// Load background sprite for game world area only (800x440)
+	backgroundSprite, err := gfx.NewSpriteFromFile("assets/backgrounds/background.png", 800, 440)
 	if err != nil {
 		log.Fatal("failed to load background sprite:", err)
 	}
 
-	// Create background entity
+	// Create background entity positioned in game world area
 	background := ecs.NewEntity(constants.BackgroundEntityName)
-	background.AddComponent(ecs.ComponentTransform, components.NewTransform(0, 0, 800, 600))
+	background.AddComponent(ecs.ComponentTransform, components.NewTransform(0, 80, 800, 440)) // Y=80 for top panel offset
 	background.AddComponent(ecs.ComponentSprite, components.NewSpriteComponent(backgroundSprite, 1.0, 0, 0))
 	background.AddTag(ecs.TagBackground)
 	

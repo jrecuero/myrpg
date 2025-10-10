@@ -10,20 +10,21 @@ package engine
 import (
 	"fmt"
 	"image/color"
-	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/jrecuero/myrpg/internal/ecs"
+	"github.com/jrecuero/myrpg/internal/ecs/components"
 	"github.com/jrecuero/myrpg/internal/gfx"
+	"github.com/jrecuero/myrpg/internal/ui"
 )
 
 // Game represents the state of the game using an ECS architecture.
 type Game struct {
-	world             *ecs.World // The game world containing all entities
-	activePlayerIndex int        // Index of the currently active player
-	tabKeyPressed     bool       // Track TAB key state to prevent multiple switches
+	world             *ecs.World     // The game world containing all entities
+	activePlayerIndex int            // Index of the currently active player
+	tabKeyPressed     bool           // Track TAB key state to prevent multiple switches
+	uiManager         *ui.UIManager  // UI system for panels and messages
 }
 
 // NewGame creates a new game instance with an empty world
@@ -33,12 +34,30 @@ func NewGame() *Game {
 		world:             world,
 		activePlayerIndex: 0,
 		tabKeyPressed:     false,
+		uiManager:         ui.NewUIManager(),
 	}
 }
 
 // AddEntity adds an entity to the game world
 func (g *Game) AddEntity(entity *ecs.Entity) {
 	g.world.AddEntity(entity)
+}
+
+// InitializeGame sets up the initial game state and messages
+func (g *Game) InitializeGame() {
+	g.uiManager.AddMessage("Welcome to MyRPG!")
+	g.uiManager.AddMessage("Use arrow keys to move, TAB to switch between players")
+	
+	// Add message about the current active player
+	activePlayer := g.GetActivePlayer()
+	if activePlayer != nil {
+		stats := activePlayer.RPGStats()
+		if stats != nil {
+			initMsg := fmt.Sprintf("Starting as %s (%s Level %d)", 
+				stats.Name, stats.Job.String(), stats.Level)
+			g.uiManager.AddMessage(initMsg)
+		}
+	}
 }
 
 // GetPlayerEntities returns all player entities
@@ -65,6 +84,17 @@ func (g *Game) SwitchToNextPlayer() {
 		return // No switching needed with 0 or 1 player
 	}
 	g.activePlayerIndex = (g.activePlayerIndex + 1) % len(players)
+	
+	// Add message about player switch
+	activePlayer := g.GetActivePlayer()
+	if activePlayer != nil {
+		stats := activePlayer.RPGStats()
+		if stats != nil {
+			switchMsg := fmt.Sprintf("Switched to %s (%s Level %d)", 
+				stats.Name, stats.Job.String(), stats.Level)
+			g.uiManager.AddMessage(switchMsg)
+		}
+	}
 }
 
 func (g *Game) Update() error {
@@ -119,8 +149,8 @@ func (g *Game) Update() error {
 		// Simple AABB collision detection
 		if CheckCollision(playerT.Bounds(), entity.Transform().Bounds()) {
 			playerT.X, playerT.Y = oldX, oldY // Revert to old position on collision
-			log.Printf("Collision detected between active player '%s' and entity '%s' at (%.2f, %.2f)",
-				activePlayer.Name, entity.Name, playerT.X, playerT.Y)
+			collisionMsg := fmt.Sprintf("Collision: %s hit %s", activePlayer.Name, entity.Name)
+			g.uiManager.AddMessage(collisionMsg)
 		}
 	}
 
@@ -128,8 +158,23 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Draw all entities in the order they were added to the world
-	// (assuming background entities are added first for proper layering)
+	// Clear screen with black background
+	screen.Fill(color.RGBA{0, 0, 0, 255})
+	
+	// Draw UI panels first (top and bottom)
+	activePlayer := g.GetActivePlayer()
+	var activePlayerStats *components.RPGStatsComponent
+	if activePlayer != nil {
+		activePlayerStats = activePlayer.RPGStats()
+	}
+	
+	// Draw top panel with player info
+	g.uiManager.DrawTopPanel(screen, activePlayerStats)
+	
+	// Draw game world background
+	g.uiManager.DrawGameWorldBackground(screen)
+	
+	// Draw all game entities in the game world area
 	for _, entity := range g.world.GetEntities() {
 		spriteC := entity.Sprite()
 		if spriteC == nil {
@@ -143,12 +188,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	// Highlight the active player with a green rectangle outline
-	activePlayer := g.GetActivePlayer()
 	if activePlayer != nil {
 		playerT := activePlayer.Transform()
 		if playerT != nil {
 			// Draw a green outline around the active player
-			// Use direct coordinates instead of bounds for simpler conversion
 			x := playerT.X
 			y := playerT.Y
 			width := 32.0 // Assuming standard player sprite size
@@ -173,26 +216,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				color.RGBA{0, 255, 0, 255}, false)
 		}
 	}
-
-	// Display instructions and active player stats
-	instructions := "Use arrow keys to move active player, TAB to switch"
 	
-	// Add active player stats to display
-	if activePlayer := g.GetActivePlayer(); activePlayer != nil {
-		stats := activePlayer.RPGStats()
-		if stats != nil {
-			instructions += fmt.Sprintf("\n\nActive Player: %s (%s Level %d)", 
-				stats.Name, stats.Job.String(), stats.Level)
-			instructions += fmt.Sprintf("\nHP: %d/%d  MP: %d/%d", 
-				stats.CurrentHP, stats.MaxHP, stats.CurrentMP, stats.MaxMP)
-			instructions += fmt.Sprintf("\nAttack: %d  Defense: %d  Speed: %d", 
-				stats.Attack, stats.Defense, stats.Speed)
-			instructions += fmt.Sprintf("\nEXP: %d/%d", 
-				stats.Experience, stats.ExpToNext)
-		}
-	}
-	
-	ebitenutil.DebugPrint(screen, instructions)
+	// Draw bottom panel with messages and commands
+	g.uiManager.DrawBottomPanel(screen)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {

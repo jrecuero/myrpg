@@ -41,6 +41,9 @@ func main() {
 	orcWarrior := entities.CreateEnemyWithJob("Orc Warrior", 350, 250, components.JobWarrior, 5)
 	game.AddEntity(orcWarrior)
 
+	// Initialize the game with welcome messages
+	game.InitializeGame()
+
 	// Set window properties and run the game
 	ebiten.SetWindowSize(800, 600)
 	ebiten.SetWindowTitle("My RPG")
