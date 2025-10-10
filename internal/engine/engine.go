@@ -13,6 +13,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/gfx"
 )
@@ -152,23 +153,23 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			width := 32.0 // Assuming standard player sprite size
 			height := 32.0
 
-			// Draw rectangle outline using ebitenutil
-			ebitenutil.DrawRect(screen,
-				x-2, y-2,
-				width+4, 2, // Top border
-				color.RGBA{0, 255, 0, 255})
-			ebitenutil.DrawRect(screen,
-				x-2, y+height,
-				width+4, 2, // Bottom border
-				color.RGBA{0, 255, 0, 255})
-			ebitenutil.DrawRect(screen,
-				x-2, y-2,
-				2, height+4, // Left border
-				color.RGBA{0, 255, 0, 255})
-			ebitenutil.DrawRect(screen,
-				x+width, y-2,
-				2, height+4, // Right border
-				color.RGBA{0, 255, 0, 255})
+			// Draw rectangle outline using vector.FillRect
+			vector.FillRect(screen,
+				float32(x-2), float32(y-2),
+				float32(width+4), float32(2), // Top border
+				color.RGBA{0, 255, 0, 255}, false)
+			vector.FillRect(screen,
+				float32(x-2), float32(y+height),
+				float32(width+4), float32(2), // Bottom border
+				color.RGBA{0, 255, 0, 255}, false)
+			vector.FillRect(screen,
+				float32(x-2), float32(y-2),
+				float32(2), float32(height+4), // Left border
+				color.RGBA{0, 255, 0, 255}, false)
+			vector.FillRect(screen,
+				float32(x+width), float32(y-2),
+				float32(2), float32(height+4), // Right border
+				color.RGBA{0, 255, 0, 255}, false)
 		}
 	}
 
