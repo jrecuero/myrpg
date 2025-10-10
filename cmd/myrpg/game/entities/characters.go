@@ -1,3 +1,5 @@
+// Package entities provides functions to create game entities like players and enemies
+// It also includes utility functions for managing these entities
 package entities
 
 import (
@@ -21,6 +23,7 @@ func CreatePlayer() *ecs.Entity {
 	player.AddComponent(ecs.ComponentTransform, ecs.NewTransform(100, 100, 32, 32))
 	player.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(playerSprite, 1.0, 0, 0))
 	player.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
+	player.AddComponent(ecs.ComponentRPGStats, ecs.NewRPGStatsComponent("Hero", ecs.JobWarrior, 1))
 	player.AddTag(ecs.TagPlayer)
 	
 	return player
@@ -39,6 +42,7 @@ func CreateEnemy(x, y float64) *ecs.Entity {
 	enemy.AddComponent(ecs.ComponentTransform, ecs.NewTransform(x, y, 32, 32))
 	enemy.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(enemySprite, 1.0, 0, 0))
 	enemy.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
+	enemy.AddComponent(ecs.ComponentRPGStats, ecs.NewRPGStatsComponent("Goblin", ecs.JobRogue, 1))
 	enemy.AddTag(ecs.TagEnemy)
 	
 	return enemy
@@ -57,7 +61,46 @@ func CreatePlayerAtPosition(name string, x, y float64) *ecs.Entity {
 	player.AddComponent(ecs.ComponentTransform, ecs.NewTransform(x, y, 32, 32))
 	player.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(playerSprite, 1.0, 0, 0))
 	player.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
+	player.AddComponent(ecs.ComponentRPGStats, ecs.NewRPGStatsComponent(name, ecs.JobWarrior, 1))
 	player.AddTag(ecs.TagPlayer)
 	
 	return player
+}
+
+// CreatePlayerWithJob creates a player entity with a specific job/class
+func CreatePlayerWithJob(name string, x, y float64, job ecs.JobType, level int) *ecs.Entity {
+	// Load player sprite
+	playerSprite, err := gfx.NewSpriteFromFile("assets/sprites/player.png", 32, 32)
+	if err != nil {
+		log.Fatal("failed to load player sprite:", err)
+	}
+
+	// Create player entity with specified job
+	player := ecs.NewEntity(name)
+	player.AddComponent(ecs.ComponentTransform, ecs.NewTransform(x, y, 32, 32))
+	player.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(playerSprite, 1.0, 0, 0))
+	player.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
+	player.AddComponent(ecs.ComponentRPGStats, ecs.NewRPGStatsComponent(name, job, level))
+	player.AddTag(ecs.TagPlayer)
+	
+	return player
+}
+
+// CreateEnemyWithJob creates an enemy entity with a specific job/class and level
+func CreateEnemyWithJob(name string, x, y float64, job ecs.JobType, level int) *ecs.Entity {
+	// Load enemy sprite
+	enemySprite, err := gfx.NewSpriteFromFile("assets/sprites/enemy.png", 32, 32)
+	if err != nil {
+		log.Fatal("failed to load enemy sprite:", err)
+	}
+
+	// Create enemy entity with specified job
+	enemy := ecs.NewEntity(name)
+	enemy.AddComponent(ecs.ComponentTransform, ecs.NewTransform(x, y, 32, 32))
+	enemy.AddComponent(ecs.ComponentSprite, ecs.NewSpriteComponent(enemySprite, 1.0, 0, 0))
+	enemy.AddComponent(ecs.ComponentCollider, ecs.NewColliderComponent(true, 32, 32, 0, 0))
+	enemy.AddComponent(ecs.ComponentRPGStats, ecs.NewRPGStatsComponent(name, job, level))
+	enemy.AddTag(ecs.TagEnemy)
+	
+	return enemy
 }

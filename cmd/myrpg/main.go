@@ -12,6 +12,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/jrecuero/myrpg/cmd/myrpg/game/backgrounds"
 	"github.com/jrecuero/myrpg/cmd/myrpg/game/entities"
+	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/engine"
 )
 
@@ -23,16 +24,22 @@ func main() {
 	background := backgrounds.CreateMainBackground()
 	game.AddEntity(background)
 
-	// Create and add player entities (multiple players!)
-	player1 := entities.CreatePlayer() // Default player at (100, 100)
-	game.AddEntity(player1)
+	// Create and add player entities with different jobs and levels
+	warrior := entities.CreatePlayerWithJob("Conan", 100, 100, ecs.JobWarrior, 3)
+	game.AddEntity(warrior)
 	
-	player2 := entities.CreatePlayerAtPosition("Player2", 150, 100) // Second player
-	game.AddEntity(player2)
+	mage := entities.CreatePlayerWithJob("Gandalf", 150, 100, ecs.JobMage, 2)
+	game.AddEntity(mage)
+	
+	rogue := entities.CreatePlayerWithJob("Robin", 200, 100, ecs.JobRogue, 4)
+	game.AddEntity(rogue)
 
-	// Create and add enemy entity
-	enemy := entities.CreateEnemy(200, 200)
-	game.AddEntity(enemy)
+	// Create and add enemy entities with different jobs and levels
+	goblin := entities.CreateEnemyWithJob("Goblin Scout", 300, 200, ecs.JobRogue, 2)
+	game.AddEntity(goblin)
+	
+	orcWarrior := entities.CreateEnemyWithJob("Orc Warrior", 350, 250, ecs.JobWarrior, 5)
+	game.AddEntity(orcWarrior)
 
 	// Set window properties and run the game
 	ebiten.SetWindowSize(800, 600)

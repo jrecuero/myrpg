@@ -97,6 +97,17 @@ func (e *Entity) Collider() *ColliderComponent {
 	return nil
 }
 
+// RPGStats retrieves the RPGStatsComponent from the entity.
+// returns a pointer to the RPGStatsComponent or nil if not found.
+func (e *Entity) RPGStats() *RPGStatsComponent {
+	if comp, exists := e.GetComponent(ComponentRPGStats); exists {
+		if stats, ok := comp.(*RPGStatsComponent); ok {
+			return stats
+		}
+	}
+	return nil
+}
+
 // AddTag adds a tag to the entity.
 // tag is the tag string to add.
 func (e *Entity) AddTag(tag string) {

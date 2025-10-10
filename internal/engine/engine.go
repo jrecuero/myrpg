@@ -8,6 +8,7 @@
 package engine
 
 import (
+	"fmt"
 	"image/color"
 	"log"
 
@@ -173,8 +174,25 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// Display instructions
-	ebitenutil.DebugPrint(screen, "Use arrow keys to move active player, TAB to switch")
+	// Display instructions and active player stats
+	instructions := "Use arrow keys to move active player, TAB to switch"
+	
+	// Add active player stats to display
+	if activePlayer := g.GetActivePlayer(); activePlayer != nil {
+		stats := activePlayer.RPGStats()
+		if stats != nil {
+			instructions += fmt.Sprintf("\n\nActive Player: %s (%s Level %d)", 
+				stats.Name, stats.Job.String(), stats.Level)
+			instructions += fmt.Sprintf("\nHP: %d/%d  MP: %d/%d", 
+				stats.CurrentHP, stats.MaxHP, stats.CurrentMP, stats.MaxMP)
+			instructions += fmt.Sprintf("\nAttack: %d  Defense: %d  Speed: %d", 
+				stats.Attack, stats.Defense, stats.Speed)
+			instructions += fmt.Sprintf("\nEXP: %d/%d", 
+				stats.Experience, stats.ExpToNext)
+		}
+	}
+	
+	ebitenutil.DebugPrint(screen, instructions)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {

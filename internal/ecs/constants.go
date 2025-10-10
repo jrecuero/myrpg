@@ -11,6 +11,7 @@ const (
 	ComponentTransform = "transform"
 	ComponentSprite    = "sprite"
 	ComponentCollider  = "collider"
+	ComponentRPGStats  = "rpgstats"
 )
 
 // Common entity tags

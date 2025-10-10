@@ -1,3 +1,5 @@
+// Utility functions for entity management
+// These functions help in retrieving and counting entities by their tags
 package entities
 
 import (
