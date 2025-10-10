@@ -218,3 +218,50 @@ func (ui *UIManager) DrawGameWorldBackground(screen *ebiten.Image) {
 func (ui *UIManager) GetGameWorldBounds() (x, y, width, height int) {
 	return 0, GameWorldY, ScreenWidth, GameWorldHeight
 }
+
+// DrawBattleMenu renders the battle selection menu overlay
+func (ui *UIManager) DrawBattleMenu(screen *ebiten.Image, battleText string) {
+	if battleText == "" {
+		return
+	}
+	
+	// Draw semi-transparent overlay
+	overlayColor := color.RGBA{0, 0, 0, 180}
+	vector.FillRect(screen, 0, 0, ScreenWidth, ScreenHeight, overlayColor, false)
+	
+	// Calculate menu dimensions
+	menuWidth := float32(300)
+	menuHeight := float32(200)
+	menuX := (ScreenWidth - menuWidth) / 2
+	menuY := (ScreenHeight - menuHeight) / 2
+	
+	// Draw menu background
+	menuBgColor := color.RGBA{40, 40, 40, 255}
+	vector.FillRect(screen, menuX, menuY, menuWidth, menuHeight, menuBgColor, false)
+	
+	// Draw menu border
+	borderColor := color.RGBA{200, 200, 200, 255}
+	vector.StrokeRect(screen, menuX, menuY, menuWidth, menuHeight, 2, borderColor, false)
+	
+	// Draw battle text
+	lines := []string{}
+	current := ""
+	for _, char := range battleText {
+		if char == '\n' {
+			lines = append(lines, current)
+			current = ""
+		} else {
+			current += string(char)
+		}
+	}
+	if current != "" {
+		lines = append(lines, current)
+	}
+	
+	// Render text lines
+	for i, line := range lines {
+		textX := int(menuX) + 20
+		textY := int(menuY) + 30 + (i * 20)
+		ebitenutil.DebugPrintAt(screen, line, textX, textY)
+	}
+}

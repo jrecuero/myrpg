@@ -21,21 +21,32 @@ import (
 
 // Game represents the state of the game using an ECS architecture.
 type Game struct {
-	world             *ecs.World     // The game world containing all entities
-	activePlayerIndex int            // Index of the currently active player
-	tabKeyPressed     bool           // Track TAB key state to prevent multiple switches
-	uiManager         *ui.UIManager  // UI system for panels and messages
+	world             *ecs.World    // The game world containing all entities
+	activePlayerIndex int           // Index of the currently active player
+	tabKeyPressed     bool          // Track TAB key state to prevent multiple switches
+	uiManager         *ui.UIManager // UI system for panels and messages
+	battleSystem      *BattleSystem // Battle system for combat
 }
 
 // NewGame creates a new game instance with an empty world
 func NewGame() *Game {
 	world := ecs.NewWorld()
-	return &Game{
+	uiManager := ui.NewUIManager()
+	battleSystem := NewBattleSystem()
+
+	game := &Game{
 		world:             world,
 		activePlayerIndex: 0,
 		tabKeyPressed:     false,
-		uiManager:         ui.NewUIManager(),
+		uiManager:         uiManager,
+		battleSystem:      battleSystem,
 	}
+
+	// Set up battle system callbacks
+	battleSystem.SetMessageCallback(uiManager.AddMessage)
+	battleSystem.SetSwitchPlayerCallback(game.SwitchToNextPlayer)
+
+	return game
 }
 
 // AddEntity adds an entity to the game world
@@ -43,17 +54,45 @@ func (g *Game) AddEntity(entity *ecs.Entity) {
 	g.world.AddEntity(entity)
 }
 
+// RemoveEntity removes an entity from the game world
+func (g *Game) RemoveEntity(entity *ecs.Entity) {
+	g.world.RemoveEntity(entity)
+}
+
+// CheckAndRemoveDeadEntities removes entities with HP <= 0
+func (g *Game) CheckAndRemoveDeadEntities() {
+	entitiesToRemove := []*ecs.Entity{}
+
+	for _, entity := range g.world.GetEntities() {
+		stats := entity.RPGStats()
+		if stats != nil && stats.CurrentHP <= 0 {
+			g.uiManager.AddMessage(fmt.Sprintf("%s has been defeated and removed from battle!", stats.Name))
+			entitiesToRemove = append(entitiesToRemove, entity)
+		}
+	}
+
+	// Remove dead entities
+	for _, entity := range entitiesToRemove {
+		g.RemoveEntity(entity)
+
+		// If it was the active player, switch to next player
+		if entity.HasComponent("Player") {
+			g.SwitchToNextPlayer()
+		}
+	}
+}
+
 // InitializeGame sets up the initial game state and messages
 func (g *Game) InitializeGame() {
 	g.uiManager.AddMessage("Welcome to MyRPG!")
 	g.uiManager.AddMessage("Use arrow keys to move, TAB to switch between players")
-	
+
 	// Add message about the current active player
 	activePlayer := g.GetActivePlayer()
 	if activePlayer != nil {
 		stats := activePlayer.RPGStats()
 		if stats != nil {
-			initMsg := fmt.Sprintf("Starting as %s (%s Level %d)", 
+			initMsg := fmt.Sprintf("Starting as %s (%s Level %d)",
 				stats.Name, stats.Job.String(), stats.Level)
 			g.uiManager.AddMessage(initMsg)
 		}
@@ -84,13 +123,13 @@ func (g *Game) SwitchToNextPlayer() {
 		return // No switching needed with 0 or 1 player
 	}
 	g.activePlayerIndex = (g.activePlayerIndex + 1) % len(players)
-	
+
 	// Add message about player switch
 	activePlayer := g.GetActivePlayer()
 	if activePlayer != nil {
 		stats := activePlayer.RPGStats()
 		if stats != nil {
-			switchMsg := fmt.Sprintf("Switched to %s (%s Level %d)", 
+			switchMsg := fmt.Sprintf("Switched to %s (%s Level %d)",
 				stats.Name, stats.Job.String(), stats.Level)
 			g.uiManager.AddMessage(switchMsg)
 		}
@@ -98,60 +137,83 @@ func (g *Game) SwitchToNextPlayer() {
 }
 
 func (g *Game) Update() error {
-	// Handle TAB key for player switching
-	if ebiten.IsKeyPressed(ebiten.KeyTab) {
-		if !g.tabKeyPressed {
-			g.SwitchToNextPlayer()
-			g.tabKeyPressed = true
+	// Update battle system first
+	g.battleSystem.Update()
+
+	// Only handle movement and player switching if not in battle
+	if !g.battleSystem.IsInBattle() {
+		// Handle TAB key for player switching
+		if ebiten.IsKeyPressed(ebiten.KeyTab) {
+			if !g.tabKeyPressed {
+				g.SwitchToNextPlayer()
+				g.tabKeyPressed = true
+			}
+		} else {
+			g.tabKeyPressed = false
 		}
-	} else {
-		g.tabKeyPressed = false
-	}
 
-	// Get the currently active player
-	activePlayer := g.GetActivePlayer()
-	if activePlayer == nil {
-		return nil // No active player
-	}
-
-	playerT := activePlayer.Transform()
-	if playerT == nil {
-		return nil // Active player has no transform component
-	}
-
-	oldX, oldY := playerT.X, playerT.Y
-	speed := 2.0
-
-	// Handle movement for ONLY the active player
-	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
-		playerT.Y -= speed
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
-		playerT.Y += speed
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
-		playerT.X -= speed
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
-		playerT.X += speed
-	}
-
-	// Check for collisions with other entities
-	for _, entity := range g.world.GetEntities() {
-		// Skip the active player itself
-		if entity == activePlayer {
-			continue
+		// Get the currently active player
+		activePlayer := g.GetActivePlayer()
+		if activePlayer == nil {
+			return nil // No active player
 		}
-		// Skip entities without a collider
-		if entity.Collider() == nil {
-			continue
+
+		playerT := activePlayer.Transform()
+		if playerT == nil {
+			return nil // Active player has no transform component
 		}
-		// Simple AABB collision detection
-		if CheckCollision(playerT.Bounds(), entity.Transform().Bounds()) {
-			playerT.X, playerT.Y = oldX, oldY // Revert to old position on collision
-			collisionMsg := fmt.Sprintf("Collision: %s hit %s", activePlayer.Name, entity.Name)
-			g.uiManager.AddMessage(collisionMsg)
+
+		oldX, oldY := playerT.X, playerT.Y
+		speed := 2.0
+
+		// Handle movement for ONLY the active player
+		if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
+			playerT.Y -= speed
 		}
+		if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
+			playerT.Y += speed
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
+			playerT.X -= speed
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
+			playerT.X += speed
+		}
+
+		// Check for collisions with other entities
+		for _, entity := range g.world.GetEntities() {
+			// Skip the active player itself
+			if entity == activePlayer {
+				continue
+			}
+			// Skip entities without a collider
+			if entity.Collider() == nil {
+				continue
+			}
+
+			// Check collision type
+			if CheckCollision(playerT.Bounds(), entity.Transform().Bounds()) {
+				playerT.X, playerT.Y = oldX, oldY // Revert to old position on collision
+
+				// Determine if this is an enemy or regular collision
+				if entity.HasTag("player") {
+					// Player-to-player collision
+					collisionMsg := fmt.Sprintf("Collision: %s bumped into %s", activePlayer.Name, entity.Name)
+					g.uiManager.AddMessage(collisionMsg)
+				} else if entity.RPGStats() != nil {
+					// Enemy collision - has RPG stats but no Player tag
+					g.battleSystem.StartBattle(activePlayer, entity)
+					break // Only start one battle at a time
+				} else {
+					// Regular collision (wall, object, etc.)
+					collisionMsg := fmt.Sprintf("Collision: %s hit an obstacle", activePlayer.Name)
+					g.uiManager.AddMessage(collisionMsg)
+				}
+			}
+		}
+
+		// Check and remove dead entities after movement
+		g.CheckAndRemoveDeadEntities()
 	}
 
 	return nil
@@ -160,20 +222,20 @@ func (g *Game) Update() error {
 func (g *Game) Draw(screen *ebiten.Image) {
 	// Clear screen with black background
 	screen.Fill(color.RGBA{0, 0, 0, 255})
-	
+
 	// Draw UI panels first (top and bottom)
 	activePlayer := g.GetActivePlayer()
 	var activePlayerStats *components.RPGStatsComponent
 	if activePlayer != nil {
 		activePlayerStats = activePlayer.RPGStats()
 	}
-	
+
 	// Draw top panel with player info
 	g.uiManager.DrawTopPanel(screen, activePlayerStats)
-	
+
 	// Draw game world background
 	g.uiManager.DrawGameWorldBackground(screen)
-	
+
 	// Draw all game entities in the game world area
 	for _, entity := range g.world.GetEntities() {
 		spriteC := entity.Sprite()
@@ -216,9 +278,15 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				color.RGBA{0, 255, 0, 255}, false)
 		}
 	}
-	
+
 	// Draw bottom panel with messages and commands
 	g.uiManager.DrawBottomPanel(screen)
+
+	// Draw battle menu if in battle
+	if g.battleSystem.IsInBattle() {
+		battleText := g.battleSystem.GetBattleMenuText()
+		g.uiManager.DrawBattleMenu(screen, battleText)
+	}
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
