@@ -45,6 +45,14 @@ func main() {
 				FrameDuration: 150 * time.Millisecond, // Slightly faster for walking
 				Loop:          true,
 			},
+			{
+				State:         components.AnimationAttacking,
+				SpriteSheet:   "assets/sprites/hero/hero-sword.png",
+				StartFrame:    0,
+				FrameCount:    0,                      // Use all 6 frames from sprite sheet
+				FrameDuration: 100 * time.Millisecond, // Fast attack animation
+				Loop:          true,                   // Loop attack animation during attack period
+			},
 		},
 		Scale:   1.0,
 		OffsetX: 0,
@@ -65,6 +73,9 @@ func main() {
 
 	orcWarrior := entities.CreateEnemyWithJob("Orc Warrior", 350, 250, components.JobWarrior, 5)
 	game.AddEntity(orcWarrior)
+
+	// Configure attack animation duration (customizable)
+	game.SetAttackAnimationDuration(1500 * time.Millisecond) // 1.5 seconds for attack animation
 
 	// Initialize the game with welcome messages
 	game.InitializeGame()

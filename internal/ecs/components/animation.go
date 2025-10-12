@@ -100,21 +100,27 @@ func (a *Animation) IsFinished() bool {
 
 // AnimationComponent manages multiple animations for an entity
 type AnimationComponent struct {
-	Animations   map[AnimationState]*Animation // Map of animation states to animations
-	CurrentState AnimationState                // Current animation state
-	Scale        float64                       // Scale factor for rendering
-	OffsetX      float64                       // X offset for rendering
-	OffsetY      float64                       // Y offset for rendering
+	Animations        map[AnimationState]*Animation // Map of animation states to animations
+	CurrentState      AnimationState                // Current animation state
+	PreviousState     AnimationState                // Previous animation state (for reverting)
+	Scale             float64                       // Scale factor for rendering
+	OffsetX           float64                       // X offset for rendering
+	OffsetY           float64                       // Y offset for rendering
+	TempStateTimer    time.Time                     // Timer for temporary animation states
+	TempStateDuration time.Duration                 // Duration for temporary animation
+	IsTemporaryState  bool                          // Whether current state is temporary
 }
 
 // NewAnimationComponent creates a new AnimationComponent
 func NewAnimationComponent(scale, offsetX, offsetY float64) *AnimationComponent {
 	return &AnimationComponent{
-		Animations:   make(map[AnimationState]*Animation),
-		CurrentState: AnimationIdle,
-		Scale:        scale,
-		OffsetX:      offsetX,
-		OffsetY:      offsetY,
+		Animations:       make(map[AnimationState]*Animation),
+		CurrentState:     AnimationIdle,
+		PreviousState:    AnimationIdle,
+		Scale:            scale,
+		OffsetX:          offsetX,
+		OffsetY:          offsetY,
+		IsTemporaryState: false,
 	}
 }
 
@@ -126,16 +132,46 @@ func (ac *AnimationComponent) AddAnimation(state AnimationState, animation *Anim
 // SetState changes the current animation state
 func (ac *AnimationComponent) SetState(state AnimationState) {
 	if state != ac.CurrentState {
+		// Store previous state for potential revert
+		ac.PreviousState = ac.CurrentState
+
 		// Reset the new animation when switching states
 		if animation, exists := ac.Animations[state]; exists {
 			animation.Reset()
 		}
 		ac.CurrentState = state
+		ac.IsTemporaryState = false // Clear temporary state flag
 	}
 }
 
-// Update updates the current animation
+// SetTemporaryState changes to a temporary animation state for a specified duration
+func (ac *AnimationComponent) SetTemporaryState(state AnimationState, duration time.Duration) {
+	if ac.HasAnimation(state) {
+		// Store previous state for reverting
+		if !ac.IsTemporaryState {
+			ac.PreviousState = ac.CurrentState
+		}
+
+		// Set new temporary state
+		if animation, exists := ac.Animations[state]; exists {
+			animation.Reset()
+		}
+		ac.CurrentState = state
+		ac.IsTemporaryState = true
+		ac.TempStateTimer = time.Now()
+		ac.TempStateDuration = duration
+	}
+}
+
+// Update updates the current animation and handles temporary state expiration
 func (ac *AnimationComponent) Update() {
+	// Check if temporary state has expired
+	if ac.IsTemporaryState && time.Since(ac.TempStateTimer) >= ac.TempStateDuration {
+		// Revert to previous state
+		ac.SetState(ac.PreviousState)
+	}
+
+	// Update current animation
 	if animation, exists := ac.Animations[ac.CurrentState]; exists {
 		animation.Update()
 	}
@@ -184,4 +220,17 @@ func (ac *AnimationComponent) SetStateIfAvailable(state AnimationState) bool {
 // GetCurrentState returns the current animation state
 func (ac *AnimationComponent) GetCurrentState() AnimationState {
 	return ac.CurrentState
+}
+
+// IsCurrentAnimationFinished returns true if the current animation has finished
+func (ac *AnimationComponent) IsCurrentAnimationFinished() bool {
+	if animation, exists := ac.Animations[ac.CurrentState]; exists {
+		return animation.IsFinished()
+	}
+	return false
+}
+
+// IsInTemporaryState returns true if currently in a temporary animation state
+func (ac *AnimationComponent) IsInTemporaryState() bool {
+	return ac.IsTemporaryState
 }

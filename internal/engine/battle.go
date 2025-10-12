@@ -2,10 +2,12 @@ package engine
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/jrecuero/myrpg/internal/ecs"
+	"github.com/jrecuero/myrpg/internal/ecs/components"
 )
 
 // AttackType represents the type of attack in battle
@@ -42,23 +44,25 @@ const (
 
 // BattleSystem manages combat between players and enemies
 type BattleSystem struct {
-	State                BattleState
-	CurrentPlayer        *ecs.Entity
-	CurrentEnemy         *ecs.Entity
-	SelectedAttack       AttackType
-	UIVisible            bool
-	messageCallback      func(string) // Callback to send messages to UI
-	switchPlayerCallback func()       // Callback to switch to next player
+	State                   BattleState
+	CurrentPlayer           *ecs.Entity
+	CurrentEnemy            *ecs.Entity
+	SelectedAttack          AttackType
+	UIVisible               bool
+	messageCallback         func(string)  // Callback to send messages to UI
+	switchPlayerCallback    func()        // Callback to switch to next player
+	AttackAnimationDuration time.Duration // Duration for attack animation feedback
 }
 
 // NewBattleSystem creates a new battle system
 func NewBattleSystem() *BattleSystem {
 	return &BattleSystem{
-		State:          BattleStateNone,
-		CurrentPlayer:  nil,
-		CurrentEnemy:   nil,
-		SelectedAttack: AttackPhysical,
-		UIVisible:      false,
+		State:                   BattleStateNone,
+		CurrentPlayer:           nil,
+		CurrentEnemy:            nil,
+		SelectedAttack:          AttackPhysical,
+		UIVisible:               false,
+		AttackAnimationDuration: 1000 * time.Millisecond, // Default 1 second attack animation
 	}
 }
 
@@ -70,6 +74,27 @@ func (bs *BattleSystem) SetMessageCallback(callback func(string)) {
 // SetSwitchPlayerCallback sets the callback function for switching to next player
 func (bs *BattleSystem) SetSwitchPlayerCallback(callback func()) {
 	bs.switchPlayerCallback = callback
+}
+
+// SetAttackAnimationDuration sets the duration for attack animation feedback
+func (bs *BattleSystem) SetAttackAnimationDuration(duration time.Duration) {
+	bs.AttackAnimationDuration = duration
+}
+
+// triggerAttackAnimation triggers the attack animation for the current player
+func (bs *BattleSystem) triggerAttackAnimation() {
+	if bs.CurrentPlayer == nil {
+		return
+	}
+
+	// Get animation component from the current player
+	if animComponent := bs.CurrentPlayer.Animation(); animComponent != nil {
+		// Check if the player has an attack animation
+		if animComponent.HasAnimation(components.AnimationAttacking) {
+			// Trigger temporary attack animation
+			animComponent.SetTemporaryState(components.AnimationAttacking, bs.AttackAnimationDuration)
+		}
+	}
 }
 
 // addMessage sends a message to the UI if callback is set, otherwise prints to console
@@ -144,6 +169,9 @@ func (bs *BattleSystem) executePlayerAttack() {
 		damage = bs.calculateMagicalDamage(playerStats.MagicAttack, enemyStats.MagicDefense)
 		attackName = "Magical Attack"
 	}
+
+	// Trigger attack animation for visual feedback
+	bs.triggerAttackAnimation()
 
 	// Apply damage to enemy
 	enemyStats.CurrentHP -= damage

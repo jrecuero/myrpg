@@ -10,6 +10,7 @@ package engine
 import (
 	"fmt"
 	"image/color"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -57,6 +58,11 @@ func (g *Game) AddEntity(entity *ecs.Entity) {
 // RemoveEntity removes an entity from the game world
 func (g *Game) RemoveEntity(entity *ecs.Entity) {
 	g.world.RemoveEntity(entity)
+}
+
+// SetAttackAnimationDuration configures how long attack animations should last
+func (g *Game) SetAttackAnimationDuration(duration time.Duration) {
+	g.battleSystem.SetAttackAnimationDuration(duration)
 }
 
 // CheckAndRemoveDeadEntities removes entities with HP <= 0
