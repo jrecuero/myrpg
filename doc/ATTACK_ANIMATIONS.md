@@ -27,7 +27,8 @@ game.SetAttackAnimationDuration(2500 * time.Millisecond)
 ### Automatic State Management
 - **Triggers**: Attack animation starts when player attacks an enemy
 - **Duration**: Stays in attack animation for the configured duration
-- **Auto-Revert**: Automatically returns to previous animation state (idle/walking)
+- **Smart Revert**: Automatically returns to idle state after battle (never walking)
+- **Battle Logic**: Forces idle state after combat regardless of movement during collision
 - **Non-Interrupting**: Animation switching based on movement still works after attack animation ends
 
 ## How It Works
@@ -35,8 +36,9 @@ game.SetAttackAnimationDuration(2500 * time.Millisecond)
 1. **Battle Trigger**: When a player selects and executes an attack in battle
 2. **Animation Switch**: Hero switches to attack animation using the sword sprite sheet
 3. **Timed Duration**: Animation stays active for the configured duration (default 1.5 seconds)
-4. **Auto-Return**: After the duration expires, hero returns to the previous animation state
-5. **Continued Gameplay**: Normal idle/walking animation switching resumes
+4. **Smart Return**: After the duration expires, hero returns to idle state (not walking)
+5. **Battle Logic**: Ensures proper post-battle state regardless of movement during collision
+6. **Continued Gameplay**: Normal idle/walking animation switching resumes
 
 ## Technical Implementation
 
@@ -44,6 +46,8 @@ game.SetAttackAnimationDuration(2500 * time.Millisecond)
 - **Temporary States**: Support for time-limited animation states
 - **State Memory**: Remembers previous state for auto-revert
 - **Timer System**: Built-in timing for temporary animations
+- **Smart Revert**: `SetTemporaryStateWithRevertTo()` method for controlled state transitions
+- **Battle Logic**: Forces idle state after attack regardless of collision-time animation
 
 ### Battle System Integration
 - **Attack Trigger**: Automatically triggers attack animation on player attacks

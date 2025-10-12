@@ -163,6 +163,23 @@ func (ac *AnimationComponent) SetTemporaryState(state AnimationState, duration t
 	}
 }
 
+// SetTemporaryStateWithRevertTo changes to a temporary animation state and specifies what state to revert to
+func (ac *AnimationComponent) SetTemporaryStateWithRevertTo(state AnimationState, duration time.Duration, revertToState AnimationState) {
+	if ac.HasAnimation(state) {
+		// Set specific revert state instead of current state
+		ac.PreviousState = revertToState
+
+		// Set new temporary state
+		if animation, exists := ac.Animations[state]; exists {
+			animation.Reset()
+		}
+		ac.CurrentState = state
+		ac.IsTemporaryState = true
+		ac.TempStateTimer = time.Now()
+		ac.TempStateDuration = duration
+	}
+}
+
 // Update updates the current animation and handles temporary state expiration
 func (ac *AnimationComponent) Update() {
 	// Check if temporary state has expired

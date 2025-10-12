@@ -91,8 +91,9 @@ func (bs *BattleSystem) triggerAttackAnimation() {
 	if animComponent := bs.CurrentPlayer.Animation(); animComponent != nil {
 		// Check if the player has an attack animation
 		if animComponent.HasAnimation(components.AnimationAttacking) {
-			// Trigger temporary attack animation
-			animComponent.SetTemporaryState(components.AnimationAttacking, bs.AttackAnimationDuration)
+			// Trigger temporary attack animation that reverts to idle after battle
+			// This ensures the player returns to idle state after battle, not walking
+			animComponent.SetTemporaryStateWithRevertTo(components.AnimationAttacking, bs.AttackAnimationDuration, components.AnimationIdle)
 		}
 	}
 }
