@@ -158,8 +158,11 @@ assets/sprites/
 
 Your hero "Conan" now uses:
 - **6-frame idle animation** from `hero-idle.png` (200ms per frame, looping)
-- **Automatic state switching** based on movement
-- **Fallback protection** if sprite sheet is missing
+- **6-frame walking animation** from `hero-walk.png` (150ms per frame, looping)
+- **Automatic state switching** based on movement:
+  - Standing still → Idle animation
+  - Moving with arrow keys → Walking animation
+- **Fallback protection** if sprite sheets are missing
 
 ## 🚀 **Future Expansion Ideas**
 

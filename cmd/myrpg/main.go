@@ -33,19 +33,18 @@ func main() {
 				State:         components.AnimationIdle,
 				SpriteSheet:   "assets/sprites/hero/hero-idle.png",
 				StartFrame:    0,
-				FrameCount:    0, // Use all frames from sprite sheet
+				FrameCount:    0, // Use all 6 frames from sprite sheet
 				FrameDuration: 200 * time.Millisecond,
 				Loop:          true,
 			},
-			// You can add more animations here, like:
-			// {
-			//     State:         components.AnimationWalking,
-			//     SpriteSheet:   "assets/sprites/hero/hero-walk.png",
-			//     StartFrame:    0,
-			//     FrameCount:    0,
-			//     FrameDuration: 150 * time.Millisecond,
-			//     Loop:          true,
-			// },
+			{
+				State:         components.AnimationWalking,
+				SpriteSheet:   "assets/sprites/hero/hero-walk.png",
+				StartFrame:    0,
+				FrameCount:    0,                      // Use all 6 frames from sprite sheet
+				FrameDuration: 150 * time.Millisecond, // Slightly faster for walking
+				Loop:          true,
+			},
 		},
 		Scale:   1.0,
 		OffsetX: 0,
