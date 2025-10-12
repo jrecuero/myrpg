@@ -8,6 +8,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/jrecuero/myrpg/cmd/myrpg/game/backgrounds"
@@ -25,19 +26,44 @@ func main() {
 	game.AddEntity(background)
 
 	// Create and add player entities with different jobs and levels
-	warrior := entities.CreatePlayerWithJob("Conan", 100, 100, components.JobWarrior, 3)
+	// Create animated hero with multiple animations (if available)
+	heroAnimations := entities.CharacterAnimations{
+		Animations: []entities.AnimationConfig{
+			{
+				State:         components.AnimationIdle,
+				SpriteSheet:   "assets/sprites/hero/hero-idle.png",
+				StartFrame:    0,
+				FrameCount:    0, // Use all frames from sprite sheet
+				FrameDuration: 200 * time.Millisecond,
+				Loop:          true,
+			},
+			// You can add more animations here, like:
+			// {
+			//     State:         components.AnimationWalking,
+			//     SpriteSheet:   "assets/sprites/hero/hero-walk.png",
+			//     StartFrame:    0,
+			//     FrameCount:    0,
+			//     FrameDuration: 150 * time.Millisecond,
+			//     Loop:          true,
+			// },
+		},
+		Scale:   1.0,
+		OffsetX: 0,
+		OffsetY: 0,
+	}
+	warrior := entities.CreateAnimatedPlayerWithJob("Conan", 100, 100, components.JobWarrior, 3, heroAnimations)
 	game.AddEntity(warrior)
-	
+
 	mage := entities.CreatePlayerWithJob("Gandalf", 150, 100, components.JobMage, 2)
 	game.AddEntity(mage)
-	
+
 	rogue := entities.CreatePlayerWithJob("Robin", 200, 100, components.JobRogue, 4)
 	game.AddEntity(rogue)
 
 	// Create and add enemy entities with different jobs and levels
 	goblin := entities.CreateEnemyWithJob("Goblin Scout", 300, 200, components.JobRogue, 2)
 	game.AddEntity(goblin)
-	
+
 	orcWarrior := entities.CreateEnemyWithJob("Orc Warrior", 350, 250, components.JobWarrior, 5)
 	game.AddEntity(orcWarrior)
 

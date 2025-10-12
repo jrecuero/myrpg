@@ -56,3 +56,74 @@ func (s *Sprite) Bounds(x float64, y float64) image.Rectangle {
 		Max: image.Point{X: int(x) + s.W, Y: int(y) + s.H},
 	}
 }
+
+// SpriteSheet represents a collection of sprites arranged in a grid
+type SpriteSheet struct {
+	Image        *ebiten.Image // The sprite sheet image
+	SpriteWidth  int           // Width of each individual sprite
+	SpriteHeight int           // Height of each individual sprite
+	Columns      int           // Number of columns in the sprite sheet
+	Rows         int           // Number of rows in the sprite sheet
+}
+
+// NewSpriteSheetFromFile creates a new sprite sheet from an image file
+func NewSpriteSheetFromFile(path string, spriteWidth, spriteHeight int) (*SpriteSheet, error) {
+	img, err := LoadImage(path, 0, 0) // Load the full image
+	if err != nil {
+		return nil, err
+	}
+
+	bounds := img.Bounds()
+	columns := bounds.Dx() / spriteWidth
+	rows := bounds.Dy() / spriteHeight
+
+	return &SpriteSheet{
+		Image:        img,
+		SpriteWidth:  spriteWidth,
+		SpriteHeight: spriteHeight,
+		Columns:      columns,
+		Rows:         rows,
+	}, nil
+}
+
+// GetSprite extracts a specific sprite from the sprite sheet by index
+func (ss *SpriteSheet) GetSprite(index int) (*Sprite, error) {
+	if index < 0 || index >= ss.Columns*ss.Rows {
+		return nil, image.ErrFormat // Invalid index
+	}
+
+	row := index / ss.Columns
+	col := index % ss.Columns
+
+	x := col * ss.SpriteWidth
+	y := row * ss.SpriteHeight
+
+	// Create a sub-image for the sprite
+	subImg := ss.Image.SubImage(image.Rect(x, y, x+ss.SpriteWidth, y+ss.SpriteHeight)).(*ebiten.Image)
+
+	return &Sprite{
+		Img: subImg,
+		W:   ss.SpriteWidth,
+		H:   ss.SpriteHeight,
+	}, nil
+}
+
+// GetSprites extracts a range of sprites from the sprite sheet
+func (ss *SpriteSheet) GetSprites(startIndex, count int) ([]*Sprite, error) {
+	sprites := make([]*Sprite, 0, count)
+
+	for i := 0; i < count; i++ {
+		sprite, err := ss.GetSprite(startIndex + i)
+		if err != nil {
+			return nil, err
+		}
+		sprites = append(sprites, sprite)
+	}
+
+	return sprites, nil
+}
+
+// GetAllSprites extracts all sprites from the sprite sheet
+func (ss *SpriteSheet) GetAllSprites() ([]*Sprite, error) {
+	return ss.GetSprites(0, ss.Columns*ss.Rows)
+}

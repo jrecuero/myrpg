@@ -165,19 +165,37 @@ func (g *Game) Update() error {
 
 		oldX, oldY := playerT.X, playerT.Y
 		speed := 2.0
+		isMoving := false
 
 		// Handle movement for ONLY the active player
 		if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
 			playerT.Y -= speed
+			isMoving = true
 		}
 		if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
 			playerT.Y += speed
+			isMoving = true
 		}
 		if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
 			playerT.X -= speed
+			isMoving = true
 		}
 		if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
 			playerT.X += speed
+			isMoving = true
+		}
+
+		// Update animation state based on movement
+		if animationC := activePlayer.Animation(); animationC != nil {
+			if isMoving {
+				// Try to set walking animation, fallback to idle if not available
+				if !animationC.SetStateIfAvailable(components.AnimationWalking) {
+					animationC.SetStateIfAvailable(components.AnimationIdle)
+				}
+			} else {
+				// Set idle animation when not moving
+				animationC.SetStateIfAvailable(components.AnimationIdle)
+			}
 		}
 
 		// Check for collisions with other entities
@@ -238,15 +256,32 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Draw all game entities in the game world area
 	for _, entity := range g.world.GetEntities() {
-		spriteC := entity.Sprite()
-		if spriteC == nil {
-			continue // Skip entities without a sprite
-		}
 		transform := entity.Transform()
 		if transform == nil {
 			continue // Skip entities without a transform
 		}
-		gfx.DrawSprite(screen, spriteC.Sprite, transform.X, transform.Y, spriteC.Scale)
+
+		// Check for animated sprite first, fallback to static sprite
+		animationC := entity.Animation()
+		if animationC != nil {
+			// Update animation
+			animationC.Update()
+
+			// Draw current animation frame
+			currentSprite := animationC.GetCurrentSprite()
+			if currentSprite != nil {
+				gfx.DrawSprite(screen, currentSprite,
+					transform.X+animationC.OffsetX,
+					transform.Y+animationC.OffsetY,
+					animationC.Scale)
+			}
+		} else {
+			// Fallback to static sprite
+			spriteC := entity.Sprite()
+			if spriteC != nil {
+				gfx.DrawSprite(screen, spriteC.Sprite, transform.X, transform.Y, spriteC.Scale)
+			}
+		}
 	}
 
 	// Highlight the active player with a green rectangle outline

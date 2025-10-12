@@ -9,6 +9,7 @@ package ecs
 
 import (
 	"sync/atomic"
+
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 )
 
@@ -106,6 +107,17 @@ func (e *Entity) RPGStats() *components.RPGStatsComponent {
 	if comp, exists := e.GetComponent(ComponentRPGStats); exists {
 		if stats, ok := comp.(*components.RPGStatsComponent); ok {
 			return stats
+		}
+	}
+	return nil
+}
+
+// Animation retrieves the AnimationComponent from the entity.
+// returns a pointer to the AnimationComponent or nil if not found.
+func (e *Entity) Animation() *components.AnimationComponent {
+	if comp, exists := e.GetComponent(ComponentAnimation); exists {
+		if animation, ok := comp.(*components.AnimationComponent); ok {
+			return animation
 		}
 	}
 	return nil
