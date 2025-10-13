@@ -47,11 +47,14 @@ A 2D tactical RPG game built with Go and Ebiten engine, featuring grid-based com
 ## 📋 Pending Features & Improvements
 
 ### Core Game Systems
-- [ ] **Turn-Based Combat System**
-  - Implement detailed combat mechanics
-  - Add initiative system
-  - Create damage calculation system
-  - Add status effects and buffs/debuffs
+- [ ] **Turn-Based Combat System** 🎯 *CURRENT PRIORITY*
+  - **Initiative System**: Team-based turns, team with highest total speed goes first
+  - **Action Points Economy**: Movement/actions cost action points, free-form spending
+  - **Combat Phases**: Free-form action spending (move/attack/item in any order)
+  - **Basic Combat**: Adjacent tile attacks only (range=1), target selection for multiple enemies
+  - **Death Handling**: Units with HP=0 removed from tactical view
+  - **Enemy AI**: Simple adjacent attack behavior (no enemy movement yet)
+  - **Base Stats**: Use unit base stats for damage/defense (no equipment modifiers yet)
 
 - [ ] **Enhanced Tactical Positioning**
   - Implement line of sight mechanics
@@ -79,15 +82,21 @@ A 2D tactical RPG game built with Go and Ebiten engine, featuring grid-based com
   - Save/Load game interface
 
 ### Game Features
+- [ ] **Combat Enhancements** 🔄 *SHORT-TERM PRIORITY*
+  - Add range to different attacks (beyond adjacent tiles)
+  - Add equipment system affecting damage/defense calculations
+  - Add inventory system to manage equipment and items
+  - Add status effects (poison, bleeding, burning, stun, etc.)
+
 - [ ] **Character Progression**
   - Level up system
   - Skill trees
-  - Equipment system
+  - Equipment system expansion
   - Character stats improvement
 
 - [ ] **Inventory Management**
-  - Item system
-  - Equipment slots
+  - Item system expansion
+  - Equipment slots management
   - Item effects and properties
   - Loot and rewards system
 
@@ -149,6 +158,39 @@ A 2D tactical RPG game built with Go and Ebiten engine, featuring grid-based com
   - Culling off-screen entities
   - Texture atlas optimization
   - Memory usage optimization
+
+## 🎯 Turn-Based Combat Design Specification
+
+### Combat Flow Overview
+1. **Combat Initialization**
+   - Calculate team initiative (sum of all team member speeds)
+   - Team with higher total speed goes first
+   - Initialize action points for all units
+
+2. **Turn Structure**
+   - **Team Turn**: All units in active team can spend action points
+   - **Action Points**: Units spend AP on movement, attacks, items (free-form order)
+   - **Turn End**: When team has no more AP or chooses to end turn
+   - **Next Team**: Switch to other team, repeat until combat ends
+
+3. **Combat Actions**
+   - **Movement**: Cost AP based on distance moved
+   - **Attack**: Cost AP, requires adjacent target (range=1)
+   - **Target Selection**: If multiple enemies adjacent, player selects target
+   - **Death**: Units with HP≤0 removed from tactical grid
+
+4. **Enemy AI (Initial)**
+   - No enemy movement (stationary)
+   - Attack adjacent player units if available
+   - Simple damage calculation using base stats
+
+### Technical Implementation Plan
+- Extend existing `TacticalManager` for combat state
+- Add `ActionPoint` system to unit components
+- Create `CombatAction` types (Move, Attack, Item, EndTurn)
+- Implement turn management and initiative calculation
+- Add target selection UI for attack actions
+- Create unit death/removal system
 
 ## 🎯 Current Architecture
 
