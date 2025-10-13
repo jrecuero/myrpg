@@ -56,3 +56,20 @@ const (
 	DefaultAnimationOffsetX = 0
 	DefaultAnimationOffsetY = 0
 )
+
+// Action Point Constants for Turn-Based Combat
+const (
+	// Action Point Maximums by Job Class
+	WarriorMaxAP = 4
+	MageMaxAP    = 3
+	RogueMaxAP   = 5
+	ClericMaxAP  = 4
+	ArcherMaxAP  = 4
+
+	// Action Point Costs
+	MovementAPCost = 1  // 1 AP per tile moved
+	AttackAPCost   = 2  // 2 AP per attack action
+	ItemAPCost     = 1  // 1 AP per item used
+	EndTurnAPCost  = 0  // Free action
+	WaitAPCost     = 0  // Free action
+)

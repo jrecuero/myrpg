@@ -8,11 +8,13 @@
 package ecs
 
 const (
-	ComponentTransform = "transform"
-	ComponentSprite    = "sprite"
-	ComponentCollider  = "collider"
-	ComponentRPGStats  = "rpgstats"
-	ComponentAnimation = "animation"
+	ComponentTransform     = "transform"
+	ComponentSprite        = "sprite"
+	ComponentCollider      = "collider"
+	ComponentRPGStats      = "rpgstats"
+	ComponentAnimation     = "animation"
+	ComponentActionPoints  = "actionpoints"
+	ComponentCombatState   = "combatstate"
 )
 
 // Common entity tags

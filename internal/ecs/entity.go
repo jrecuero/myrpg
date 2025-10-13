@@ -124,6 +124,28 @@ func (e *Entity) Animation() *components.AnimationComponent {
 	return nil
 }
 
+// ActionPoints retrieves the ActionPointsComponent from the entity.
+// returns a pointer to the ActionPointsComponent or nil if not found.
+func (e *Entity) ActionPoints() *components.ActionPointsComponent {
+	if comp, exists := e.GetComponent(ComponentActionPoints); exists {
+		if actionPoints, ok := comp.(*components.ActionPointsComponent); ok {
+			return actionPoints
+		}
+	}
+	return nil
+}
+
+// CombatState retrieves the CombatStateComponent from the entity.
+// returns a pointer to the CombatStateComponent or nil if not found.
+func (e *Entity) CombatState() *components.CombatStateComponent {
+	if comp, exists := e.GetComponent(ComponentCombatState); exists {
+		if combatState, ok := comp.(*components.CombatStateComponent); ok {
+			return combatState
+		}
+	}
+	return nil
+}
+
 // AddTag adds a tag to the entity.
 // tag is the tag string to add.
 func (e *Entity) AddTag(tag string) {
