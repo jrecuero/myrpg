@@ -64,6 +64,9 @@ func NewGame() *Game {
 	battleSystem.SetMessageCallback(uiManager.AddMessage)
 	battleSystem.SetSwitchPlayerCallback(game.SwitchToNextPlayer)
 
+	// Set up turn-based combat callbacks
+	tacticalManager.GetTurnBasedCombat().SetMessageCallback(uiManager.AddMessage)
+
 	return game
 }
 

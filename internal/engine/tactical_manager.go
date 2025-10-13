@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/tactical"
-	"github.com/jrecuero/myrpg/internal/constants"
 )
 
 // GameMode represents different gameplay modes
@@ -31,11 +31,13 @@ func (gm GameMode) String() string {
 
 // TacticalManager handles tactical combat mode
 type TacticalManager struct {
-	Grid         *tactical.Grid
-	GridRenderer *tactical.GridRenderer
-	Combat       *tactical.TacticalCombat
-	IsActive     bool
-	Participants []*ecs.Entity // Entities involved in tactical combat
+	Grid               *tactical.Grid
+	GridRenderer       *tactical.GridRenderer
+	Combat             *tactical.TacticalCombat         // Legacy combat system
+	TurnBasedCombat    *tactical.TurnBasedCombatManager // New turn-based combat system
+	IsActive           bool
+	Participants       []*ecs.Entity // Entities involved in tactical combat
+	UseTurnBasedCombat bool          // Flag to switch between old and new combat systems
 }
 
 // NewTacticalManager creates a new tactical manager
@@ -43,13 +45,16 @@ func NewTacticalManager(gridWidth, gridHeight, tileSize int) *TacticalManager {
 	grid := tactical.NewGrid(gridWidth, gridHeight, tileSize)
 	gridRenderer := tactical.NewGridRenderer(grid)
 	combat := tactical.NewTacticalCombat(grid)
+	turnBasedCombat := tactical.NewTurnBasedCombatManager(grid)
 
 	return &TacticalManager{
-		Grid:         grid,
-		GridRenderer: gridRenderer,
-		Combat:       combat,
-		IsActive:     false,
-		Participants: make([]*ecs.Entity, 0),
+		Grid:               grid,
+		GridRenderer:       gridRenderer,
+		Combat:             combat,
+		TurnBasedCombat:    turnBasedCombat,
+		IsActive:           false,
+		Participants:       make([]*ecs.Entity, 0),
+		UseTurnBasedCombat: true, // Enable new turn-based system by default
 	}
 }
 
@@ -57,13 +62,22 @@ func NewTacticalManager(gridWidth, gridHeight, tileSize int) *TacticalManager {
 func (tm *TacticalManager) StartTacticalCombat(entities []*ecs.Entity) {
 	tm.IsActive = true
 	tm.Participants = entities
-	tm.Combat.StartCombat(entities)
 
-	// Reset movement for all participants
-	tm.ResetAllMovement()
+	if tm.UseTurnBasedCombat {
+		// Initialize new turn-based combat system
+		if err := tm.TurnBasedCombat.InitializeCombat(entities); err != nil {
+			fmt.Printf("Failed to initialize turn-based combat: %v\n", err)
+			// Fall back to old system
+			tm.UseTurnBasedCombat = false
+			tm.Combat.StartCombat(entities)
+		}
+	} else {
+		// Use legacy combat system
+		tm.Combat.StartCombat(entities)
+	}
 
-	// Show grid overlay
-	tm.GridRenderer.SetShowGrid(true)
+	// Clear any previous highlights
+	tm.GridRenderer.ClearHighlights()
 }
 
 // EndTacticalCombat returns to exploration mode
@@ -80,8 +94,20 @@ func (tm *TacticalManager) Update() {
 		return
 	}
 
-	// Update tactical combat logic here
-	// This will be expanded as we add more tactical features
+	if tm.UseTurnBasedCombat {
+		// Update new turn-based combat system
+		if err := tm.TurnBasedCombat.Update(); err != nil {
+			fmt.Printf("Turn-based combat update error: %v\n", err)
+		}
+
+		// Check if combat has ended
+		if !tm.TurnBasedCombat.IsActive {
+			tm.handleCombatEnd()
+		}
+	} else {
+		// Update legacy combat system
+		// This will be expanded as we add more tactical features
+	}
 }
 
 // DrawGrid renders the tactical grid overlay
@@ -176,4 +202,28 @@ func (tm *TacticalManager) ResetPlayerMovement(player *ecs.Entity) {
 		fmt.Printf("DEBUG: Reset movement for player %s (%s) - %d moves available\n",
 			player.GetID(), stats.Job.String(), stats.MoveRange)
 	}
+}
+
+// handleCombatEnd processes the end of combat
+func (tm *TacticalManager) handleCombatEnd() {
+	if tm.UseTurnBasedCombat {
+		result := tm.TurnBasedCombat.GetResult()
+		fmt.Printf("Combat ended with result: %s\n", result.String())
+
+		// TODO: Add proper victory/defeat handling
+		// This could trigger UI changes, experience gain, loot, etc.
+	}
+
+	// End tactical mode
+	tm.EndTacticalCombat()
+}
+
+// GetTurnBasedCombat returns the turn-based combat manager for external access
+func (tm *TacticalManager) GetTurnBasedCombat() *tactical.TurnBasedCombatManager {
+	return tm.TurnBasedCombat
+}
+
+// IsUsingTurnBasedCombat returns true if using the new turn-based combat system
+func (tm *TacticalManager) IsUsingTurnBasedCombat() bool {
+	return tm.UseTurnBasedCombat
 }

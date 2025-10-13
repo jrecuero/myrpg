@@ -47,14 +47,18 @@ A 2D tactical RPG game built with Go and Ebiten engine, featuring grid-based com
 ## 📋 Pending Features & Improvements
 
 ### Core Game Systems
-- [ ] **Turn-Based Combat System** 🎯 *CURRENT PRIORITY*
-  - **Initiative System**: Team-based turns, team with highest total speed goes first
-  - **Action Points Economy**: Movement/actions cost action points, free-form spending
-  - **Combat Phases**: Free-form action spending (move/attack/item in any order)
-  - **Basic Combat**: Adjacent tile attacks only (range=1), target selection for multiple enemies
-  - **Death Handling**: Units with HP=0 removed from tactical view
-  - **Enemy AI**: Simple adjacent attack behavior (no enemy movement yet)
-  - **Base Stats**: Use unit base stats for damage/defense (no equipment modifiers yet)
+- [🔄] **Turn-Based Combat System** 🎯 *CURRENT PRIORITY*
+  - [✅] **Combat Components**: ActionPointsComponent, CombatStateComponent with Team management
+  - [✅] **Combat Manager**: TurnBasedCombatManager with phase-based combat flow
+  - [✅] **Initiative System**: Team-based turns, team with highest total speed goes first
+  - [✅] **Action Points Economy**: Movement/actions cost action points, free-form spending
+  - [✅] **Combat Phases**: Initialization → Team Turn → Action Execution → Victory Check
+  - [✅] **Basic Combat**: Adjacent tile attacks with damage calculation (Attack - Defense)
+  - [✅] **Death Handling**: HP=0 detection and victory condition checking
+  - [✅] **Enemy AI**: Simple adjacent attack behavior (no enemy movement yet)
+  - [🔄] **Integration**: Wire combat manager into existing tactical system
+  - [ ] **Movement Execution**: Implement grid-based movement with AP consumption
+  - [ ] **UI Integration**: Add combat UI for action selection and turn indicators
 
 - [ ] **Enhanced Tactical Positioning**
   - Implement line of sight mechanics
