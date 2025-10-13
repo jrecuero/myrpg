@@ -13,6 +13,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/jrecuero/myrpg/cmd/myrpg/game/backgrounds"
 	"github.com/jrecuero/myrpg/cmd/myrpg/game/entities"
+	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 	"github.com/jrecuero/myrpg/internal/engine"
 )
@@ -59,33 +60,33 @@ func main() {
 		OffsetX: 0,
 		OffsetY: 0,
 	}
-	warrior := entities.CreateAnimatedPlayerWithJob("Conan", 100, 150, components.JobWarrior, 3, heroAnimations)
+	warrior := entities.CreateAnimatedPlayerWithJob("Conan", constants.Player1StartX, constants.Player1StartY, components.JobWarrior, 3, heroAnimations)
 	game.AddEntity(warrior)
 
-	mage := entities.CreatePlayerWithJob("Gandalf", 150, 150, components.JobMage, 2)
+	mage := entities.CreatePlayerWithJob("Gandalf", constants.Player2StartX, constants.Player2StartY, components.JobMage, 2)
 	game.AddEntity(mage)
 
-	rogue := entities.CreatePlayerWithJob("Robin", 200, 150, components.JobRogue, 4)
+	rogue := entities.CreatePlayerWithJob("Robin", constants.Player3StartX, constants.Player3StartY, components.JobRogue, 4)
 	game.AddEntity(rogue)
 
 	// Create and add enemy entities with different jobs and levels
-	goblin := entities.CreateEnemyWithJob("Goblin Scout", 300, 250, components.JobRogue, 2)
+	goblin := entities.CreateEnemyWithJob("Goblin Scout", constants.Enemy1StartX, constants.Enemy1StartY, components.JobRogue, 2)
 	game.AddEntity(goblin)
 
-	orcWarrior := entities.CreateEnemyWithJob("Orc Warrior", 350, 300, components.JobWarrior, 5)
+	orcWarrior := entities.CreateEnemyWithJob("Orc Warrior", constants.Enemy2StartX, constants.Enemy2StartY, components.JobWarrior, 5)
 	game.AddEntity(orcWarrior)
 
 	// Add more enemies with varied jobs and levels
-	koboldMage := entities.CreateEnemyWithJob("Kobold Mage", 400, 250, components.JobMage, 3)
+	koboldMage := entities.CreateEnemyWithJob("Kobold Mage", constants.Enemy3StartX, constants.Enemy3StartY, components.JobMage, 3)
 	game.AddEntity(koboldMage)
 
-	banditArcher := entities.CreateEnemyWithJob("Bandit Archer", 450, 300, components.JobArcher, 4)
+	banditArcher := entities.CreateEnemyWithJob("Bandit Archer", constants.Enemy4StartX, constants.Enemy4StartY, components.JobArcher, 4)
 	game.AddEntity(banditArcher)
 
-	orcShaman := entities.CreateEnemyWithJob("Orc Shaman", 500, 250, components.JobCleric, 6)
+	orcShaman := entities.CreateEnemyWithJob("Orc Shaman", constants.Enemy5StartX, constants.Enemy5StartY, components.JobCleric, 6)
 	game.AddEntity(orcShaman)
 
-	goblinThief := entities.CreateEnemyWithJob("Goblin Thief", 550, 300, components.JobRogue, 1)
+	goblinThief := entities.CreateEnemyWithJob("Goblin Thief", constants.Enemy6StartX, constants.Enemy6StartY, components.JobRogue, 1)
 	game.AddEntity(goblinThief)
 
 	// Configure attack animation duration (customizable)
@@ -95,7 +96,7 @@ func main() {
 	game.InitializeGame()
 
 	// Set window properties and run the game
-	ebiten.SetWindowSize(800, 600)
+	ebiten.SetWindowSize(constants.ScreenWidth, constants.ScreenHeight)
 	ebiten.SetWindowTitle("My RPG")
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/tactical"
+	"github.com/jrecuero/myrpg/internal/constants"
 )
 
 // PartyManager handles party composition and deployment
@@ -172,13 +173,13 @@ func NewTacticalDeployment(grid *tactical.Grid) *TacticalDeployment {
 		PlayerZone: DeploymentZone{
 			StartX: 0,
 			StartY: 0,
-			Width:  grid.Width / 3, // Left third of map
+			Width:  grid.Width / constants.PlayerZoneWidth, // Left third of map
 			Height: grid.Height,
 		},
 		EnemyZone: DeploymentZone{
-			StartX: (grid.Width * 2) / 3, // Right third of map
+			StartX: (grid.Width * constants.EnemyZoneStart) / constants.PlayerZoneWidth, // Right third of map
 			StartY: 0,
-			Width:  grid.Width / 3,
+			Width:  grid.Width / constants.PlayerZoneWidth,
 			Height: grid.Height,
 		},
 	}
@@ -218,8 +219,8 @@ func (td *TacticalDeployment) DeployParty(party []*ecs.Entity) map[*ecs.Entity]t
 			if transform := member.Transform(); transform != nil {
 				worldX, worldY := td.Grid.GridToWorld(gridPos)
 				// Add the grid offset (same as used in DrawGrid) - Updated to match game world Y position
-				transform.X = worldX + 50.0
-				transform.Y = worldY + 112.0 // 110px top panel + 2px separator
+				transform.X = worldX + constants.GridOffsetX
+				transform.Y = worldY + constants.GridOffsetY // 110px top panel + 2px separator
 
 				// Debug: Log world coordinates
 				fmt.Printf("DEBUG: Unit %s world coords: (%.1f,%.1f)\n", member.GetID(), transform.X, transform.Y)
@@ -281,7 +282,7 @@ func (td *TacticalDeployment) DeployEnemies(enemies []*ecs.Entity) map[*ecs.Enti
 			if transform := enemy.Transform(); transform != nil {
 				worldX, worldY := td.Grid.GridToWorld(gridPos)
 				// Add the grid offset (same as used in DrawGrid)
-				transform.X = worldX + 50.0
+				transform.X = worldX + constants.GridOffsetX
 				transform.Y = worldY + 120.0
 			}
 

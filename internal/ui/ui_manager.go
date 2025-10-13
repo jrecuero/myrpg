@@ -12,19 +12,20 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 )
 
-// Layout constants define the screen areas
+// Use constants from the constants package
 const (
-	ScreenWidth       = 800
-	ScreenHeight      = 600
-	TopPanelHeight    = 110 // Increased to 110 to properly fit all content
-	BottomPanelHeight = 80
+	ScreenWidth       = constants.ScreenWidth
+	ScreenHeight      = constants.ScreenHeight
+	TopPanelHeight    = constants.TopPanelHeight
+	BottomPanelHeight = constants.BottomPanelHeight
 
 	// Game world area
-	GameWorldY      = TopPanelHeight
-	GameWorldHeight = ScreenHeight - TopPanelHeight - BottomPanelHeight
+	GameWorldY      = constants.GameWorldY
+	GameWorldHeight = constants.GameWorldHeight
 )
 
 // Colors for UI panels

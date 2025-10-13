@@ -7,6 +7,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/tactical"
+	"github.com/jrecuero/myrpg/internal/constants"
 )
 
 // GameMode represents different gameplay modes
@@ -134,7 +135,7 @@ func (tm *TacticalManager) HighlightMovementRangeForPlayer(player *ecs.Entity) {
 	}
 
 	// Convert world coordinates to grid position
-	offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
+	offsetX, offsetY := constants.GridOffsetX, constants.GridOffsetY // Updated to match game world Y position (110px panel + 2px separator)
 	tileSize := float64(tm.Grid.TileSize)
 	gridX := int((transform.X - offsetX) / tileSize)
 	gridY := int((transform.Y - offsetY) / tileSize)

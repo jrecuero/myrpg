@@ -15,6 +15,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 	"github.com/jrecuero/myrpg/internal/gfx"
@@ -41,14 +42,14 @@ func NewGame() *Game {
 	world := ecs.NewWorld()
 	uiManager := ui.NewUIManager()
 	battleSystem := NewBattleSystem()
-	tacticalManager := NewTacticalManager(20, 10, 32) // 20x10 grid with 32px tiles (10 rows by 20 columns)
-	partyManager := NewPartyManager(6)                // Max 6 party members
-	enemyGroupManager := NewEnemyGroupManager(150.0)  // 150 pixel range for enemy groups
+	tacticalManager := NewTacticalManager(constants.GridWidth, constants.GridHeight, constants.TileSize) // Grid with tile size from constants
+	partyManager := NewPartyManager(constants.MaxPartyMembers)                                           // Max party members from constants
+	enemyGroupManager := NewEnemyGroupManager(constants.EnemyGroupRange)                                 // Enemy group range from constants
 	tacticalDeployment := NewTacticalDeployment(tacticalManager.Grid)
 
 	game := &Game{
 		world:              world,
-		activePlayerIndex:  0,
+		activePlayerIndex:  constants.DefaultActivePlayerIndex,
 		tabKeyPressed:      false,
 		uiManager:          uiManager,
 		battleSystem:       battleSystem,
@@ -411,7 +412,7 @@ func (g *Game) updateExploration() error {
 		}
 
 		oldX, oldY := playerT.X, playerT.Y
-		speed := 2.0
+		speed := constants.PlayerSpeed
 		isMoving := false
 
 		// Handle movement for ONLY the active player
@@ -434,22 +435,16 @@ func (g *Game) updateExploration() error {
 
 		// Constrain player movement to game world boundaries
 		if isMoving {
-			// Game world boundaries: X=0 to 800, Y=112 to 520 (112px top + 408px game world)
-			const gameWorldTop = 112.0    // Top panel (110px) + separator (2px)
-			const gameWorldBottom = 520.0 // 112 + 408 (game world height)
-			const gameWorldLeft = 0.0
-			const gameWorldRight = 800.0
-
-			// Constrain to game world bounds
-			if playerT.X < gameWorldLeft {
-				playerT.X = gameWorldLeft
-			} else if playerT.X > gameWorldRight-32 { // Account for player sprite width
-				playerT.X = gameWorldRight - 32
+			// Constrain to game world bounds using constants
+			if playerT.X < constants.GameWorldLeft {
+				playerT.X = constants.GameWorldLeft
+			} else if playerT.X > constants.GameWorldRight-constants.EntityWidth { // Account for player sprite width
+				playerT.X = constants.GameWorldRight - constants.EntityWidth
 			}
-			if playerT.Y < gameWorldTop {
-				playerT.Y = gameWorldTop
-			} else if playerT.Y > gameWorldBottom-32 { // Account for player sprite height
-				playerT.Y = gameWorldBottom - 32
+			if playerT.Y < constants.GameWorldTop {
+				playerT.Y = constants.GameWorldTop
+			} else if playerT.Y > constants.GameWorldBottom-constants.EntityHeight { // Account for player sprite height
+				playerT.Y = constants.GameWorldBottom - constants.EntityHeight
 			}
 		}
 
@@ -561,7 +556,7 @@ func (g *Game) updateTactical() error {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		x, y := ebiten.CursorPosition()
 		screenX, screenY := float64(x), float64(y)
-		offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
+		offsetX, offsetY := constants.GridOffsetX, constants.GridOffsetY
 
 		if gridPos, valid := g.tacticalManager.GetTileAtScreenPos(screenX, screenY, offsetX, offsetY); valid {
 			g.handleTacticalClick(gridPos)
@@ -704,7 +699,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw tactical grid overlay if in tactical mode
 	if g.IsTacticalMode() {
 		// Update offset to match game world Y position (110px panel + 2px separator = 112px)
-		offsetX, offsetY := 50.0, 112.0
+		offsetX, offsetY := constants.GridOffsetX, constants.GridOffsetY
 		g.tacticalManager.DrawGrid(screen, offsetX, offsetY)
 	}
 
@@ -786,7 +781,7 @@ func (g *Game) clearUnitFromAllGridPositions(unitID string) {
 
 // worldToGridPos converts world coordinates to grid position - exact inverse of GridToWorld
 func (g *Game) worldToGridPos(worldX, worldY float64) tactical.GridPos {
-	offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
+	offsetX, offsetY := constants.GridOffsetX, constants.GridOffsetY
 	tileSize := float64(g.tacticalManager.Grid.TileSize)
 
 	// Remove offset and convert to grid coordinates
@@ -1001,7 +996,7 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 	}
 
 	// Set new position
-	offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
+	offsetX, offsetY := constants.GridOffsetX, constants.GridOffsetY
 	worldX, worldY := g.tacticalManager.Grid.GridToWorld(gridPos)
 	transform.X = worldX + offsetX
 	transform.Y = worldY + offsetY

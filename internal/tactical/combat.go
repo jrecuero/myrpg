@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jrecuero/myrpg/internal/ecs"
+	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 )
 
@@ -79,7 +80,7 @@ func (tc *TacticalCombat) StartCombat(entities []*ecs.Entity) {
 			if entity.HasTag(ecs.TagPlayer) && entity.Transform() != nil {
 				// For players, convert existing position to nearest grid position and align
 				transform := entity.Transform()
-				offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
+				offsetX, offsetY := constants.GridOffsetX, constants.GridOffsetY // Updated to match game world Y position (110px panel + 2px separator)
 				tileSize := float64(tc.Grid.TileSize)
 				gridX := int((transform.X - offsetX) / tileSize)
 				gridY := int((transform.Y - offsetY) / tileSize)
@@ -100,7 +101,7 @@ func (tc *TacticalCombat) StartCombat(entities []*ecs.Entity) {
 
 				// Update the entity's world position to match the grid position
 				if transform := entity.Transform(); transform != nil {
-					offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
+					offsetX, offsetY := constants.GridOffsetX, constants.GridOffsetY // Updated to match game world Y position (110px panel + 2px separator)
 					worldX, worldY := tc.Grid.GridToWorld(gridPos)
 					transform.X = worldX + offsetX
 					transform.Y = worldY + offsetY
@@ -296,7 +297,7 @@ func (tc *TacticalCombat) ProcessMove(targetPos GridPos) bool {
 
 	// Update entity transform component
 	if transform := currentUnit.Entity.Transform(); transform != nil {
-		offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
+		offsetX, offsetY := constants.GridOffsetX, constants.GridOffsetY // Updated to match game world Y position (110px panel + 2px separator)
 		worldX, worldY := tc.Grid.GridToWorld(targetPos)
 		transform.X = worldX + offsetX
 		transform.Y = worldY + offsetY
