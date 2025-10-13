@@ -24,17 +24,16 @@ import (
 
 // Game represents the state of the game using an ECS architecture.
 type Game struct {
-	world                  *ecs.World          // The game world containing all entities
-	activePlayerIndex      int                 // Index of the currently active player
-	tabKeyPressed          bool                // Track TAB key state to prevent multiple switches
-	uiManager              *ui.UIManager       // UI system for panels and messages
-	battleSystem           *BattleSystem       // Battle system for combat
-	tacticalManager        *TacticalManager    // Tactical combat system
-	partyManager           *PartyManager       // Party and team management
-	enemyGroupManager      *EnemyGroupManager  // Enemy group formation
-	tacticalDeployment     *TacticalDeployment // Unit deployment for tactical combat
-	currentMode            GameMode            // Current game mode (exploration/tactical)
-	tacticalCombatEntities []*ecs.Entity       // Entities currently participating in tactical combat
+	world              *ecs.World          // The game world containing all entities
+	activePlayerIndex  int                 // Index of the currently active player
+	tabKeyPressed      bool                // Track TAB key state to prevent multiple switches
+	uiManager          *ui.UIManager       // UI system for panels and messages
+	battleSystem       *BattleSystem       // Battle system for combat
+	tacticalManager    *TacticalManager    // Tactical combat system
+	partyManager       *PartyManager       // Party and team management
+	enemyGroupManager  *EnemyGroupManager  // Enemy group formation
+	tacticalDeployment *TacticalDeployment // Unit deployment for tactical combat
+	currentMode        GameMode            // Current game mode (exploration/tactical)
 }
 
 // NewGame creates a new game instance with an empty world
@@ -42,7 +41,7 @@ func NewGame() *Game {
 	world := ecs.NewWorld()
 	uiManager := ui.NewUIManager()
 	battleSystem := NewBattleSystem()
-	tacticalManager := NewTacticalManager(20, 15, 32) // 20x15 grid with 32px tiles
+	tacticalManager := NewTacticalManager(20, 10, 32) // 20x10 grid with 32px tiles (10 rows by 20 columns)
 	partyManager := NewPartyManager(6)                // Max 6 party members
 	enemyGroupManager := NewEnemyGroupManager(150.0)  // 150 pixel range for enemy groups
 	tacticalDeployment := NewTacticalDeployment(tacticalManager.Grid)
@@ -120,9 +119,6 @@ func (g *Game) SwitchToTacticalMode(participants []*ecs.Entity) {
 	// Create full tactical deployment
 	allParticipants := append(partyMembers, enemies...)
 
-	// Track entities currently in tactical combat
-	g.tacticalCombatEntities = allParticipants
-
 	// Clear grid occupancy state before deployment to ensure clean state
 	g.clearGridOccupancy()
 
@@ -170,7 +166,6 @@ func (g *Game) SwitchToExplorationMode() {
 	}
 
 	g.currentMode = ModeExploration
-	g.tacticalCombatEntities = nil // Clear tactical combat participants
 	g.tacticalManager.EndTacticalCombat()
 	g.uiManager.AddMessage("Returning to exploration mode.")
 }
@@ -178,16 +173,6 @@ func (g *Game) SwitchToExplorationMode() {
 // IsTacticalMode returns true if currently in tactical combat mode
 func (g *Game) IsTacticalMode() bool {
 	return g.currentMode == ModeTactical
-}
-
-// isEntityInTacticalCombat checks if an entity is currently participating in tactical combat
-func (g *Game) isEntityInTacticalCombat(entity *ecs.Entity) bool {
-	for _, tacticalEntity := range g.tacticalCombatEntities {
-		if tacticalEntity == entity {
-			return true
-		}
-	}
-	return false
 }
 
 // getAllCombatParticipants returns all entities with RPG stats (players and enemies)
@@ -424,10 +409,8 @@ func (g *Game) updateExploration() error {
 					collisionMsg := fmt.Sprintf("Collision: %s bumped into %s", activePlayer.Name, entity.Name)
 					g.uiManager.AddMessage(collisionMsg)
 				} else if entity.RPGStats() != nil {
-					// Enemy collision - form enemy group and start tactical combat
-					allEntities := g.world.GetEntities()
-					enemyGroup := g.enemyGroupManager.FormEnemyGroup(entity, allEntities)
-					participants := append([]*ecs.Entity{activePlayer}, enemyGroup...)
+					// Enemy collision - start tactical combat with all participants
+					participants := g.getAllCombatParticipants()
 					g.SwitchToTacticalMode(participants)
 					break // Only start one battle at a time
 				} else {
@@ -455,7 +438,8 @@ func (g *Game) updateExploration() error {
 		if ebiten.IsKeyPressed(ebiten.KeySpace) {
 			nearbyEnemies := g.getNearbyEnemies(activePlayer, 100.0) // Within 100 pixels
 			if len(nearbyEnemies) > 0 {
-				participants := append([]*ecs.Entity{activePlayer}, nearbyEnemies...)
+				// Always include ALL combat participants, not just nearby ones
+				participants := g.getAllCombatParticipants()
 				g.SwitchToTacticalMode(participants)
 			}
 		}
@@ -554,11 +538,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				}
 			}
 		} else if g.currentMode == ModeTactical {
-			// In tactical mode, don't render enemies from exploration positions
-			// if they're currently participating in tactical combat
-			if entity.HasTag("enemy") && g.isEntityInTacticalCombat(entity) {
-				continue // Skip enemies that are in tactical combat
-			}
+			// In tactical mode, all entities (including tactical participants)
+			// should be rendered at their current positions
+			// The tactical system will have repositioned tactical participants
 		}
 
 		// Check for animated sprite first, fallback to static sprite
