@@ -56,9 +56,11 @@ A 2D tactical RPG game built with Go and Ebiten engine, featuring grid-based com
   - [✅] **Basic Combat**: Adjacent tile attacks with damage calculation (Attack - Defense)
   - [✅] **Death Handling**: HP=0 detection and victory condition checking
   - [✅] **Enemy AI**: Simple adjacent attack behavior (no enemy movement yet)
-  - [🔄] **Integration**: Wire combat manager into existing tactical system
-  - [ ] **Movement Execution**: Implement grid-based movement with AP consumption
+  - [✅] **Integration**: Combat manager wired into existing tactical system with callbacks
+  - [✅] **Movement Execution**: Full grid-based movement with AP consumption, validation, and occupancy tracking
+  - [✅] **Action Creation**: Helper methods for creating and validating Move/Attack/EndTurn actions
   - [ ] **UI Integration**: Add combat UI for action selection and turn indicators
+  - [ ] **Player Input**: Mouse/keyboard input for selecting actions and targets
 
 - [ ] **Enhanced Tactical Positioning**
   - Implement line of sight mechanics

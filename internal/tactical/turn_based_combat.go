@@ -596,7 +596,7 @@ func (cbm *TurnBasedCombatManager) executeAction(action *CombatAction) error {
 	case ActionWait:
 		// Wait action - just consume AP
 	default:
-		return fmt.Errorf("unsupported action type: %s", action.Type)
+		return fmt.Errorf("unsupported action type: %d", action.Type)
 	}
 
 	// Consume action points
@@ -610,9 +610,117 @@ func (cbm *TurnBasedCombatManager) executeAction(action *CombatAction) error {
 
 // executeMovement handles movement actions
 func (cbm *TurnBasedCombatManager) executeMovement(action *CombatAction) error {
-	// TODO: Implement movement execution
-	// This would move the unit to the target position and update grid occupancy
-	return fmt.Errorf("movement not yet implemented")
+	// Get actor's transform component
+	transform := action.Actor.Transform()
+	if transform == nil {
+		return fmt.Errorf("actor has no transform component")
+	}
+
+	// Calculate current grid position using the same method as the main engine
+	currentPos := cbm.worldToGridPos(transform.X, transform.Y)
+	targetPos := action.TargetPos
+
+	// Validate the movement
+	if err := cbm.validateMovement(currentPos, targetPos, action.Actor); err != nil {
+		return fmt.Errorf("movement validation failed: %v", err)
+	}
+
+	// Calculate movement distance for AP cost validation
+	distance := cbm.Grid.CalculateDistance(currentPos, targetPos)
+	expectedAPCost := distance * constants.MovementAPCost
+	
+	if action.APCost != expectedAPCost {
+		return fmt.Errorf("AP cost mismatch: expected %d, got %d", expectedAPCost, action.APCost)
+	}
+
+	// Clear occupancy at current position
+	cbm.Grid.SetOccupied(currentPos, false, "")
+	
+	// Convert target grid position to world coordinates
+	worldX, worldY := cbm.Grid.GridToWorld(targetPos)
+	
+	// Add grid offset to match the coordinate system used throughout the game
+	transform.X = worldX + constants.GridOffsetX
+	transform.Y = worldY + constants.GridOffsetY
+	
+	// Set occupancy at new position
+	cbm.Grid.SetOccupied(targetPos, true, action.Actor.GetID())
+
+	// Update RPG stats if the actor has movement tracking
+	if stats := action.Actor.RPGStats(); stats != nil {
+		// Consume moves from the legacy movement system if it exists
+		if stats.MovesRemaining >= distance {
+			stats.MovesRemaining -= distance
+		}
+		
+		// Add move to history for potential undo functionality
+		moveRecord := components.MoveRecord{
+			FromX: currentPos.X,
+			FromZ: currentPos.Y,
+			ToX:   targetPos.X,
+			ToZ:   targetPos.Y,
+			Distance: distance,
+		}
+		stats.MoveHistory = append(stats.MoveHistory, moveRecord)
+	}
+
+	// Log the movement
+	actorName := cbm.getEntityName(action.Actor)
+	cbm.logMessage(fmt.Sprintf("%s moved from (%d,%d) to (%d,%d) [Distance: %d, AP Cost: %d]",
+		actorName, currentPos.X, currentPos.Y, targetPos.X, targetPos.Y, distance, action.APCost))
+
+	return nil
+}
+
+// worldToGridPos converts world coordinates to grid position using the same logic as the main engine
+func (cbm *TurnBasedCombatManager) worldToGridPos(worldX, worldY float64) GridPos {
+	offsetX, offsetY := constants.GridOffsetX, constants.GridOffsetY
+	tileSize := float64(cbm.Grid.TileSize)
+
+	// Remove offset and convert to grid coordinates
+	// This is the exact inverse of: worldX = gridX * tileSize + offsetX
+	gridX := int((worldX - offsetX) / tileSize)
+	gridY := int((worldY - offsetY) / tileSize)
+
+	return GridPos{X: gridX, Y: gridY}
+}
+
+// validateMovement checks if a movement is valid
+func (cbm *TurnBasedCombatManager) validateMovement(currentPos, targetPos GridPos, actor *ecs.Entity) error {
+	// Check if target position is within grid bounds
+	if !cbm.Grid.IsValidPosition(targetPos) {
+		return fmt.Errorf("target position (%d,%d) is out of bounds", targetPos.X, targetPos.Y)
+	}
+
+	// Check if we're trying to move to the same position
+	if currentPos.X == targetPos.X && currentPos.Y == targetPos.Y {
+		return fmt.Errorf("already at target position (%d,%d)", targetPos.X, targetPos.Y)
+	}
+
+	// Check if target position is passable and not occupied
+	if !cbm.Grid.IsPassable(targetPos) {
+		// Get more specific error information
+		tile := cbm.Grid.GetTile(targetPos)
+		if tile == nil {
+			return fmt.Errorf("target tile (%d,%d) does not exist", targetPos.X, targetPos.Y)
+		}
+		if !tile.Passable {
+			return fmt.Errorf("target tile (%d,%d) is not passable", targetPos.X, targetPos.Y)
+		}
+		if tile.Occupied {
+			return fmt.Errorf("target tile (%d,%d) is occupied by unit %s", targetPos.X, targetPos.Y, tile.UnitID)
+		}
+	}
+
+	// Check if actor has enough movement range (if using legacy movement system)
+	if stats := actor.RPGStats(); stats != nil {
+		distance := cbm.Grid.CalculateDistance(currentPos, targetPos)
+		if stats.MovesRemaining < distance {
+			return fmt.Errorf("insufficient movement range: need %d, have %d", distance, stats.MovesRemaining)
+		}
+	}
+
+	return nil
 }
 
 // executeAttack handles attack actions
@@ -737,4 +845,200 @@ func (cbm *TurnBasedCombatManager) IsPlayerTurn() bool {
 // GetResult returns the combat result
 func (cbm *TurnBasedCombatManager) GetResult() CombatResult {
 	return cbm.Result
+}
+
+// Action Creation Helper Methods
+
+// CreateMoveAction creates a validated movement action
+func (cbm *TurnBasedCombatManager) CreateMoveAction(actor *ecs.Entity, targetPos GridPos) (*CombatAction, error) {
+	if actor == nil {
+		return nil, fmt.Errorf("actor is nil")
+	}
+
+	// Get current position
+	transform := actor.Transform()
+	if transform == nil {
+		return nil, fmt.Errorf("actor has no transform component")
+	}
+
+	currentPos := cbm.worldToGridPos(transform.X, transform.Y)
+	
+	// Calculate distance and AP cost
+	distance := cbm.Grid.CalculateDistance(currentPos, targetPos)
+	apCost := distance * constants.MovementAPCost
+
+	// Create action
+	action := &CombatAction{
+		Type:      ActionMove,
+		Actor:     actor,
+		Target:    nil,
+		TargetPos: targetPos,
+		APCost:    apCost,
+		Validated: false,
+		Message:   fmt.Sprintf("%s moves to (%d,%d)", cbm.getEntityName(actor), targetPos.X, targetPos.Y),
+	}
+
+	// Validate the action
+	if err := cbm.validateMovement(currentPos, targetPos, actor); err != nil {
+		action.Validated = false
+		action.Message = fmt.Sprintf("Invalid move: %v", err)
+		return action, err
+	}
+
+	action.Validated = true
+	return action, nil
+}
+
+// CreateAttackAction creates a validated attack action
+func (cbm *TurnBasedCombatManager) CreateAttackAction(actor *ecs.Entity, target *ecs.Entity) (*CombatAction, error) {
+	if actor == nil {
+		return nil, fmt.Errorf("actor is nil")
+	}
+	if target == nil {
+		return nil, fmt.Errorf("target is nil")
+	}
+
+	// Create action
+	action := &CombatAction{
+		Type:      ActionAttack,
+		Actor:     actor,
+		Target:    target,
+		TargetPos: GridPos{}, // Not used for attacks
+		APCost:    constants.AttackAPCost,
+		Validated: false,
+		Message:   fmt.Sprintf("%s attacks %s", cbm.getEntityName(actor), cbm.getEntityName(target)),
+	}
+
+	// Validate attack (check adjacency, etc.)
+	if err := cbm.validateAttack(actor, target); err != nil {
+		action.Validated = false
+		action.Message = fmt.Sprintf("Invalid attack: %v", err)
+		return action, err
+	}
+
+	action.Validated = true
+	return action, nil
+}
+
+// CreateEndTurnAction creates an end turn action
+func (cbm *TurnBasedCombatManager) CreateEndTurnAction(actor *ecs.Entity) (*CombatAction, error) {
+	if actor == nil {
+		return nil, fmt.Errorf("actor is nil")
+	}
+
+	action := &CombatAction{
+		Type:      ActionWait, // Using ActionWait to end turn and consume remaining AP
+		Actor:     actor,
+		Target:    nil,
+		TargetPos: GridPos{},
+		APCost:    0, // End turn is free, but will exhaust all remaining AP
+		Validated: true,
+		Message:   fmt.Sprintf("%s ends turn", cbm.getEntityName(actor)),
+	}
+
+	return action, nil
+}
+
+// validateAttack checks if an attack action is valid
+func (cbm *TurnBasedCombatManager) validateAttack(actor *ecs.Entity, target *ecs.Entity) error {
+	// Check if target has stats and is alive
+	targetStats := target.RPGStats()
+	if targetStats == nil {
+		return fmt.Errorf("target has no stats")
+	}
+	if !targetStats.IsAlive() {
+		return fmt.Errorf("target is already dead")
+	}
+
+	// Check if units are on different teams
+	actorCombat := actor.CombatState()
+	targetCombat := target.CombatState()
+	if actorCombat == nil || targetCombat == nil {
+		return fmt.Errorf("missing combat state components")
+	}
+	if actorCombat.Team == targetCombat.Team {
+		return fmt.Errorf("cannot attack ally")
+	}
+
+	// Get positions of actor and target
+	actorTransform := actor.Transform()
+	targetTransform := target.Transform()
+	if actorTransform == nil || targetTransform == nil {
+		return fmt.Errorf("missing transform components")
+	}
+
+	// Check if targets are adjacent (range = 1 for now)
+	actorGridPos := cbm.worldToGridPos(actorTransform.X, actorTransform.Y)
+	targetGridPos := cbm.worldToGridPos(targetTransform.X, targetTransform.Y)
+	
+	distance := cbm.Grid.CalculateDistance(actorGridPos, targetGridPos)
+	if distance > 1 {
+		return fmt.Errorf("target out of range (distance: %d, max range: 1)", distance)
+	}
+
+	return nil
+}
+
+// GetValidMovesForUnit returns all valid movement positions for a unit
+func (cbm *TurnBasedCombatManager) GetValidMovesForUnit(actor *ecs.Entity) []GridPos {
+	if actor == nil {
+		return []GridPos{}
+	}
+
+	transform := actor.Transform()
+	actionPoints := actor.ActionPoints()
+	if transform == nil || actionPoints == nil {
+		return []GridPos{}
+	}
+
+	currentPos := cbm.worldToGridPos(transform.X, transform.Y)
+	maxDistance := actionPoints.Current / constants.MovementAPCost
+
+	if maxDistance <= 0 {
+		return []GridPos{}
+	}
+
+	// Calculate all positions within movement range
+	validMoves := []GridPos{}
+	
+	for x := 0; x < cbm.Grid.Width; x++ {
+		for y := 0; y < cbm.Grid.Height; y++ {
+			targetPos := GridPos{X: x, Y: y}
+			distance := cbm.Grid.CalculateDistance(currentPos, targetPos)
+			
+			// Check if position is within range and passable
+			if distance <= maxDistance && distance > 0 {
+				if cbm.Grid.IsPassable(targetPos) {
+					validMoves = append(validMoves, targetPos)
+				}
+			}
+		}
+	}
+
+	return validMoves
+}
+
+// GetValidAttackTargetsForUnit returns all valid attack targets for a unit
+func (cbm *TurnBasedCombatManager) GetValidAttackTargetsForUnit(actor *ecs.Entity) []*ecs.Entity {
+	if actor == nil {
+		return []*ecs.Entity{}
+	}
+
+	actionPoints := actor.ActionPoints()
+	if actionPoints == nil || actionPoints.Current < constants.AttackAPCost {
+		return []*ecs.Entity{}
+	}
+
+	validTargets := []*ecs.Entity{}
+
+	// Check all combat participants
+	for _, team := range cbm.Teams {
+		for _, member := range team.Members {
+			if err := cbm.validateAttack(actor, member); err == nil {
+				validTargets = append(validTargets, member)
+			}
+		}
+	}
+
+	return validTargets
 }
