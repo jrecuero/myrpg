@@ -38,7 +38,7 @@ type Grid struct {
 // GridPos represents a coordinate in the grid
 type GridPos struct {
 	X int
-	Z int // Using Z instead of Y for isometric clarity
+	Y int // Standard 2D Y coordinate for vertical axis
 }
 
 // NewGrid creates a new tactical grid
@@ -52,11 +52,11 @@ func NewGrid(width, height, tileSize int) *Grid {
 
 	// Initialize with basic floor tiles
 	for x := 0; x < width; x++ {
-		for z := 0; z < height; z++ {
-			pos := GridPos{X: x, Z: z}
+		for y := 0; y < height; y++ {
+			pos := GridPos{X: x, Y: y}
 			grid.Tiles[pos] = &Tile{
 				X:        x,
-				Y:        z,
+				Y:        y,
 				Type:     TileFloor,
 				Passable: true,
 				Occupied: false,
@@ -71,13 +71,13 @@ func NewGrid(width, height, tileSize int) *Grid {
 func (g *Grid) WorldToGrid(worldX, worldY float64) GridPos {
 	return GridPos{
 		X: int(worldX) / g.TileSize,
-		Z: int(worldY) / g.TileSize,
+		Y: int(worldY) / g.TileSize,
 	}
 }
 
 // GridToWorld converts grid coordinates to world pixel coordinates
 func (g *Grid) GridToWorld(pos GridPos) (float64, float64) {
-	return float64(pos.X * g.TileSize), float64(pos.Z * g.TileSize)
+	return float64(pos.X * g.TileSize), float64(pos.Y * g.TileSize)
 }
 
 // GetTile returns the tile at the given grid position
@@ -102,17 +102,17 @@ func (g *Grid) SetOccupied(pos GridPos, occupied bool, unitID string) {
 // CalculateDistance calculates movement distance between two grid positions
 func (g *Grid) CalculateDistance(from, to GridPos) int {
 	dx := int(math.Abs(float64(to.X - from.X)))
-	dz := int(math.Abs(float64(to.Z - from.Z)))
-	return dx + dz // Manhattan distance for grid-based movement
+	dy := int(math.Abs(float64(to.Y - from.Y)))
+	return dx + dy // Manhattan distance for grid-based movement
 }
 
 // GetNeighbors returns adjacent tiles (4-directional movement)
 func (g *Grid) GetNeighbors(pos GridPos) []GridPos {
 	neighbors := []GridPos{
-		{X: pos.X + 1, Z: pos.Z}, // Right
-		{X: pos.X - 1, Z: pos.Z}, // Left
-		{X: pos.X, Z: pos.Z + 1}, // Down
-		{X: pos.X, Z: pos.Z - 1}, // Up
+		{X: pos.X + 1, Y: pos.Y}, // Right
+		{X: pos.X - 1, Y: pos.Y}, // Left
+		{X: pos.X, Y: pos.Y + 1}, // Down
+		{X: pos.X, Y: pos.Y - 1}, // Up
 	}
 
 	// Filter out invalid positions
@@ -128,7 +128,7 @@ func (g *Grid) GetNeighbors(pos GridPos) []GridPos {
 
 // IsValidPosition checks if a grid position is within the grid bounds
 func (g *Grid) IsValidPosition(pos GridPos) bool {
-	return pos.X >= 0 && pos.X < g.Width && pos.Z >= 0 && pos.Z < g.Height
+	return pos.X >= 0 && pos.X < g.Width && pos.Y >= 0 && pos.Y < g.Height
 }
 
 // CalculateMovementRange returns all tiles within movement range of a position

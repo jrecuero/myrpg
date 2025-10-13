@@ -59,33 +59,33 @@ func main() {
 		OffsetX: 0,
 		OffsetY: 0,
 	}
-	warrior := entities.CreateAnimatedPlayerWithJob("Conan", 100, 100, components.JobWarrior, 3, heroAnimations)
+	warrior := entities.CreateAnimatedPlayerWithJob("Conan", 100, 150, components.JobWarrior, 3, heroAnimations)
 	game.AddEntity(warrior)
 
-	mage := entities.CreatePlayerWithJob("Gandalf", 150, 100, components.JobMage, 2)
+	mage := entities.CreatePlayerWithJob("Gandalf", 150, 150, components.JobMage, 2)
 	game.AddEntity(mage)
 
-	rogue := entities.CreatePlayerWithJob("Robin", 200, 100, components.JobRogue, 4)
+	rogue := entities.CreatePlayerWithJob("Robin", 200, 150, components.JobRogue, 4)
 	game.AddEntity(rogue)
 
 	// Create and add enemy entities with different jobs and levels
-	goblin := entities.CreateEnemyWithJob("Goblin Scout", 300, 200, components.JobRogue, 2)
+	goblin := entities.CreateEnemyWithJob("Goblin Scout", 300, 250, components.JobRogue, 2)
 	game.AddEntity(goblin)
 
-	orcWarrior := entities.CreateEnemyWithJob("Orc Warrior", 350, 250, components.JobWarrior, 5)
+	orcWarrior := entities.CreateEnemyWithJob("Orc Warrior", 350, 300, components.JobWarrior, 5)
 	game.AddEntity(orcWarrior)
 
 	// Add more enemies with varied jobs and levels
-	koboldMage := entities.CreateEnemyWithJob("Kobold Mage", 400, 200, components.JobMage, 3)
+	koboldMage := entities.CreateEnemyWithJob("Kobold Mage", 400, 250, components.JobMage, 3)
 	game.AddEntity(koboldMage)
 
-	banditArcher := entities.CreateEnemyWithJob("Bandit Archer", 450, 250, components.JobArcher, 4)
+	banditArcher := entities.CreateEnemyWithJob("Bandit Archer", 450, 300, components.JobArcher, 4)
 	game.AddEntity(banditArcher)
 
-	orcShaman := entities.CreateEnemyWithJob("Orc Shaman", 500, 200, components.JobCleric, 6)
+	orcShaman := entities.CreateEnemyWithJob("Orc Shaman", 500, 250, components.JobCleric, 6)
 	game.AddEntity(orcShaman)
 
-	goblinThief := entities.CreateEnemyWithJob("Goblin Thief", 550, 250, components.JobRogue, 1)
+	goblinThief := entities.CreateEnemyWithJob("Goblin Thief", 550, 300, components.JobRogue, 1)
 	game.AddEntity(goblinThief)
 
 	// Configure attack animation duration (customizable)

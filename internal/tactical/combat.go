@@ -79,11 +79,11 @@ func (tc *TacticalCombat) StartCombat(entities []*ecs.Entity) {
 			if entity.HasTag(ecs.TagPlayer) && entity.Transform() != nil {
 				// For players, convert existing position to nearest grid position and align
 				transform := entity.Transform()
-				offsetX, offsetY := 50.0, 120.0
+				offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
 				tileSize := float64(tc.Grid.TileSize)
 				gridX := int((transform.X - offsetX) / tileSize)
-				gridZ := int((transform.Y - offsetY) / tileSize)
-				gridPos = GridPos{X: gridX, Z: gridZ}
+				gridY := int((transform.Y - offsetY) / tileSize)
+				gridPos = GridPos{X: gridX, Y: gridY}
 
 				// Align player to exact grid position to fix any misalignment
 				oldX, oldY := transform.X, transform.Y
@@ -92,28 +92,28 @@ func (tc *TacticalCombat) StartCombat(entities []*ecs.Entity) {
 				transform.Y = worldY + offsetY
 
 				fmt.Printf("DEBUG: Combat system aligned player %s: (%.1f,%.1f) -> (%.1f,%.1f) at grid (%d,%d)\n",
-					entity.GetID(), oldX, oldY, transform.X, transform.Y, gridPos.X, gridPos.Z)
+					entity.GetID(), oldX, oldY, transform.X, transform.Y, gridPos.X, gridPos.Y)
 			} else {
 				// For enemies, always find a random position
 				gridPos = tc.FindStartingPosition(entity)
-				fmt.Printf("DEBUG: Combat system found random position for enemy %s: (%d,%d)\n", entity.GetID(), gridPos.X, gridPos.Z)
+				fmt.Printf("DEBUG: Combat system found random position for enemy %s: (%d,%d)\n", entity.GetID(), gridPos.X, gridPos.Y)
 
 				// Update the entity's world position to match the grid position
 				if transform := entity.Transform(); transform != nil {
-					offsetX, offsetY := 50.0, 120.0
+					offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
 					worldX, worldY := tc.Grid.GridToWorld(gridPos)
 					transform.X = worldX + offsetX
 					transform.Y = worldY + offsetY
 
 					// Debug: Verify the positioning math
 					fmt.Printf("DEBUG: Enemy %s positioning - Grid: (%d,%d) -> GridToWorld: (%.1f,%.1f) -> Final: (%.1f,%.1f)\n",
-						entity.GetID(), gridPos.X, gridPos.Z, worldX, worldY, transform.X, transform.Y)
+						entity.GetID(), gridPos.X, gridPos.Y, worldX, worldY, transform.X, transform.Y)
 
 					// Double-check: convert back to grid to verify alignment
 					backToGridX := int((transform.X - offsetX) / float64(tc.Grid.TileSize))
 					backToGridZ := int((transform.Y - offsetY) / float64(tc.Grid.TileSize))
 					fmt.Printf("DEBUG: Enemy %s round-trip verification: (%.1f,%.1f) -> (%d,%d) [should match (%d,%d)]\n",
-						entity.GetID(), transform.X, transform.Y, backToGridX, backToGridZ, gridPos.X, gridPos.Z)
+						entity.GetID(), transform.X, transform.Y, backToGridX, backToGridZ, gridPos.X, gridPos.Y)
 				}
 			}
 
@@ -157,7 +157,7 @@ func (tc *TacticalCombat) StartCombat(entities []*ecs.Entity) {
 		if stats != nil {
 			fmt.Printf("  %d. %s %s (%s) at (%d,%d) - Initiative: %d, Move: %d\n",
 				i+1, entityType, turn.Entity.GetID(), stats.Job.String(),
-				turn.GridPos.X, turn.GridPos.Z, turn.Initiative, turn.MoveRange)
+				turn.GridPos.X, turn.GridPos.Y, turn.Initiative, turn.MoveRange)
 		}
 	}
 	fmt.Printf("DEBUG: Combat setup complete - %d players vs %d enemies\n", playerCount, enemyCount)
@@ -205,13 +205,13 @@ func (tc *TacticalCombat) FindStartingPosition(entity *ecs.Entity) GridPos {
 }
 
 // findRandomPosition finds a random available position within the specified bounds
-func (tc *TacticalCombat) findRandomPosition(minX, maxX, minZ, maxZ int) GridPos {
+func (tc *TacticalCombat) findRandomPosition(minX, maxX, minY, maxY int) GridPos {
 	// Collect all available positions in the zone
 	var availablePositions []GridPos
 
 	for x := minX; x < maxX; x++ {
-		for z := minZ; z < maxZ; z++ {
-			pos := GridPos{X: x, Z: z}
+		for y := minY; y < maxY; y++ {
+			pos := GridPos{X: x, Y: y}
 			if tc.Grid.IsPassable(pos) {
 				availablePositions = append(availablePositions, pos)
 			}
@@ -221,17 +221,17 @@ func (tc *TacticalCombat) findRandomPosition(minX, maxX, minZ, maxZ int) GridPos
 	// If no positions available, fallback to systematic search
 	if len(availablePositions) == 0 {
 		fmt.Printf("DEBUG: No available positions in zone (%d-%d, %d-%d), using systematic fallback\n",
-			minX, maxX, minZ, maxZ)
+			minX, maxX, minY, maxY)
 		for x := minX; x < maxX; x++ {
-			for z := minZ; z < maxZ; z++ {
-				pos := GridPos{X: x, Z: z}
+			for y := minY; y < maxY; y++ {
+				pos := GridPos{X: x, Y: y}
 				if tc.Grid.IsValidPosition(pos) {
 					return pos
 				}
 			}
 		}
 		// Ultimate fallback
-		return GridPos{X: 0, Z: 0}
+		return GridPos{X: 0, Y: 0}
 	}
 
 	// Return random position from available ones
@@ -239,7 +239,7 @@ func (tc *TacticalCombat) findRandomPosition(minX, maxX, minZ, maxZ int) GridPos
 	selectedPos := availablePositions[randomIndex]
 
 	fmt.Printf("DEBUG: Selected random position (%d,%d) from %d available positions\n",
-		selectedPos.X, selectedPos.Z, len(availablePositions))
+		selectedPos.X, selectedPos.Y, len(availablePositions))
 
 	return selectedPos
 }
@@ -296,7 +296,7 @@ func (tc *TacticalCombat) ProcessMove(targetPos GridPos) bool {
 
 	// Update entity transform component
 	if transform := currentUnit.Entity.Transform(); transform != nil {
-		offsetX, offsetY := 50.0, 120.0
+		offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
 		worldX, worldY := tc.Grid.GridToWorld(targetPos)
 		transform.X = worldX + offsetX
 		transform.Y = worldY + offsetY
@@ -312,7 +312,7 @@ func (tc *TacticalCombat) ProcessMove(targetPos GridPos) bool {
 // isValidMove checks if a move to the target position is valid
 func (tc *TacticalCombat) isValidMove(targetPos GridPos) bool {
 	for _, validPos := range tc.ValidMoves {
-		if validPos.X == targetPos.X && validPos.Z == targetPos.Z {
+		if validPos.X == targetPos.X && validPos.Y == targetPos.Y {
 			return true
 		}
 	}

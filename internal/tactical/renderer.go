@@ -98,9 +98,7 @@ func (gr *GridRenderer) drawHighlights(screen *ebiten.Image, offsetX, offsetY fl
 		if highlightColor, exists := gr.HighlightColors[highlight]; exists {
 			// Calculate tile position on screen
 			tileX := float32(pos.X*gr.TileSize) + float32(offsetX)
-			tileY := float32(pos.Z*gr.TileSize) + float32(offsetY)
-
-			// Draw filled rectangle for tile highlight
+			tileY := float32(pos.Y*gr.TileSize) + float32(offsetY) // Draw filled rectangle for tile highlight
 			vector.DrawFilledRect(screen,
 				tileX, tileY,
 				float32(gr.TileSize), float32(gr.TileSize),
@@ -136,7 +134,7 @@ func (gr *GridRenderer) GetTileAtScreenPos(screenX, screenY, offsetX, offsetY fl
 	gridX := int((screenX - offsetX) / float64(gr.TileSize))
 	gridY := int((screenY - offsetY) / float64(gr.TileSize))
 
-	pos := GridPos{X: gridX, Z: gridY}
+	pos := GridPos{X: gridX, Y: gridY}
 
 	// Check if position is within grid bounds
 	if gr.Grid.IsValidPosition(pos) {
@@ -149,7 +147,7 @@ func (gr *GridRenderer) GetTileAtScreenPos(screenX, screenY, offsetX, offsetY fl
 // GetTileScreenPos returns the screen coordinates for a grid position
 func (gr *GridRenderer) GetTileScreenPos(pos GridPos, offsetX, offsetY float64) (float64, float64) {
 	screenX := float64(pos.X*gr.TileSize) + offsetX + float64(gr.TileSize)/2
-	screenY := float64(pos.Z*gr.TileSize) + offsetY + float64(gr.TileSize)/2
+	screenY := float64(pos.Y*gr.TileSize) + offsetY + float64(gr.TileSize)/2
 	return screenX, screenY
 }
 

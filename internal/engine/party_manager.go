@@ -161,7 +161,7 @@ type TacticalDeployment struct {
 
 // DeploymentZone defines where units can be placed
 type DeploymentZone struct {
-	StartX, StartZ int // Starting grid coordinates
+	StartX, StartY int // Starting grid coordinates
 	Width, Height  int // Zone dimensions
 }
 
@@ -171,13 +171,13 @@ func NewTacticalDeployment(grid *tactical.Grid) *TacticalDeployment {
 		Grid: grid,
 		PlayerZone: DeploymentZone{
 			StartX: 0,
-			StartZ: 0,
+			StartY: 0,
 			Width:  grid.Width / 3, // Left third of map
 			Height: grid.Height,
 		},
 		EnemyZone: DeploymentZone{
 			StartX: (grid.Width * 2) / 3, // Right third of map
-			StartZ: 0,
+			StartY: 0,
 			Width:  grid.Width / 3,
 			Height: grid.Height,
 		},
@@ -200,7 +200,7 @@ func (td *TacticalDeployment) DeployParty(party []*ecs.Entity) map[*ecs.Entity]t
 
 		gridPos := tactical.GridPos{
 			X: td.PlayerZone.StartX + col,
-			Z: td.PlayerZone.StartZ + row,
+			Y: td.PlayerZone.StartY + row,
 		}
 
 		// Ensure position is valid and not occupied
@@ -212,14 +212,14 @@ func (td *TacticalDeployment) DeployParty(party []*ecs.Entity) map[*ecs.Entity]t
 			td.Grid.SetOccupied(gridPos, true, member.GetID())
 
 			// Debug: Log deployment
-			fmt.Printf("DEBUG: Deployed unit %s at grid pos (%d,%d)\n", member.GetID(), gridPos.X, gridPos.Z)
+			fmt.Printf("DEBUG: Deployed unit %s at grid pos (%d,%d)\n", member.GetID(), gridPos.X, gridPos.Y)
 
 			// Update entity transform to match grid position with offset
 			if transform := member.Transform(); transform != nil {
 				worldX, worldY := td.Grid.GridToWorld(gridPos)
-				// Add the grid offset (same as used in DrawGrid)
+				// Add the grid offset (same as used in DrawGrid) - Updated to match game world Y position
 				transform.X = worldX + 50.0
-				transform.Y = worldY + 120.0
+				transform.Y = worldY + 112.0 // 110px top panel + 2px separator
 
 				// Debug: Log world coordinates
 				fmt.Printf("DEBUG: Unit %s world coords: (%.1f,%.1f)\n", member.GetID(), transform.X, transform.Y)
@@ -229,7 +229,7 @@ func (td *TacticalDeployment) DeployParty(party []*ecs.Entity) map[*ecs.Entity]t
 		} else {
 			// Debug: Log failed deployment
 			fmt.Printf("DEBUG: Failed to deploy unit %s at grid pos (%d,%d) - Valid: %t, Passable: %t\n",
-				member.GetID(), gridPos.X, gridPos.Z, td.Grid.IsValidPosition(gridPos), td.Grid.IsPassable(gridPos))
+				member.GetID(), gridPos.X, gridPos.Y, td.Grid.IsValidPosition(gridPos), td.Grid.IsPassable(gridPos))
 		}
 	}
 
@@ -239,12 +239,12 @@ func (td *TacticalDeployment) DeployParty(party []*ecs.Entity) map[*ecs.Entity]t
 // clearUnitFromGrid removes a unit from all grid positions
 func (td *TacticalDeployment) clearUnitFromGrid(unitID string) {
 	for x := 0; x < td.Grid.Width; x++ {
-		for z := 0; z < td.Grid.Height; z++ {
-			pos := tactical.GridPos{X: x, Z: z}
+		for y := 0; y < td.Grid.Height; y++ {
+			pos := tactical.GridPos{X: x, Y: y}
 			tile := td.Grid.GetTile(pos)
 			if tile != nil && tile.Occupied && tile.UnitID == unitID {
 				td.Grid.SetOccupied(pos, false, "")
-				fmt.Printf("DEBUG: Cleared unit %s from grid pos (%d,%d)\n", unitID, x, z)
+				fmt.Printf("DEBUG: Cleared unit %s from grid pos (%d,%d)\n", unitID, x,y)
 			}
 		}
 	}
@@ -266,7 +266,7 @@ func (td *TacticalDeployment) DeployEnemies(enemies []*ecs.Entity) map[*ecs.Enti
 
 		gridPos := tactical.GridPos{
 			X: td.EnemyZone.StartX + col,
-			Z: td.EnemyZone.StartZ + row,
+			Y: td.EnemyZone.StartY + row,
 		}
 
 		// Ensure position is valid and not occupied

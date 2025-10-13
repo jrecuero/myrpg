@@ -134,18 +134,18 @@ func (tm *TacticalManager) HighlightMovementRangeForPlayer(player *ecs.Entity) {
 	}
 
 	// Convert world coordinates to grid position
-	offsetX, offsetY := 50.0, 120.0
+	offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
 	tileSize := float64(tm.Grid.TileSize)
 	gridX := int((transform.X - offsetX) / tileSize)
-	gridZ := int((transform.Y - offsetY) / tileSize)
-	currentPos := tactical.GridPos{X: gridX, Z: gridZ}
+	gridY := int((transform.Y - offsetY) / tileSize)
+	currentPos := tactical.GridPos{X: gridX, Y: gridY}
 
 	// Use player's remaining movement from RPG stats
 	moveRange := stats.MovesRemaining
 	validMoves := tm.Grid.CalculateMovementRange(currentPos, moveRange)
 
 	fmt.Printf("DEBUG: Highlighting movement range for player %s (%s) at (%d,%d) with %d moves remaining (max: %d)\n",
-		player.GetID(), stats.Job.String(), currentPos.X, currentPos.Z, moveRange, stats.MoveRange)
+		player.GetID(), stats.Job.String(), currentPos.X, currentPos.Y, moveRange, stats.MoveRange)
 
 	tm.GridRenderer.HighlightTiles(validMoves, tactical.HighlightMovement)
 }

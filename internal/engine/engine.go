@@ -128,7 +128,7 @@ func (g *Game) SwitchToTacticalMode(participants []*ecs.Entity) {
 		if transform := member.Transform(); transform != nil {
 			currentGridPos := g.worldToGridPos(transform.X, transform.Y)
 			fmt.Printf("DEBUG: Unit %s (index %d) - World: (%.1f,%.1f) -> Grid: (%d,%d)\n",
-				member.GetID(), i, transform.X, transform.Y, currentGridPos.X, currentGridPos.Z)
+				member.GetID(), i, transform.X, transform.Y, currentGridPos.X, currentGridPos.Y)
 		}
 	}
 
@@ -142,7 +142,7 @@ func (g *Game) SwitchToTacticalMode(participants []*ecs.Entity) {
 		if transform := member.Transform(); transform != nil {
 			currentGridPos := g.worldToGridPos(transform.X, transform.Y)
 			fmt.Printf("DEBUG: Unit %s (index %d) - World: (%.1f,%.1f) -> Grid: (%d,%d)\n",
-				member.GetID(), i, transform.X, transform.Y, currentGridPos.X, currentGridPos.Z)
+				member.GetID(), i, transform.X, transform.Y, currentGridPos.X, currentGridPos.Y)
 		}
 	}
 
@@ -167,7 +167,64 @@ func (g *Game) SwitchToExplorationMode() {
 
 	g.currentMode = ModeExploration
 	g.tacticalManager.EndTacticalCombat()
+
+	// Restore exploration positions for all entities
+	g.restoreExplorationPositions()
+
 	g.uiManager.AddMessage("Returning to exploration mode.")
+}
+
+// restoreExplorationPositions repositions entities for exploration mode
+func (g *Game) restoreExplorationPositions() {
+	partyLeader := g.partyManager.GetPartyLeader()
+	if partyLeader == nil || partyLeader.Transform() == nil {
+		return
+	}
+
+	leaderTransform := partyLeader.Transform()
+
+	// Position all party members at or near the leader's position
+	partyMembers := g.partyManager.GetPartyForTactical()
+	for i, member := range partyMembers {
+		if member != partyLeader && member.Transform() != nil {
+			memberTransform := member.Transform()
+			// Position party members near the leader (slightly offset to avoid exact overlap)
+			offset := float64(i * 5) // Small offset for each member
+			memberTransform.X = leaderTransform.X + offset
+			memberTransform.Y = leaderTransform.Y + offset
+		}
+	}
+
+	// Restore enemies to reasonable exploration positions
+	// (They should be positioned where they were before tactical mode,
+	//  but for simplicity, we'll spread them around the current area)
+	enemies := make([]*ecs.Entity, 0)
+	for _, entity := range g.world.GetEntities() {
+		if entity.HasTag("enemy") && entity.Transform() != nil {
+			enemies = append(enemies, entity)
+		}
+	}
+
+	// Spread enemies around the leader area in exploration mode
+	for i, enemy := range enemies {
+		enemyTransform := enemy.Transform()
+		// Position enemies at various offsets from the leader
+		distance := 100.0 + float64(i*20)                   // Different distances
+		enemyTransform.X = leaderTransform.X + distance*1.0 // Simple positioning
+		enemyTransform.Y = leaderTransform.Y + distance*0.5 + float64(i*30)
+
+		// Ensure they stay within reasonable bounds (screen area)
+		if enemyTransform.X < 50 {
+			enemyTransform.X = 50
+		} else if enemyTransform.X > 700 {
+			enemyTransform.X = 700
+		}
+		if enemyTransform.Y < 150 {
+			enemyTransform.Y = 150
+		} else if enemyTransform.Y > 450 {
+			enemyTransform.Y = 450
+		}
+	}
 }
 
 // IsTacticalMode returns true if currently in tactical combat mode
@@ -375,6 +432,27 @@ func (g *Game) updateExploration() error {
 			isMoving = true
 		}
 
+		// Constrain player movement to game world boundaries
+		if isMoving {
+			// Game world boundaries: X=0 to 800, Y=112 to 520 (112px top + 408px game world)
+			const gameWorldTop = 112.0    // Top panel (110px) + separator (2px)
+			const gameWorldBottom = 520.0 // 112 + 408 (game world height)
+			const gameWorldLeft = 0.0
+			const gameWorldRight = 800.0
+
+			// Constrain to game world bounds
+			if playerT.X < gameWorldLeft {
+				playerT.X = gameWorldLeft
+			} else if playerT.X > gameWorldRight-32 { // Account for player sprite width
+				playerT.X = gameWorldRight - 32
+			}
+			if playerT.Y < gameWorldTop {
+				playerT.Y = gameWorldTop
+			} else if playerT.Y > gameWorldBottom-32 { // Account for player sprite height
+				playerT.Y = gameWorldBottom - 32
+			}
+		}
+
 		// Update animation state based on movement
 		if animationC := activePlayer.Animation(); animationC != nil {
 			if isMoving {
@@ -483,7 +561,7 @@ func (g *Game) updateTactical() error {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		x, y := ebiten.CursorPosition()
 		screenX, screenY := float64(x), float64(y)
-		offsetX, offsetY := 50.0, 120.0 // Same offset as grid rendering
+		offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
 
 		if gridPos, valid := g.tacticalManager.GetTileAtScreenPos(screenX, screenY, offsetX, offsetY); valid {
 			g.handleTacticalClick(gridPos)
@@ -516,8 +594,35 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		activePlayerStats = activePlayer.RPGStats()
 	}
 
-	// Draw top panel with player info
-	g.uiManager.DrawTopPanel(screen, activePlayerStats)
+	// Prepare UI data based on current mode
+	var uiMode ui.GameMode
+	var partyStats []*components.RPGStatsComponent
+	var gridPosition string
+
+	if g.currentMode == ModeExploration {
+		uiMode = ui.ModeExploration
+		// Get all party members' stats for exploration view
+		partyMembers := g.partyManager.GetPartyForTactical()
+		for _, member := range partyMembers {
+			if member != nil && member.RPGStats() != nil {
+				partyStats = append(partyStats, member.RPGStats())
+			}
+		}
+	} else {
+		uiMode = ui.ModeTactical
+		// Get grid position for tactical view
+		if activePlayer != nil {
+			if transform := activePlayer.Transform(); transform != nil {
+				gridPos := g.worldToGridPos(transform.X, transform.Y)
+				gridPosition = fmt.Sprintf("(%d, %d)", gridPos.X, gridPos.Y)
+			} else {
+				gridPosition = "Unknown"
+			}
+		}
+	}
+
+	// Draw top panel with mode-specific info
+	g.uiManager.DrawTopPanel(screen, activePlayerStats, uiMode, partyStats, gridPosition)
 
 	// Draw game world background
 	g.uiManager.DrawGameWorldBackground(screen)
@@ -598,8 +703,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Draw tactical grid overlay if in tactical mode
 	if g.IsTacticalMode() {
-		// Use fixed offset for now (top panel is typically around 100px)
-		offsetX, offsetY := 50.0, 120.0
+		// Update offset to match game world Y position (110px panel + 2px separator = 112px)
+		offsetX, offsetY := 50.0, 112.0
 		g.tacticalManager.DrawGrid(screen, offsetX, offsetY)
 	}
 
@@ -620,8 +725,8 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 // clearGridOccupancy resets all grid tiles to unoccupied state
 func (g *Game) clearGridOccupancy() {
 	for x := 0; x < g.tacticalManager.Grid.Width; x++ {
-		for z := 0; z < g.tacticalManager.Grid.Height; z++ {
-			pos := tactical.GridPos{X: x, Z: z}
+		for y := 0; y < g.tacticalManager.Grid.Height; y++ {
+			pos := tactical.GridPos{X: x, Y: y}
 			g.tacticalManager.Grid.SetOccupied(pos, false, "")
 		}
 	}
@@ -634,12 +739,12 @@ func (g *Game) validateGridState() {
 	unitPositions := make(map[string][]tactical.GridPos) // Map of unit ID to positions
 
 	for x := 0; x < g.tacticalManager.Grid.Width; x++ {
-		for z := 0; z < g.tacticalManager.Grid.Height; z++ {
-			pos := tactical.GridPos{X: x, Z: z}
+		for y := 0; y < g.tacticalManager.Grid.Height; y++ {
+			pos := tactical.GridPos{X: x, Y: y}
 			tile := g.tacticalManager.Grid.GetTile(pos)
 			if tile != nil && tile.Occupied {
 				occupiedTiles++
-				fmt.Printf("DEBUG: Grid pos (%d,%d) occupied by unit %s\n", x, z, tile.UnitID)
+				fmt.Printf("DEBUG: Grid pos (%d,%d) occupied by unit %s\n", x, y, tile.UnitID)
 				unitPositions[tile.UnitID] = append(unitPositions[tile.UnitID], pos)
 			}
 		}
@@ -654,7 +759,7 @@ func (g *Game) validateGridState() {
 			for i := 1; i < len(positions); i++ {
 				g.tacticalManager.Grid.SetOccupied(positions[i], false, "")
 				fmt.Printf("DEBUG: Cleared duplicate position (%d,%d) for unit %s\n",
-					positions[i].X, positions[i].Z, unitID)
+					positions[i].X, positions[i].Y, unitID)
 			}
 		}
 	}
@@ -664,12 +769,12 @@ func (g *Game) validateGridState() {
 func (g *Game) clearUnitFromAllGridPositions(unitID string) {
 	clearedCount := 0
 	for x := 0; x < g.tacticalManager.Grid.Width; x++ {
-		for z := 0; z < g.tacticalManager.Grid.Height; z++ {
-			pos := tactical.GridPos{X: x, Z: z}
+		for y := 0; y < g.tacticalManager.Grid.Height; y++ {
+			pos := tactical.GridPos{X: x, Y: y}
 			tile := g.tacticalManager.Grid.GetTile(pos)
 			if tile != nil && tile.Occupied && tile.UnitID == unitID {
 				g.tacticalManager.Grid.SetOccupied(pos, false, "")
-				fmt.Printf("DEBUG: Cleared unit %s from grid pos (%d,%d)\n", unitID, x, z)
+				fmt.Printf("DEBUG: Cleared unit %s from grid pos (%d,%d)\n", unitID, x, y)
 				clearedCount++
 			}
 		}
@@ -681,15 +786,15 @@ func (g *Game) clearUnitFromAllGridPositions(unitID string) {
 
 // worldToGridPos converts world coordinates to grid position - exact inverse of GridToWorld
 func (g *Game) worldToGridPos(worldX, worldY float64) tactical.GridPos {
-	offsetX, offsetY := 50.0, 120.0
+	offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
 	tileSize := float64(g.tacticalManager.Grid.TileSize)
 
 	// Remove offset and convert to grid coordinates
 	// This is the exact inverse of: worldX = gridX * tileSize + offsetX
 	gridX := int((worldX - offsetX) / tileSize)
-	gridZ := int((worldY - offsetY) / tileSize)
+	gridY := int((worldY - offsetY) / tileSize)
 
-	return tactical.GridPos{X: gridX, Z: gridZ}
+	return tactical.GridPos{X: gridX, Y: gridY}
 }
 
 // SwitchToNextTacticalPlayer switches to the next player in tactical mode
@@ -728,7 +833,7 @@ func (g *Game) SwitchToNextTacticalPlayer() {
 // handleTacticalClick handles mouse clicks in tactical mode (MOVEMENT DISABLED)
 func (g *Game) handleTacticalClick(gridPos tactical.GridPos) {
 	// Debug: Show click information
-	g.uiManager.AddMessage(fmt.Sprintf("Clicked on tile (%d, %d)", gridPos.X, gridPos.Z))
+	g.uiManager.AddMessage(fmt.Sprintf("Clicked on tile (%d, %d)", gridPos.X, gridPos.Y))
 
 	// Select the clicked tile
 	g.tacticalManager.SelectTile(gridPos)
@@ -736,9 +841,9 @@ func (g *Game) handleTacticalClick(gridPos tactical.GridPos) {
 	// Check if there's a unit at this position
 	tile := g.tacticalManager.Grid.GetTile(gridPos)
 	if tile != nil && tile.Occupied {
-		g.uiManager.AddMessage(fmt.Sprintf("Selected tile (%d, %d) - Unit: %s", gridPos.X, gridPos.Z, tile.UnitID))
+		g.uiManager.AddMessage(fmt.Sprintf("Selected tile (%d, %d) - Unit: %s", gridPos.X, gridPos.Y, tile.UnitID))
 	} else {
-		g.uiManager.AddMessage(fmt.Sprintf("Selected empty tile (%d, %d) - Use arrow keys to move", gridPos.X, gridPos.Z))
+		g.uiManager.AddMessage(fmt.Sprintf("Selected empty tile (%d, %d) - Use arrow keys to move", gridPos.X, gridPos.Y))
 	}
 
 	// MOUSE MOVEMENT DISABLED - Use arrow keys only for movement
@@ -757,21 +862,21 @@ func (g *Game) handleTacticalArrowKeys(player *ecs.Entity) {
 	moved := false
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
-		newPos = tactical.GridPos{X: currentPos.X, Z: currentPos.Z - 1}
+		newPos = tactical.GridPos{X: currentPos.X, Y: currentPos.Y - 1}
 		moved = true
-		fmt.Printf("DEBUG: Arrow UP pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Z, newPos.X, newPos.Z)
+		fmt.Printf("DEBUG: Arrow UP pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
 	} else if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) {
-		newPos = tactical.GridPos{X: currentPos.X, Z: currentPos.Z + 1}
+		newPos = tactical.GridPos{X: currentPos.X, Y: currentPos.Y + 1}
 		moved = true
-		fmt.Printf("DEBUG: Arrow DOWN pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Z, newPos.X, newPos.Z)
+		fmt.Printf("DEBUG: Arrow DOWN pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
 	} else if inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft) {
-		newPos = tactical.GridPos{X: currentPos.X - 1, Z: currentPos.Z}
+		newPos = tactical.GridPos{X: currentPos.X - 1, Y: currentPos.Y}
 		moved = true
-		fmt.Printf("DEBUG: Arrow LEFT pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Z, newPos.X, newPos.Z)
+		fmt.Printf("DEBUG: Arrow LEFT pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
 	} else if inpututil.IsKeyJustPressed(ebiten.KeyArrowRight) {
-		newPos = tactical.GridPos{X: currentPos.X + 1, Z: currentPos.Z}
+		newPos = tactical.GridPos{X: currentPos.X + 1, Y: currentPos.Y}
 		moved = true
-		fmt.Printf("DEBUG: Arrow RIGHT pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Z, newPos.X, newPos.Z)
+		fmt.Printf("DEBUG: Arrow RIGHT pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
 	}
 
 	if moved {
@@ -781,11 +886,11 @@ func (g *Game) handleTacticalArrowKeys(player *ecs.Entity) {
 		fmt.Printf("DEBUG: Current grid occupancy:\n")
 		occupiedCount := 0
 		for x := 0; x < g.tacticalManager.Grid.Width && x < 5; x++ { // Limit to first 5 columns for readability
-			for z := 0; z < g.tacticalManager.Grid.Height && z < 5; z++ { // Limit to first 5 rows
-				pos := tactical.GridPos{X: x, Z: z}
+			for y := 0; y < g.tacticalManager.Grid.Height && y < 5; y++ { // Limit to first 5 rows
+				pos := tactical.GridPos{X: x, Y: y}
 				tile := g.tacticalManager.Grid.GetTile(pos)
 				if tile != nil && tile.Occupied {
-					fmt.Printf("  (%d,%d): %s\n", x, z, tile.UnitID)
+					fmt.Printf("  (%d,%d): %s\n", x, y, tile.UnitID)
 					occupiedCount++
 				}
 			}
@@ -810,24 +915,24 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 
 	// Debug: Show movement attempt
 	fmt.Printf("DEBUG: Moving from (%d, %d) to (%d, %d)\n",
-		currentPos.X, currentPos.Z, gridPos.X, gridPos.Z)
+		currentPos.X, currentPos.Y, gridPos.X, gridPos.Y)
 
 	// Debug: Check current position state
 	currentTile := g.tacticalManager.Grid.GetTile(currentPos)
 	if currentTile != nil {
 		fmt.Printf("DEBUG: Current pos (%d,%d) - Occupied: %t, UnitID: %s\n",
-			currentPos.X, currentPos.Z, currentTile.Occupied, currentTile.UnitID)
+			currentPos.X, currentPos.Y, currentTile.Occupied, currentTile.UnitID)
 	}
 
 	// Debug: Check target position state
 	targetTile := g.tacticalManager.Grid.GetTile(gridPos)
 	if targetTile != nil {
 		fmt.Printf("DEBUG: Target pos (%d,%d) - Occupied: %t, UnitID: %s\n",
-			gridPos.X, gridPos.Z, targetTile.Occupied, targetTile.UnitID)
+			gridPos.X, gridPos.Y, targetTile.Occupied, targetTile.UnitID)
 	}
 
 	// Check if we're trying to move to the same position
-	if currentPos.X == gridPos.X && currentPos.Z == gridPos.Z {
+	if currentPos.X == gridPos.X && currentPos.Y == gridPos.Y {
 		g.uiManager.AddMessage("Already at that position")
 		return
 	}
@@ -844,7 +949,7 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 		distance := g.tacticalManager.Grid.CalculateDistance(currentPos, gridPos)
 
 		// First check if this would be an undo move
-		isUndo := stats.IsUndoMove(gridPos.X, gridPos.Z)
+		isUndo := stats.IsUndoMove(gridPos.X, gridPos.Y)
 
 		// Only apply movement restriction if it's NOT an undo move
 		if !isUndo && !stats.CanMove(distance) {
@@ -870,14 +975,14 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 	oldTile := g.tacticalManager.Grid.GetTile(currentPos)
 	if oldTile != nil {
 		fmt.Printf("DEBUG: Expected current pos (%d,%d) - Occupied: %t, UnitID: %s\n",
-			currentPos.X, currentPos.Z, oldTile.Occupied, oldTile.UnitID)
+			currentPos.X, currentPos.Y, oldTile.Occupied, oldTile.UnitID)
 	}
 
 	// Debug: Check target tile state after clearing
 	targetTileAfterClear := g.tacticalManager.Grid.GetTile(gridPos)
 	if targetTileAfterClear != nil {
 		fmt.Printf("DEBUG: Target pos (%d,%d) after clearing - Occupied: %t, UnitID: %s\n",
-			gridPos.X, gridPos.Z, targetTileAfterClear.Occupied, targetTileAfterClear.UnitID)
+			gridPos.X, gridPos.Y, targetTileAfterClear.Occupied, targetTileAfterClear.UnitID)
 	}
 
 	// Now check if target position is passable (after clearing our old position)
@@ -886,7 +991,7 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 		tile := g.tacticalManager.Grid.GetTile(gridPos)
 		if tile != nil && tile.Occupied {
 			g.uiManager.AddMessage(fmt.Sprintf("Cannot move to (%d,%d) - occupied by unit %s",
-				gridPos.X, gridPos.Z, tile.UnitID))
+				gridPos.X, gridPos.Y, tile.UnitID))
 			// Restore our position at the expected current location since move failed
 			g.tacticalManager.Grid.SetOccupied(currentPos, true, player.GetID())
 		} else {
@@ -896,7 +1001,7 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 	}
 
 	// Set new position
-	offsetX, offsetY := 50.0, 120.0
+	offsetX, offsetY := 50.0, 112.0 // Updated to match game world Y position (110px panel + 2px separator)
 	worldX, worldY := g.tacticalManager.Grid.GridToWorld(gridPos)
 	transform.X = worldX + offsetX
 	transform.Y = worldY + offsetY
@@ -907,22 +1012,22 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 		distance := g.tacticalManager.Grid.CalculateDistance(currentPos, gridPos)
 
 		// Try to undo move if returning to a previous position
-		if undoSuccessful, recoveredMoves := stats.TryUndoMove(gridPos.X, gridPos.Z); undoSuccessful {
+		if undoSuccessful, recoveredMoves := stats.TryUndoMove(gridPos.X, gridPos.Y); undoSuccessful {
 			g.uiManager.AddMessage(fmt.Sprintf("%s returned to previous position - recovered %d moves (%d moves left)",
 				player.Name, recoveredMoves, stats.MovesRemaining))
 			fmt.Printf("DEBUG: Undo successful! Recovered %d moves, %d remaining\n", recoveredMoves, stats.MovesRemaining)
 		} else {
 			// Normal move - consume movement and record it
 			stats.ConsumeMovement(distance)
-			stats.RecordMove(currentPos.X, currentPos.Z, gridPos.X, gridPos.Z, distance)
+			stats.RecordMove(currentPos.X, currentPos.Y, gridPos.X, gridPos.Y, distance)
 			g.uiManager.AddMessage(fmt.Sprintf("%s moved to (%d, %d) - %d moves left",
-				player.Name, gridPos.X, gridPos.Z, stats.MovesRemaining))
+				player.Name, gridPos.X, gridPos.Y, stats.MovesRemaining))
 			fmt.Printf("DEBUG: Normal move from (%d,%d) to (%d,%d), cost %d, %d remaining\n",
-				currentPos.X, currentPos.Z, gridPos.X, gridPos.Z, distance, stats.MovesRemaining)
+				currentPos.X, currentPos.Y, gridPos.X, gridPos.Y, distance, stats.MovesRemaining)
 			fmt.Printf("DEBUG: Move history: %s\n", stats.GetMoveHistoryString())
 		}
 	} else {
-		g.uiManager.AddMessage(fmt.Sprintf("%s moved to (%d, %d)", player.Name, gridPos.X, gridPos.Z))
+		g.uiManager.AddMessage(fmt.Sprintf("%s moved to (%d, %d)", player.Name, gridPos.X, gridPos.Y))
 	}
 
 	// Update movement range display
