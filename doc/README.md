@@ -9,6 +9,12 @@ Welcome to the MyRPG documentation! This directory contains comprehensive guides
 - **[Attack Animations](ATTACK_ANIMATIONS.md)** - Detailed documentation for the sword attack animation system with customizable duration and visual feedback
 - **[Battle System Fixes](BATTLE_FIXES.md)** - Technical details about battle system improvements and bug fixes
 
+### Tactical RPG Development
+- **[FFT Implementation Guide](FFT_IMPLEMENTATION.md)** - Comprehensive guide for converting to Final Fantasy Tactics-style gameplay
+- **[Tactical Roadmap](TACTICAL_ROADMAP.md)** - Complete 6-phase development plan for tactical RPG features
+- **[Development Priorities](DEVELOPMENT_PRIORITIES.md)** - Quick reference for development priorities and success metrics
+- **[Phase 1 Complete](PHASE1_COMPLETE.md)** - Summary of completed grid rendering and mode switching implementation
+
 ### Quick Reference
 
 #### Animation System
@@ -47,10 +53,14 @@ All documentation is kept up-to-date with the latest code changes and includes:
 
 ```
 doc/
-├── README.md                 # This file - documentation index
-├── ANIMATION_SYSTEM.md       # Animation system guide
-├── ATTACK_ANIMATIONS.md      # Attack animation system
-└── BATTLE_FIXES.md          # Battle system improvements
+├── README.md                    # This file - documentation index
+├── ANIMATION_SYSTEM.md          # Animation system guide
+├── ATTACK_ANIMATIONS.md         # Attack animation system
+├── BATTLE_FIXES.md             # Battle system improvements
+├── FFT_IMPLEMENTATION.md        # Final Fantasy Tactics implementation guide
+├── TACTICAL_ROADMAP.md          # Complete 6-phase tactical RPG roadmap
+├── DEVELOPMENT_PRIORITIES.md    # Development priorities and success metrics
+└── PHASE1_COMPLETE.md          # Phase 1 completion summary
 ```
 
 ---

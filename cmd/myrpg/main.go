@@ -19,6 +19,7 @@ import (
 
 func main() {
 	// Create a new game instance
+	// Note: As of Go 1.20+, the global random generator is automatically seeded
 	game := engine.NewGame()
 
 	// Create and add background (render first for proper layering)
@@ -73,6 +74,19 @@ func main() {
 
 	orcWarrior := entities.CreateEnemyWithJob("Orc Warrior", 350, 250, components.JobWarrior, 5)
 	game.AddEntity(orcWarrior)
+
+	// Add more enemies with varied jobs and levels
+	koboldMage := entities.CreateEnemyWithJob("Kobold Mage", 400, 200, components.JobMage, 3)
+	game.AddEntity(koboldMage)
+
+	banditArcher := entities.CreateEnemyWithJob("Bandit Archer", 450, 250, components.JobArcher, 4)
+	game.AddEntity(banditArcher)
+
+	orcShaman := entities.CreateEnemyWithJob("Orc Shaman", 500, 200, components.JobCleric, 6)
+	game.AddEntity(orcShaman)
+
+	goblinThief := entities.CreateEnemyWithJob("Goblin Thief", 550, 250, components.JobRogue, 1)
+	game.AddEntity(goblinThief)
 
 	// Configure attack animation duration (customizable)
 	game.SetAttackAnimationDuration(1500 * time.Millisecond) // 1.5 seconds for attack animation

@@ -8,6 +8,7 @@
 package ecs
 
 import (
+	"fmt"
 	"sync/atomic"
 
 	"github.com/jrecuero/myrpg/internal/ecs/components"
@@ -151,4 +152,9 @@ func (e *Entity) GetTags() []string {
 		tags = append(tags, tag)
 	}
 	return tags
+}
+
+// GetID returns the unique ID of the entity as a string
+func (e *Entity) GetID() string {
+	return fmt.Sprintf("%d", e.ID)
 }
