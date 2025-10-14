@@ -54,6 +54,26 @@ func DrawSpriteCentered(screen *ebiten.Image, s *Sprite, x float64, y float64, s
 	screen.DrawImage(s.Img, op)
 }
 
+// DrawSpriteClipped draws a sprite clipped to the specified bounds
+// This is useful for constraining background sprites to the game world area
+func DrawSpriteClipped(screen *ebiten.Image, s *Sprite, x float64, y float64, scale float64, clipX, clipY, clipWidth, clipHeight int) {
+	if s == nil || s.Img == nil {
+		return
+	}
+
+	// Create a sub-image of the screen for clipping
+	clipRect := image.Rect(clipX, clipY, clipX+clipWidth, clipY+clipHeight)
+	clippedScreen := screen.SubImage(clipRect).(*ebiten.Image)
+
+	op := &ebiten.DrawImageOptions{}
+	if scale != 0 && scale != 1 {
+		op.GeoM.Scale(scale, scale)
+	}
+	// Adjust translation for the clipped area
+	op.GeoM.Translate(x-float64(clipX), y-float64(clipY))
+	clippedScreen.DrawImage(s.Img, op)
+}
+
 // BoundsRect returns the bounding rectangle of a sprite at the specified position with an optional scale.
 // x and y are the coordinates where the sprite is drawn.
 // w and h are the width and height of the sprite.

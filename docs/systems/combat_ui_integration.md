@@ -61,9 +61,11 @@ The Combat UI automatically activates when:
 4. **Turn Progression**: Combat continues to next unit/team
 
 ### Visual Layout
-- **Action Buttons**: Right side panel (1000-200px width)
+- **Game World Area**: Left 800px (constrained game panels and background)
+- **Combat UI Area**: Right 200px (dedicated space for combat interface)
+- **Action Buttons**: Right side panel at 800-1000px screen width
 - **Turn Info Panel**: Top right corner showing unit details
-- **Grid Overlays**: Highlighted tiles for movement/attack ranges
+- **Grid Overlays**: Highlighted tiles for movement/attack ranges (within game world area)
 - **Instruction Text**: Bottom area with current action prompts
 
 ## Technical Implementation
@@ -136,7 +138,10 @@ func(target *ecs.Entity) {
 
 ### UI Layout Constants
 ```go
-ButtonAreaX: 600px (right panel)
+ScreenWidth: 1000px (expanded from 800px)
+BackgroundWidth: 800px (game world constrained)
+CombatUIArea: 800-1000px (dedicated 200px space)
+ButtonAreaX: 800px (right panel start)
 ButtonWidth: 180px
 ButtonHeight: 30px  
 ButtonSpacing: 5px
@@ -170,7 +175,13 @@ AttackHighlight: RGBA{255, 100, 100, 150}  // Red for attacks
 ### Known Limitations
 - UI uses `ebitenutil.DebugPrintAt()` for text rendering (no custom fonts yet)
 - Single active unit selection per turn (no multi-unit actions)
-- Fixed UI layout (not responsive to different screen sizes)
+- Fixed UI layout optimized for 1000x600 resolution (not responsive to different screen sizes)
+
+### UI Layout Changes
+**Window Expansion (v1.0)**: Screen width increased from 800px to 1000px to resolve combat UI overlap:
+- **Game World**: Constrained to left 800px (top/bottom panels, game background, sprites)
+- **Combat UI**: Dedicated right 200px space (action buttons, unit info, tooltips)
+- **Background Clipping**: Sprites properly clipped to prevent bleeding into UI area
 
 ## Future Enhancements
 

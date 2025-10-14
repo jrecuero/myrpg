@@ -29,8 +29,8 @@ A 2D tactical RPG game built with Go and Ebiten engine, featuring grid-based com
   - `internal/constants/positions.go` - Initial entity placement coordinates
 - **Files Updated**: `engine.go`, `ui_manager.go`, `party_manager.go`, `tactical_manager.go`, `combat.go`, `main.go`
 - **Constants Added**:
-  - Screen dimensions (800x600)
-  - UI layout (110px top + 408px game + 80px bottom)
+  - Screen dimensions (1000x600) - Window expanded to provide combat UI space
+  - UI layout (110px top + 408px game + 80px bottom + 200px combat UI area)
   - Grid system (20x10 tiles, 32px each, offset 50,112)
   - Movement ranges by job class
   - Player speeds and entity dimensions

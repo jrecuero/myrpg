@@ -660,6 +660,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			// The tactical system will have repositioned tactical participants
 		}
 
+		// Check if this is a background entity that needs clipping
+		isBackground := entity.HasTag("background") || entity.Name == "Background"
+
 		// Check for animated sprite first, fallback to static sprite
 		animationC := entity.Animation()
 		if animationC != nil {
@@ -669,16 +672,32 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			// Draw current animation frame
 			currentSprite := animationC.GetCurrentSprite()
 			if currentSprite != nil {
-				gfx.DrawSprite(screen, currentSprite,
-					transform.X+animationC.OffsetX,
-					transform.Y+animationC.OffsetY,
-					animationC.Scale)
+				if isBackground {
+					// Clip background sprites to game world area
+					gfx.DrawSpriteClipped(screen, currentSprite,
+						transform.X+animationC.OffsetX,
+						transform.Y+animationC.OffsetY,
+						animationC.Scale,
+						0, constants.GameWorldY, constants.BackgroundWidth, constants.GameWorldHeight)
+				} else {
+					gfx.DrawSprite(screen, currentSprite,
+						transform.X+animationC.OffsetX,
+						transform.Y+animationC.OffsetY,
+						animationC.Scale)
+				}
 			}
 		} else {
 			// Fallback to static sprite
 			spriteC := entity.Sprite()
 			if spriteC != nil {
-				gfx.DrawSprite(screen, spriteC.Sprite, transform.X, transform.Y, spriteC.Scale)
+				if isBackground {
+					// Clip background sprites to game world area
+					gfx.DrawSpriteClipped(screen, spriteC.Sprite,
+						transform.X, transform.Y, spriteC.Scale,
+						0, constants.GameWorldY, constants.BackgroundWidth, constants.GameWorldHeight)
+				} else {
+					gfx.DrawSprite(screen, spriteC.Sprite, transform.X, transform.Y, spriteC.Scale)
+				}
 			}
 		}
 	}

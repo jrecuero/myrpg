@@ -121,7 +121,7 @@ const (
 // DrawTopPanel renders the player information panel based on game mode
 func (ui *UIManager) DrawTopPanel(screen *ebiten.Image, activePlayer *components.RPGStatsComponent, gameMode GameMode, partyMembers []*components.RPGStatsComponent, gridPosition string) {
 	// Draw background
-	vector.FillRect(screen, 0, 0, ScreenWidth, TopPanelHeight, TopPanelColor, false)
+	vector.FillRect(screen, 0, 0, constants.BackgroundWidth, TopPanelHeight, TopPanelColor, false)
 
 	if gameMode == ModeExploration {
 		ui.drawExplorationPanel(screen, partyMembers)
@@ -236,7 +236,7 @@ func (ui *UIManager) drawManaBar(screen *ebiten.Image, x, y, width, height float
 func (ui *UIManager) DrawBottomPanel(screen *ebiten.Image) {
 	// Draw background
 	bottomY := float32(ScreenHeight - BottomPanelHeight)
-	vector.FillRect(screen, 0, bottomY, ScreenWidth, BottomPanelHeight, BottomPanelColor, false)
+	vector.FillRect(screen, 0, bottomY, constants.BackgroundWidth, BottomPanelHeight, BottomPanelColor, false)
 
 	// Get recent messages (up to 4 lines)
 	messages := ui.messageSystem.GetRecentMessages(4)
@@ -257,17 +257,16 @@ func (ui *UIManager) DrawBottomPanel(screen *ebiten.Image) {
 func (ui *UIManager) DrawGameWorldBackground(screen *ebiten.Image) {
 	// Draw a thin separator line between top panel and game world
 	separatorColor := color.RGBA{0, 0, 0, 255} // Black line
-	vector.FillRect(screen, 0, GameWorldY, ScreenWidth, 2, separatorColor, false)
+	vector.FillRect(screen, 0, GameWorldY, constants.BackgroundWidth, 2, separatorColor, false)
 
-	// Fill game world area with a neutral background color
+	// Fill only the game area (800px) with background color, leave right area for UI
 	gameWorldColor := color.RGBA{50, 70, 50, 255} // Dark green
-	// Start game world background 2 pixels below top panel
-	vector.FillRect(screen, 0, GameWorldY+2, ScreenWidth, GameWorldHeight-2, gameWorldColor, false)
+	vector.FillRect(screen, 0, GameWorldY+2, constants.BackgroundWidth, GameWorldHeight-2, gameWorldColor, false)
 }
 
 // GetGameWorldBounds returns the bounds of the game world area
 func (ui *UIManager) GetGameWorldBounds() (x, y, width, height int) {
-	return 0, GameWorldY + 2, ScreenWidth, GameWorldHeight - 2
+	return 0, GameWorldY + 2, constants.BackgroundWidth, GameWorldHeight - 2
 }
 
 // DrawBattleMenu renders the battle selection menu overlay
