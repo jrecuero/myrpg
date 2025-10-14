@@ -103,6 +103,9 @@ type TurnBasedCombatManager struct {
 
 	// Debug and Logging
 	DebugMode bool
+
+	// Turn Management
+	forceEndPlayerTurn bool
 }
 
 // CombatAction represents a combat action to be executed
@@ -429,6 +432,14 @@ func (cbm *TurnBasedCombatManager) updateTeamTurn() error {
 		return fmt.Errorf("no active team")
 	}
 
+	// Check if player team turn was force-ended by pressing E
+	if cbm.forceEndPlayerTurn && cbm.ActiveTeam.Team == components.TeamPlayer {
+		logger.Turn("Force-ending player team turn due to end turn action")
+		cbm.forceEndPlayerTurn = false
+		cbm.endTeamTurn()
+		return nil
+	}
+
 	// Check if team has any units that can still act
 	canAct := false
 	for _, member := range cbm.ActiveTeam.Members {
@@ -633,7 +644,12 @@ func (cbm *TurnBasedCombatManager) executeAction(action *CombatAction) error {
 			return err
 		}
 	case ActionWait:
-		// Wait action - just consume AP
+		// End turn action - if this is a player, end the entire team turn immediately
+		if action.Actor.HasTag(ecs.TagPlayer) {
+			logger.Turn("Player pressed end turn - forcing team turn to end")
+			// Mark this as a forced team turn end to be handled after action execution
+			cbm.forceEndPlayerTurn = true
+		}
 	default:
 		return fmt.Errorf("unsupported action type: %d", action.Type)
 	}
