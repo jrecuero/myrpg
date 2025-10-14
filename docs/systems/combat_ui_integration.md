@@ -61,7 +61,7 @@ The Combat UI automatically activates when:
 4. **Turn Progression**: Combat continues to next unit/team
 
 ### Visual Layout
-- **Action Buttons**: Right side panel (800-200px width)
+- **Action Buttons**: Right side panel (1000-200px width)
 - **Turn Info Panel**: Top right corner showing unit details
 - **Grid Overlays**: Highlighted tiles for movement/attack ranges
 - **Instruction Text**: Bottom area with current action prompts

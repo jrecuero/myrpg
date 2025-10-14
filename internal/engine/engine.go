@@ -734,7 +734,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
-	return 800, 600
+	return constants.ScreenWidth, constants.ScreenHeight
 }
 
 // clearGridOccupancy resets all grid tiles to unoccupied state
