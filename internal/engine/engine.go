@@ -390,6 +390,19 @@ func (g *Game) SwitchToNextPlayer() {
 }
 
 func (g *Game) Update() error {
+	// Update UI manager (handles popups and other UI interactions)
+	g.uiManager.Update()
+
+	// Test popup widget with P key (demo/testing)
+	if inpututil.IsKeyJustPressed(ebiten.KeyP) && !g.uiManager.IsPopupVisible() {
+		g.showTestPopup()
+	}
+
+	// Block game input processing when popup is visible
+	if g.uiManager.IsPopupVisible() {
+		return nil // Only process UI input, skip game logic
+	}
+
 	// Update based on current game mode
 	switch g.currentMode {
 	case ModeExploration:
@@ -762,6 +775,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		battleText := g.battleSystem.GetBattleMenuText()
 		g.uiManager.DrawBattleMenu(screen, battleText)
 	}
+
+	// Draw popups on top of everything else
+	g.uiManager.DrawPopups(screen)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -1087,4 +1103,32 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 
 	// Update movement range display
 	g.tacticalManager.HighlightMovementRangeForPlayer(player)
+}
+
+// showTestPopup displays a test popup to demonstrate the popup selection widget
+func (g *Game) showTestPopup() {
+	options := []string{
+		"Attack Enemy",
+		"Cast Spell",
+		"Use Item",
+		"Move Unit",
+		"End Turn",
+		"View Stats",
+		"Cancel Action",
+	}
+
+	g.uiManager.ShowSelectionPopup(
+		"Combat Actions",
+		options,
+		func(index int, option string) {
+			// Handle selection
+			g.uiManager.AddMessage(fmt.Sprintf("Selected: %s (index %d)", option, index))
+			logger.Info("Player selected popup option: %s", option)
+		},
+		func() {
+			// Handle cancel
+			g.uiManager.AddMessage("Selection cancelled")
+			logger.Info("Player cancelled popup selection")
+		},
+	)
 }

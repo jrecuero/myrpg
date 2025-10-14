@@ -25,10 +25,34 @@ clean:
 	rm -f ./myrpg
 	@echo "✅ Clean complete"
 
-# Run tests (when we have them)
-test:
-	@echo "Running tests..."
-	go test ./...
+# Run all tests
+test: test-unit test-logic test-popup test-input
+
+# Run unit tests (if any exist)
+test-unit:
+	@echo "Running unit tests..."
+	go test ./internal/... ./cmd/...
+
+# Run logic verification tests
+test-logic:
+	@echo "Running popup logic tests..."
+	go run test/logic_test/main.go
+
+# Run popup widget functionality tests
+test-popup:
+	@echo "Running popup widget tests..."
+	go run test/popup_test/main.go
+
+# Run interactive input tests (requires display)
+test-input:
+	@echo "Running interactive input tests..."
+	@echo "Note: This test requires a display/GUI environment"
+	go run test/input_test/main.go
+
+# Run all tests using shell script
+test-all:
+	@echo "Running all tests via shell script..."
+	./scripts/run_tests.sh
 
 # Build for release (with optimizations)
 release:
@@ -50,7 +74,12 @@ help:
 	@echo "  make build    - Build the game binary to ./bin/myrpg"
 	@echo "  make run      - Build and run the game"
 	@echo "  make clean    - Remove build artifacts"
-	@echo "  make test     - Run tests"
+	@echo "  make test     - Run all tests"
+	@echo "  make test-unit    - Run unit tests only"
+	@echo "  make test-logic   - Run logic verification tests"
+	@echo "  make test-popup   - Run popup widget tests"
+	@echo "  make test-input   - Run interactive input tests"
+	@echo "  make test-all     - Run all tests via shell script"
 	@echo "  make release  - Build optimized release version"
 	@echo "  make dev      - Build development version with race detection"
 	@echo "  make help     - Show this help message"

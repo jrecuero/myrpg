@@ -95,13 +95,20 @@ func (ms *MessageSystem) GetRecentMessages(count int) []string {
 
 // UIManager manages all UI panels and rendering
 type UIManager struct {
-	messageSystem *MessageSystem
+	messageSystem  *MessageSystem
+	popupSelection *PopupSelectionWidget // Reusable popup selection widget
 }
 
 // NewUIManager creates a new UI manager
 func NewUIManager() *UIManager {
+	// Create popup selection widget centered in screen
+	popupX := (ScreenWidth - 300) / 2
+	popupY := (ScreenHeight - 200) / 2
+	popup := NewPopupSelectionWidget("", []string{}, popupX, popupY, 300, 200)
+
 	return &UIManager{
-		messageSystem: NewMessageSystem(50), // Keep last 50 messages
+		messageSystem:  NewMessageSystem(50), // Keep last 50 messages
+		popupSelection: popup,
 	}
 }
 
@@ -314,4 +321,39 @@ func (ui *UIManager) DrawBattleMenu(screen *ebiten.Image, battleText string) {
 		textY := int(menuY) + 30 + (i * 20)
 		ebitenutil.DebugPrintAt(screen, line, textX, textY)
 	}
+}
+
+// Update handles input for UI components including popup widgets
+func (ui *UIManager) Update() {
+	if ui.popupSelection != nil {
+		ui.popupSelection.Update()
+	}
+}
+
+// DrawPopups renders any active popup widgets on top of other UI elements
+func (ui *UIManager) DrawPopups(screen *ebiten.Image) {
+	if ui.popupSelection != nil {
+		ui.popupSelection.Draw(screen)
+	}
+}
+
+// ShowSelectionPopup displays a popup with selectable options
+func (ui *UIManager) ShowSelectionPopup(title string, options []string, onSelection func(int, string), onCancel func()) {
+	if ui.popupSelection != nil {
+		ui.popupSelection.OnSelection = onSelection
+		ui.popupSelection.OnCancel = onCancel
+		ui.popupSelection.Show(title, options)
+	}
+}
+
+// HideSelectionPopup closes the selection popup
+func (ui *UIManager) HideSelectionPopup() {
+	if ui.popupSelection != nil {
+		ui.popupSelection.Hide()
+	}
+}
+
+// IsPopupVisible returns true if any popup is currently visible
+func (ui *UIManager) IsPopupVisible() bool {
+	return ui.popupSelection != nil && ui.popupSelection.IsVisible
 }

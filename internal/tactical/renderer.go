@@ -99,7 +99,7 @@ func (gr *GridRenderer) drawHighlights(screen *ebiten.Image, offsetX, offsetY fl
 			// Calculate tile position on screen
 			tileX := float32(pos.X*gr.TileSize) + float32(offsetX)
 			tileY := float32(pos.Y*gr.TileSize) + float32(offsetY) // Draw filled rectangle for tile highlight
-			vector.DrawFilledRect(screen,
+			vector.FillRect(screen,
 				tileX, tileY,
 				float32(gr.TileSize), float32(gr.TileSize),
 				highlightColor, false)
