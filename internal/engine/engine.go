@@ -69,6 +69,18 @@ func NewGame() *Game {
 	tacticalManager.GetTurnBasedCombat().SetMessageCallback(uiManager.AddMessage)   // For verbose/log messages
 	tacticalManager.GetTurnBasedCombat().SetUIMessageCallback(uiManager.AddMessage) // For important UI messages
 
+	// Set up state change callback to refresh movement highlighting when player turn starts
+	tacticalManager.GetTurnBasedCombat().SetStateChangeCallback(func(phase tactical.CombatPhase) {
+		if phase == tactical.CombatPhaseTeamTurn {
+			// Check if it's now a player turn and refresh movement highlighting for the engine's active player
+			if activePlayer := game.GetActivePlayer(); activePlayer != nil {
+				if activePlayer.HasTag("player") {
+					tacticalManager.HighlightMovementRangeForPlayer(activePlayer)
+				}
+			}
+		}
+	})
+
 	return game
 }
 
