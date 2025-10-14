@@ -17,6 +17,12 @@ This directory contains documentation for the game's user interface system and r
   - Solution: Engine-level input blocking when popups are active
   - Test verification and integration details
 
+### Future Enhancements
+- **`TODO_UI_ENHANCEMENTS.md`** - Planned UI improvements and feature roadmap
+  - Scrollable message panels with dedicated navigation keys
+  - Context menus and information popups
+  - Unit selection menus and advanced UI widgets
+
 ## Related Documentation
 
 ### Other UI Components
