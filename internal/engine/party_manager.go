@@ -280,9 +280,9 @@ func (td *TacticalDeployment) DeployEnemies(enemies []*ecs.Entity) map[*ecs.Enti
 			// Update entity transform to match grid position with offset
 			if transform := enemy.Transform(); transform != nil {
 				worldX, worldY := td.Grid.GridToWorld(gridPos)
-				// Add the grid offset (same as used in DrawGrid)
+				// Add the grid offset (same as used in DrawGrid) - Updated to match game world Y position
 				transform.X = worldX + constants.GridOffsetX
-				transform.Y = worldY + 120.0
+				transform.Y = worldY + constants.GridOffsetY // 110px top panel + 2px separator
 			}
 
 			deployedCount++
