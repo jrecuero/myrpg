@@ -8,6 +8,7 @@ import (
 	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
+	"github.com/jrecuero/myrpg/internal/logger"
 )
 
 // CombatPhase represents the current phase of combat
@@ -96,7 +97,8 @@ type TurnBasedCombatManager struct {
 	Grid *Grid
 
 	// Callbacks for UI communication
-	MessageCallback     func(string)
+	MessageCallback     func(string) // For all messages (mainly logs)
+	UIMessageCallback   func(string) // For important UI messages only
 	StateChangeCallback func(CombatPhase)
 
 	// Debug and Logging
@@ -132,6 +134,11 @@ func (cbm *TurnBasedCombatManager) SetMessageCallback(callback func(string)) {
 	cbm.MessageCallback = callback
 }
 
+// SetUIMessageCallback sets the callback for sending important messages to UI
+func (cbm *TurnBasedCombatManager) SetUIMessageCallback(callback func(string)) {
+	cbm.UIMessageCallback = callback
+}
+
 // SetStateChangeCallback sets the callback for phase changes
 func (cbm *TurnBasedCombatManager) SetStateChangeCallback(callback func(CombatPhase)) {
 	cbm.StateChangeCallback = callback
@@ -139,7 +146,7 @@ func (cbm *TurnBasedCombatManager) SetStateChangeCallback(callback func(CombatPh
 
 // InitializeCombat sets up combat with the given entities
 func (cbm *TurnBasedCombatManager) InitializeCombat(entities []*ecs.Entity) error {
-	cbm.logMessage("Initializing turn-based combat...")
+	cbm.sendLogMessage("Initializing turn-based combat...")
 
 	// Reset combat state
 	cbm.Phase = CombatPhaseInitialization
@@ -163,6 +170,9 @@ func (cbm *TurnBasedCombatManager) InitializeCombat(entities []*ecs.Entity) erro
 		return fmt.Errorf("failed to create teams: %v", err)
 	}
 
+	// Log initial positions of all units
+	cbm.logAllUnitPositions("INITIAL")
+
 	// Calculate initiative and set turn order
 	cbm.calculateInitiative()
 
@@ -170,7 +180,7 @@ func (cbm *TurnBasedCombatManager) InitializeCombat(entities []*ecs.Entity) erro
 	cbm.changePhase(CombatPhaseTeamTurn)
 	cbm.startNextTeamTurn()
 
-	cbm.logMessage(fmt.Sprintf("Combat initialized with %d teams, %d total units",
+	cbm.sendLogMessage(fmt.Sprintf("Combat initialized with %d teams, %d total units",
 		len(cbm.Teams), len(entities)))
 
 	return nil
@@ -203,7 +213,7 @@ func (cbm *TurnBasedCombatManager) initializeEntityForCombat(entity *ecs.Entity)
 	combatState := components.NewCombatStateComponent(team, initiative)
 	entity.AddComponent(ecs.ComponentCombatState, combatState)
 
-	cbm.logMessage(fmt.Sprintf("Initialized %s (%s) - Team: %s, AP: %d, Initiative: %d",
+	cbm.sendLogMessage(fmt.Sprintf("Initialized %s (%s) - Team: %s, AP: %d, Initiative: %d",
 		stats.Name, stats.Job.String(), team.String(), maxAP, initiative))
 
 	return nil
@@ -264,7 +274,7 @@ func (cbm *TurnBasedCombatManager) createTeams(entities []*ecs.Entity) error {
 
 		cbm.Teams = append(cbm.Teams, teamInfo)
 
-		cbm.logMessage(fmt.Sprintf("Created %s team with %d members, total speed: %d",
+		cbm.sendLogMessage(fmt.Sprintf("Created %s team with %d members, total speed: %d",
 			team.String(), len(members), teamInfo.TotalSpeed))
 	}
 
@@ -297,9 +307,9 @@ func (cbm *TurnBasedCombatManager) calculateInitiative() {
 	cbm.InitiativeOrder = make([]*TeamInfo, len(cbm.Teams))
 	copy(cbm.InitiativeOrder, cbm.Teams)
 
-	cbm.logMessage("Initiative order determined:")
+	cbm.sendLogMessage("Initiative order determined:")
 	for i, team := range cbm.InitiativeOrder {
-		cbm.logMessage(fmt.Sprintf("  %d. %s Team (Speed: %d)",
+		cbm.sendLogMessage(fmt.Sprintf("  %d. %s Team (Speed: %d)",
 			i+1, team.Team.String(), team.TotalSpeed))
 	}
 }
@@ -309,7 +319,9 @@ func (cbm *TurnBasedCombatManager) startNextTeamTurn() {
 	// Find next team that can act
 	var nextTeam *TeamInfo
 
+	logger.Turn("Looking for next team to act:")
 	for _, team := range cbm.InitiativeOrder {
+		logger.Turn("  Team %s - HasCompleted: %v", team.Team.String(), team.HasCompleted)
 		if !team.HasCompleted {
 			nextTeam = team
 			break
@@ -318,6 +330,7 @@ func (cbm *TurnBasedCombatManager) startNextTeamTurn() {
 
 	// If no team can act, start new round
 	if nextTeam == nil {
+		logger.Turn("No team can act, starting new round")
 		cbm.startNewRound()
 		return
 	}
@@ -330,12 +343,22 @@ func (cbm *TurnBasedCombatManager) startNextTeamTurn() {
 	// Activate new team
 	cbm.ActiveTeam = nextTeam
 	cbm.ActiveTeam.IsActive = true
-	cbm.ActiveUnit = nil
+
+	// Only reset ActiveUnit for enemy teams, preserve player unit selection
+	if nextTeam.Team != components.TeamPlayer {
+		cbm.ActiveUnit = nil
+	}
 
 	// Restore AP for all team members
 	cbm.restoreTeamActionPoints(nextTeam)
 
-	cbm.logMessage(fmt.Sprintf("Starting %s team turn (Round %d)",
+	// Send simplified message to UI, detailed to logs
+	if nextTeam.Team == components.TeamPlayer {
+		cbm.sendUIMessage("Your turn")
+	} else {
+		cbm.sendUIMessage("Enemy turn")
+	}
+	cbm.sendLogMessage(fmt.Sprintf("Starting %s team turn (Round %d)",
 		nextTeam.Team.String(), cbm.CurrentRound))
 
 	// Notify UI of team change
@@ -353,20 +376,28 @@ func (cbm *TurnBasedCombatManager) restoreTeamActionPoints(team *TeamInfo) {
 		if combatState := member.CombatState(); combatState != nil {
 			combatState.StartTurn()
 		}
+		// Reset legacy movement system
+		if stats := member.RPGStats(); stats != nil {
+			stats.ResetMovement()
+		}
 	}
 }
 
 // startNewRound begins a new combat round
 func (cbm *TurnBasedCombatManager) startNewRound() {
+	oldRound := cbm.CurrentRound
 	cbm.CurrentRound++
+
+	logger.Turn("Starting new round: %d -> %d", oldRound, cbm.CurrentRound)
 
 	// Reset all teams for new round
 	for _, team := range cbm.Teams {
+		logger.Turn("Resetting team %s (was completed: %v)", team.Team.String(), team.HasCompleted)
 		team.HasCompleted = false
 		team.IsActive = false
 	}
 
-	cbm.logMessage(fmt.Sprintf("Starting Round %d", cbm.CurrentRound))
+	cbm.sendLogMessage(fmt.Sprintf("Starting Round %d", cbm.CurrentRound))
 
 	// Start first team's turn
 	cbm.startNextTeamTurn()
@@ -409,6 +440,7 @@ func (cbm *TurnBasedCombatManager) updateTeamTurn() error {
 
 	if !canAct {
 		// Team is done, end their turn
+		logger.Turn("No units can act for %s team, ending turn", cbm.ActiveTeam.Team.String())
 		cbm.endTeamTurn()
 		return nil
 	}
@@ -430,15 +462,21 @@ func (cbm *TurnBasedCombatManager) canUnitAct(entity *ecs.Entity) bool {
 	}
 
 	// Check if unit has action points
-	if actionPoints := entity.ActionPoints(); actionPoints == nil || actionPoints.IsExhausted() {
+	actionPoints := entity.ActionPoints()
+	if actionPoints == nil || actionPoints.IsExhausted() {
+		logger.Turn("Unit %s cannot act - AP exhausted (AP: %v)",
+			entity.GetID(), actionPoints)
 		return false
 	}
 
 	// Check combat state
 	if combatState := entity.CombatState(); combatState == nil || !combatState.CanAct {
+		logger.Turn("Unit %s cannot act - combat state issue", entity.GetID())
 		return false
 	}
 
+	logger.VerboseTurn("Unit %s can act (AP: %d/%d)",
+		entity.GetID(), actionPoints.Current, actionPoints.Maximum)
 	return true
 }
 
@@ -521,10 +559,11 @@ func (cbm *TurnBasedCombatManager) getUnitAtPosition(pos GridPos) *ecs.Entity {
 // endTeamTurn ends the current team's turn
 func (cbm *TurnBasedCombatManager) endTeamTurn() {
 	if cbm.ActiveTeam != nil {
+		logger.Turn("Ending turn for %s team (Round %d)", cbm.ActiveTeam.Team.String(), cbm.CurrentRound)
 		cbm.ActiveTeam.HasCompleted = true
 		cbm.ActiveTeam.IsActive = false
 
-		cbm.logMessage(fmt.Sprintf("%s team turn ended", cbm.ActiveTeam.Team.String()))
+		cbm.sendLogMessage(fmt.Sprintf("%s team turn ended", cbm.ActiveTeam.Team.String()))
 	}
 
 	cbm.changePhase(CombatPhaseVictoryCheck)
@@ -535,7 +574,7 @@ func (cbm *TurnBasedCombatManager) changePhase(newPhase CombatPhase) {
 	oldPhase := cbm.Phase
 	cbm.Phase = newPhase
 
-	cbm.logMessage(fmt.Sprintf("Combat phase: %s -> %s", oldPhase.String(), newPhase.String()))
+	cbm.sendLogMessage(fmt.Sprintf("Combat phase: %s -> %s", oldPhase.String(), newPhase.String()))
 
 	if cbm.StateChangeCallback != nil {
 		cbm.StateChangeCallback(newPhase)
@@ -566,7 +605,7 @@ func (cbm *TurnBasedCombatManager) updateActionExecution() error {
 
 	// Validate and execute the action
 	if err := cbm.executeAction(action); err != nil {
-		cbm.logMessage(fmt.Sprintf("Action failed: %v", err))
+		cbm.sendLogMessage(fmt.Sprintf("Action failed: %v", err))
 		cbm.changePhase(CombatPhaseTeamTurn)
 		return err
 	}
@@ -600,10 +639,13 @@ func (cbm *TurnBasedCombatManager) executeAction(action *CombatAction) error {
 	}
 
 	// Consume action points
+	logger.Action("Spending %d AP for %s (before: %d/%d)",
+		action.APCost, action.Actor.GetID(), actionPoints.Current, actionPoints.Maximum)
 	actionPoints.Spend(action.APCost)
+	logger.Action("After spending AP: %d/%d", actionPoints.Current, actionPoints.Maximum)
 
 	// Log the action
-	cbm.logMessage(action.Message)
+	cbm.sendLogMessage(action.Message)
 
 	return nil
 }
@@ -628,23 +670,34 @@ func (cbm *TurnBasedCombatManager) executeMovement(action *CombatAction) error {
 	// Calculate movement distance for AP cost validation
 	distance := cbm.Grid.CalculateDistance(currentPos, targetPos)
 	expectedAPCost := distance * constants.MovementAPCost
-	
+
 	if action.APCost != expectedAPCost {
 		return fmt.Errorf("AP cost mismatch: expected %d, got %d", expectedAPCost, action.APCost)
 	}
 
 	// Clear occupancy at current position
 	cbm.Grid.SetOccupied(currentPos, false, "")
-	
+
 	// Convert target grid position to world coordinates
 	worldX, worldY := cbm.Grid.GridToWorld(targetPos)
-	
+
+	// Log movement before and after
+	logger.Action("MOVEMENT: %s moving from Grid(%d,%d) to Grid(%d,%d)",
+		action.Actor.GetID(), currentPos.X, currentPos.Y, targetPos.X, targetPos.Y)
+	logger.Action("MOVEMENT: World coordinates from (%.1f,%.1f) to (%.1f,%.1f)",
+		transform.X, transform.Y, worldX+constants.GridOffsetX, worldY+constants.GridOffsetY)
+
 	// Add grid offset to match the coordinate system used throughout the game
 	transform.X = worldX + constants.GridOffsetX
 	transform.Y = worldY + constants.GridOffsetY
-	
+
 	// Set occupancy at new position
 	cbm.Grid.SetOccupied(targetPos, true, action.Actor.GetID())
+
+	// Log movement completion and update all distances
+	logger.Action("MOVEMENT COMPLETED: %s now at Grid(%d,%d) World(%.1f,%.1f)",
+		action.Actor.GetID(), targetPos.X, targetPos.Y, transform.X, transform.Y)
+	cbm.logAllUnitPositions("AFTER MOVEMENT")
 
 	// Update RPG stats if the actor has movement tracking
 	if stats := action.Actor.RPGStats(); stats != nil {
@@ -652,13 +705,13 @@ func (cbm *TurnBasedCombatManager) executeMovement(action *CombatAction) error {
 		if stats.MovesRemaining >= distance {
 			stats.MovesRemaining -= distance
 		}
-		
+
 		// Add move to history for potential undo functionality
 		moveRecord := components.MoveRecord{
-			FromX: currentPos.X,
-			FromZ: currentPos.Y,
-			ToX:   targetPos.X,
-			ToZ:   targetPos.Y,
+			FromX:    currentPos.X,
+			FromZ:    currentPos.Y,
+			ToX:      targetPos.X,
+			ToZ:      targetPos.Y,
 			Distance: distance,
 		}
 		stats.MoveHistory = append(stats.MoveHistory, moveRecord)
@@ -666,7 +719,7 @@ func (cbm *TurnBasedCombatManager) executeMovement(action *CombatAction) error {
 
 	// Log the movement
 	actorName := cbm.getEntityName(action.Actor)
-	cbm.logMessage(fmt.Sprintf("%s moved from (%d,%d) to (%d,%d) [Distance: %d, AP Cost: %d]",
+	cbm.sendLogMessage(fmt.Sprintf("%s moved from (%d,%d) to (%d,%d) [Distance: %d, AP Cost: %d]",
 		actorName, currentPos.X, currentPos.Y, targetPos.X, targetPos.Y, distance, action.APCost))
 
 	return nil
@@ -732,6 +785,9 @@ func (cbm *TurnBasedCombatManager) executeAttack(action *CombatAction) error {
 		return fmt.Errorf("missing stats for combat")
 	}
 
+	// Log the attack attempt
+	logger.Combat("%s attacks %s", attackerStats.Name, targetStats.Name)
+
 	// Calculate damage (simple for now)
 	damage := attackerStats.Attack - targetStats.Defense
 	if damage < 1 {
@@ -741,13 +797,20 @@ func (cbm *TurnBasedCombatManager) executeAttack(action *CombatAction) error {
 	// Apply damage
 	targetStats.TakeDamage(damage)
 
-	cbm.logMessage(fmt.Sprintf("%s deals %d damage to %s (HP: %d/%d)",
+	// Send important combat result to UI
+	cbm.sendUIMessage(fmt.Sprintf("%s deals %d damage to %s (HP: %d/%d)",
 		attackerStats.Name, damage, targetStats.Name,
+		targetStats.CurrentHP, targetStats.MaxHP))
+
+	// Log detailed info to file only
+	cbm.sendLogMessage(fmt.Sprintf("Attack: %s -> %s, Damage: %d, Target HP: %d/%d",
+		attackerStats.Name, targetStats.Name, damage,
 		targetStats.CurrentHP, targetStats.MaxHP))
 
 	// Check if target died
 	if !targetStats.IsAlive() {
-		cbm.logMessage(fmt.Sprintf("%s has been defeated!", targetStats.Name))
+		cbm.sendUIMessage(fmt.Sprintf("%s defeated!", targetStats.Name))
+		cbm.sendLogMessage(fmt.Sprintf("%s has been defeated by %s", targetStats.Name, attackerStats.Name))
 		// TODO: Remove from grid and mark as dead
 	}
 
@@ -769,7 +832,7 @@ func (cbm *TurnBasedCombatManager) updateVictoryCheck() error {
 		cbm.changePhase(CombatPhaseEnded)
 		cbm.IsActive = false
 
-		cbm.logMessage(fmt.Sprintf("Combat ended: %s", result.String()))
+		cbm.sendLogMessage(fmt.Sprintf("Combat ended: %s", result.String()))
 		return nil
 	}
 
@@ -788,9 +851,10 @@ func (cbm *TurnBasedCombatManager) checkVictoryConditions() CombatResult {
 	for _, team := range cbm.Teams {
 		for _, member := range team.Members {
 			if stats := member.RPGStats(); stats != nil && stats.IsAlive() {
-				if team.Team == components.TeamPlayer {
+				switch team.Team {
+				case components.TeamPlayer:
 					playerAlive = true
-				} else if team.Team == components.TeamEnemy {
+				case components.TeamEnemy:
 					enemyAlive = true
 				}
 			}
@@ -816,13 +880,24 @@ func (cbm *TurnBasedCombatManager) getEntityName(entity *ecs.Entity) string {
 	return entity.GetID()
 }
 
-// logMessage sends a message to the UI if callback is set
-func (cbm *TurnBasedCombatManager) logMessage(message string) {
-	if cbm.DebugMode {
-		fmt.Printf("[Combat] %s\n", message)
-	}
+// sendUIMessage sends important messages to UI panel
+func (cbm *TurnBasedCombatManager) sendUIMessage(message string) {
+	// Always log to file
+	logger.Combat("[UI] %s", message)
 
-	if cbm.MessageCallback != nil {
+	// Send to UI if callback is set
+	if cbm.UIMessageCallback != nil {
+		cbm.UIMessageCallback(message)
+	}
+}
+
+// sendLogMessage sends messages to logs and optionally to UI (for verbose mode)
+func (cbm *TurnBasedCombatManager) sendLogMessage(message string) {
+	// Always log to file
+	logger.Combat("%s", message)
+
+	// Send to UI only in verbose mode or for legacy callback compatibility
+	if cbm.MessageCallback != nil && logger.Verbose {
 		cbm.MessageCallback(message)
 	}
 }
@@ -840,6 +915,82 @@ func (cbm *TurnBasedCombatManager) GetPhase() CombatPhase {
 // IsPlayerTurn returns true if it's the player team's turn
 func (cbm *TurnBasedCombatManager) IsPlayerTurn() bool {
 	return cbm.ActiveTeam != nil && cbm.ActiveTeam.Team == components.TeamPlayer
+}
+
+// GetActiveUnit returns the current active unit for player turns, nil otherwise
+func (cbm *TurnBasedCombatManager) GetActiveUnit() *ecs.Entity {
+	if !cbm.IsPlayerTurn() {
+		logger.Turn("GetActiveUnit: Not player turn, returning nil")
+		return nil
+	}
+
+	// Return the explicitly set active unit if it exists (even if it can't act)
+	if cbm.ActiveUnit != nil {
+		// Check if unit is alive and in player team
+		if stats := cbm.ActiveUnit.RPGStats(); stats != nil && stats.IsAlive() {
+			if combatState := cbm.ActiveUnit.CombatState(); combatState != nil && combatState.Team == components.TeamPlayer {
+				logger.VerboseTurn("GetActiveUnit: Returning explicitly set active unit %s", cbm.ActiveUnit.GetID())
+				return cbm.ActiveUnit
+			}
+		}
+		logger.Turn("GetActiveUnit: Active unit %s is not valid (dead or not player), falling back", cbm.ActiveUnit.GetID())
+	}
+
+	// Fallback: find the first player unit with action points and set it as active
+	for _, entity := range cbm.ActiveTeam.Members {
+		if cbm.canUnitAct(entity) {
+			cbm.ActiveUnit = entity // Set this as the active unit
+			logger.Turn("GetActiveUnit: Set active unit to %s (fallback)", entity.GetID())
+			return entity
+		}
+	}
+
+	logger.Turn("GetActiveUnit: No valid unit found, returning nil")
+	return nil
+}
+
+// SetActiveUnit sets the current active unit (for player unit switching)
+func (cbm *TurnBasedCombatManager) SetActiveUnit(unit *ecs.Entity) {
+	logger.Turn("SetActiveUnit called with unit: %s, IsPlayerTurn: %v",
+		func() string {
+			if unit != nil {
+				return unit.GetID()
+			} else {
+				return "nil"
+			}
+		}(), cbm.IsPlayerTurn())
+
+	if unit != nil && cbm.IsPlayerTurn() {
+		// Verify the unit is in the player team
+		for _, member := range cbm.ActiveTeam.Members {
+			if member == unit {
+				oldActive := cbm.ActiveUnit
+				cbm.ActiveUnit = unit
+				logger.Turn("Player switched to unit %s (was %s)", unit.GetID(),
+					func() string {
+						if oldActive != nil {
+							return oldActive.GetID()
+						} else {
+							return "nil"
+						}
+					}())
+				return
+			}
+		}
+		logger.Turn("Cannot switch to unit %s - not in player team", unit.GetID())
+	} else {
+		if unit == nil {
+			logger.Turn("SetActiveUnit: unit is nil")
+		}
+		if !cbm.IsPlayerTurn() {
+			logger.Turn("SetActiveUnit: not player turn")
+		}
+	}
+}
+
+// GetCurrentRound returns the current round number
+func (cbm *TurnBasedCombatManager) GetCurrentRound() int {
+	return cbm.CurrentRound
 }
 
 // GetResult returns the combat result
@@ -862,7 +1013,7 @@ func (cbm *TurnBasedCombatManager) CreateMoveAction(actor *ecs.Entity, targetPos
 	}
 
 	currentPos := cbm.worldToGridPos(transform.X, transform.Y)
-	
+
 	// Calculate distance and AP cost
 	distance := cbm.Grid.CalculateDistance(currentPos, targetPos)
 	apCost := distance * constants.MovementAPCost
@@ -926,12 +1077,19 @@ func (cbm *TurnBasedCombatManager) CreateEndTurnAction(actor *ecs.Entity) (*Comb
 		return nil, fmt.Errorf("actor is nil")
 	}
 
+	// Get current AP to consume all remaining
+	actionPoints := actor.ActionPoints()
+	apCost := 0
+	if actionPoints != nil {
+		apCost = actionPoints.Current // Consume all remaining AP
+	}
+
 	action := &CombatAction{
 		Type:      ActionWait, // Using ActionWait to end turn and consume remaining AP
 		Actor:     actor,
 		Target:    nil,
 		TargetPos: GridPos{},
-		APCost:    0, // End turn is free, but will exhaust all remaining AP
+		APCost:    apCost, // Consume all remaining AP
 		Validated: true,
 		Message:   fmt.Sprintf("%s ends turn", cbm.getEntityName(actor)),
 	}
@@ -970,8 +1128,16 @@ func (cbm *TurnBasedCombatManager) validateAttack(actor *ecs.Entity, target *ecs
 	// Check if targets are adjacent (range = 1 for now)
 	actorGridPos := cbm.worldToGridPos(actorTransform.X, actorTransform.Y)
 	targetGridPos := cbm.worldToGridPos(targetTransform.X, targetTransform.Y)
-	
+
 	distance := cbm.Grid.CalculateDistance(actorGridPos, targetGridPos)
+
+	// Detailed position logging for attack validation (verbose only)
+	logger.VerboseCombat("DETAILED ATTACK VALIDATION - Actor %s: World(%.1f,%.1f) -> Grid(%d,%d)",
+		actor.GetID(), actorTransform.X, actorTransform.Y, actorGridPos.X, actorGridPos.Y)
+	logger.VerboseCombat("DETAILED ATTACK VALIDATION - Target %s: World(%.1f,%.1f) -> Grid(%d,%d)",
+		target.GetID(), targetTransform.X, targetTransform.Y, targetGridPos.X, targetGridPos.Y)
+	logger.VerboseCombat("DETAILED ATTACK VALIDATION - Distance: %d, Max Range: 1", distance)
+
 	if distance > 1 {
 		return fmt.Errorf("target out of range (distance: %d, max range: 1)", distance)
 	}
@@ -1000,12 +1166,12 @@ func (cbm *TurnBasedCombatManager) GetValidMovesForUnit(actor *ecs.Entity) []Gri
 
 	// Calculate all positions within movement range
 	validMoves := []GridPos{}
-	
+
 	for x := 0; x < cbm.Grid.Width; x++ {
 		for y := 0; y < cbm.Grid.Height; y++ {
 			targetPos := GridPos{X: x, Y: y}
 			distance := cbm.Grid.CalculateDistance(currentPos, targetPos)
-			
+
 			// Check if position is within range and passable
 			if distance <= maxDistance && distance > 0 {
 				if cbm.Grid.IsPassable(targetPos) {
@@ -1031,14 +1197,52 @@ func (cbm *TurnBasedCombatManager) GetValidAttackTargetsForUnit(actor *ecs.Entit
 
 	validTargets := []*ecs.Entity{}
 
+	// First, log current positions of attacker and all potential targets (verbose only)
+	if actorTransform := actor.Transform(); actorTransform != nil {
+		actorGridPos := cbm.Grid.WorldToGrid(actorTransform.X, actorTransform.Y)
+		logger.VerboseCombat("Attack range check - Attacker %s at World(%.1f,%.1f) Grid(%d,%d)",
+			actor.GetID(), actorTransform.X, actorTransform.Y, actorGridPos.X, actorGridPos.Y)
+	}
+
 	// Check all combat participants
 	for _, team := range cbm.Teams {
 		for _, member := range team.Members {
+			// Log target position before validation (verbose only)
+			if targetTransform := member.Transform(); targetTransform != nil {
+				targetGridPos := cbm.Grid.WorldToGrid(targetTransform.X, targetTransform.Y)
+				logger.VerboseCombat("Checking target %s at World(%.1f,%.1f) Grid(%d,%d)",
+					member.GetID(), targetTransform.X, targetTransform.Y, targetGridPos.X, targetGridPos.Y)
+			}
+
 			if err := cbm.validateAttack(actor, member); err == nil {
 				validTargets = append(validTargets, member)
+				logger.VerboseCombat("Attack validation SUCCESS for %s -> %s", actor.GetID(), member.GetID())
+			} else {
+				// Debug: Log why attacks fail (verbose only)
+				logger.VerboseCombat("Attack validation failed for %s -> %s: %v",
+					actor.GetID(), member.GetID(), err)
 			}
 		}
 	}
 
 	return validTargets
+}
+
+// logAllUnitPositions logs the current position of all units in combat
+func (cbm *TurnBasedCombatManager) logAllUnitPositions(stage string) {
+	logger.Info("=== UNIT POSITIONS - %s ===", stage)
+
+	for _, team := range cbm.Teams {
+		logger.Info("Team %s:", team.Team.String())
+		for _, unit := range team.Members {
+			transform := unit.Transform()
+			if transform != nil {
+				gridPos := cbm.worldToGridPos(transform.X, transform.Y)
+				logger.Info("  %s: World(%.1f, %.1f) Grid(%d, %d)",
+					unit.GetID(), transform.X, transform.Y, gridPos.X, gridPos.Y)
+			} else {
+				logger.Info("  %s: NO TRANSFORM COMPONENT", unit.GetID())
+			}
+		}
+	}
 }

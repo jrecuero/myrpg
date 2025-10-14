@@ -14,6 +14,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
+	"github.com/jrecuero/myrpg/internal/logger"
 )
 
 // Use constants from the constants package
@@ -57,6 +58,9 @@ func NewMessageSystem(maxMessages int) *MessageSystem {
 
 // AddMessage adds a new message to the system
 func (ms *MessageSystem) AddMessage(text string) {
+	// Also log UI messages to the file for debugging
+	logger.UI("UI Message: %s", text)
+
 	message := Message{
 		Text:      text,
 		Timestamp: time.Now(),

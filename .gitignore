@@ -1,6 +1,9 @@
 *.log
 .DS_Store
 
+# Ignore log files and directory
+logs/
+
 # Ignore build artifacts
 /bin/
 /myrpg

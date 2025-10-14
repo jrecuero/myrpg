@@ -19,6 +19,7 @@ import (
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 	"github.com/jrecuero/myrpg/internal/gfx"
+	"github.com/jrecuero/myrpg/internal/logger"
 	"github.com/jrecuero/myrpg/internal/tactical"
 	"github.com/jrecuero/myrpg/internal/ui"
 )
@@ -65,7 +66,8 @@ func NewGame() *Game {
 	battleSystem.SetSwitchPlayerCallback(game.SwitchToNextPlayer)
 
 	// Set up turn-based combat callbacks
-	tacticalManager.GetTurnBasedCombat().SetMessageCallback(uiManager.AddMessage)
+	tacticalManager.GetTurnBasedCombat().SetMessageCallback(uiManager.AddMessage)   // For verbose/log messages
+	tacticalManager.GetTurnBasedCombat().SetUIMessageCallback(uiManager.AddMessage) // For important UI messages
 
 	return game
 }
@@ -127,11 +129,11 @@ func (g *Game) SwitchToTacticalMode(participants []*ecs.Entity) {
 	g.clearGridOccupancy()
 
 	// Debug: Check unit positions before deployment
-	fmt.Printf("DEBUG: Unit positions before deployment:\n")
+	logger.Debug("Unit positions before deployment:")
 	for i, member := range partyMembers {
 		if transform := member.Transform(); transform != nil {
 			currentGridPos := g.worldToGridPos(transform.X, transform.Y)
-			fmt.Printf("DEBUG: Unit %s (index %d) - World: (%.1f,%.1f) -> Grid: (%d,%d)\n",
+			logger.Debug("Unit %s (index %d) - World: (%.1f,%.1f) -> Grid: (%d,%d)",
 				member.GetID(), i, transform.X, transform.Y, currentGridPos.X, currentGridPos.Y)
 		}
 	}
@@ -141,11 +143,11 @@ func (g *Game) SwitchToTacticalMode(participants []*ecs.Entity) {
 	g.tacticalDeployment.DeployEnemies(enemies)
 
 	// Debug: Check unit positions after deployment
-	fmt.Printf("DEBUG: Unit positions after deployment:\n")
+	logger.Debug("Unit positions after deployment:")
 	for i, member := range partyMembers {
 		if transform := member.Transform(); transform != nil {
 			currentGridPos := g.worldToGridPos(transform.X, transform.Y)
-			fmt.Printf("DEBUG: Unit %s (index %d) - World: (%.1f,%.1f) -> Grid: (%d,%d)\n",
+			logger.Debug("Unit %s (index %d) - World: (%.1f,%.1f) -> Grid: (%d,%d)",
 				member.GetID(), i, transform.X, transform.Y, currentGridPos.X, currentGridPos.Y)
 		}
 	}
@@ -555,6 +557,18 @@ func (g *Game) updateTactical() error {
 		}
 	}
 
+	// Handle V key to toggle verbose logging
+	if inpututil.IsKeyJustPressed(ebiten.KeyV) {
+		logger.SetVerbose(!logger.Verbose)
+		if logger.Verbose {
+			g.uiManager.AddMessage("Verbose logging enabled")
+			logger.Info("Verbose logging enabled")
+		} else {
+			g.uiManager.AddMessage("Verbose logging disabled")
+			logger.Info("Verbose logging disabled")
+		}
+	}
+
 	// Handle mouse input for tile selection and movement
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		x, y := ebiten.CursorPosition()
@@ -574,7 +588,7 @@ func (g *Game) updateTactical() error {
 		// Debug: Check if arrow keys are pressed when no active player
 		if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) || inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) ||
 			inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft) || inpututil.IsKeyJustPressed(ebiten.KeyArrowRight) {
-			fmt.Printf("DEBUG: Arrow key pressed but no active player found\n")
+			logger.Debug("Arrow key pressed but no active player found")
 		}
 	}
 
@@ -704,6 +718,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		// Update offset to match game world Y position (110px panel + 2px separator = 112px)
 		offsetX, offsetY := constants.GridOffsetX, constants.GridOffsetY
 		g.tacticalManager.DrawGrid(screen, offsetX, offsetY)
+
+		// Draw combat UI for turn-based combat
+		g.tacticalManager.DrawCombatUI(screen)
 	}
 
 	// Draw bottom panel with messages and commands
@@ -732,7 +749,7 @@ func (g *Game) clearGridOccupancy() {
 
 // validateGridState checks for grid state inconsistencies
 func (g *Game) validateGridState() {
-	fmt.Printf("DEBUG: Validating grid state...\n")
+	logger.Debug("Validating grid state...")
 	occupiedTiles := 0
 	unitPositions := make(map[string][]tactical.GridPos) // Map of unit ID to positions
 
@@ -742,12 +759,12 @@ func (g *Game) validateGridState() {
 			tile := g.tacticalManager.Grid.GetTile(pos)
 			if tile != nil && tile.Occupied {
 				occupiedTiles++
-				fmt.Printf("DEBUG: Grid pos (%d,%d) occupied by unit %s\n", x, y, tile.UnitID)
+				logger.Debug("Grid pos (%d,%d) occupied by unit %s", x, y, tile.UnitID)
 				unitPositions[tile.UnitID] = append(unitPositions[tile.UnitID], pos)
 			}
 		}
 	}
-	fmt.Printf("DEBUG: Total occupied tiles: %d\n", occupiedTiles)
+	logger.Debug("Total occupied tiles: %d", occupiedTiles)
 
 	// Check for units occupying multiple positions
 	for unitID, positions := range unitPositions {
@@ -756,7 +773,7 @@ func (g *Game) validateGridState() {
 			// Fix: Clear all positions except the first one
 			for i := 1; i < len(positions); i++ {
 				g.tacticalManager.Grid.SetOccupied(positions[i], false, "")
-				fmt.Printf("DEBUG: Cleared duplicate position (%d,%d) for unit %s\n",
+				logger.Debug("Cleared duplicate position (%d,%d) for unit %s",
 					positions[i].X, positions[i].Y, unitID)
 			}
 		}
@@ -772,7 +789,7 @@ func (g *Game) clearUnitFromAllGridPositions(unitID string) {
 			tile := g.tacticalManager.Grid.GetTile(pos)
 			if tile != nil && tile.Occupied && tile.UnitID == unitID {
 				g.tacticalManager.Grid.SetOccupied(pos, false, "")
-				fmt.Printf("DEBUG: Cleared unit %s from grid pos (%d,%d)\n", unitID, x, y)
+				logger.Debug("Cleared unit %s from grid pos (%d,%d)", unitID, x, y)
 				clearedCount++
 			}
 		}
@@ -823,6 +840,11 @@ func (g *Game) SwitchToNextTacticalPlayer() {
 		g.activePlayerIndex = nextIndex
 		g.uiManager.AddMessage(fmt.Sprintf("Switched to %s", partyMembers[nextIndex].Name))
 
+		// Update the combat manager's active unit
+		if g.tacticalManager.UseTurnBasedCombat {
+			g.tacticalManager.GetTurnBasedCombat().SetActiveUnit(partyMembers[nextIndex])
+		}
+
 		// Highlight movement range for new active player
 		g.tacticalManager.HighlightMovementRangeForPlayer(partyMembers[nextIndex])
 	}
@@ -848,7 +870,7 @@ func (g *Game) handleTacticalClick(gridPos tactical.GridPos) {
 } // handleTacticalArrowKeys handles arrow key movement in tactical mode
 func (g *Game) handleTacticalArrowKeys(player *ecs.Entity) {
 	if player.Transform() == nil {
-		fmt.Printf("DEBUG: Player has no transform in arrow key handler\n")
+		logger.Debug("Player has no transform in arrow key handler")
 		return
 	}
 
@@ -862,38 +884,38 @@ func (g *Game) handleTacticalArrowKeys(player *ecs.Entity) {
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
 		newPos = tactical.GridPos{X: currentPos.X, Y: currentPos.Y - 1}
 		moved = true
-		fmt.Printf("DEBUG: Arrow UP pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
+		logger.Debug("Arrow UP pressed - moving from (%d,%d) to (%d,%d)", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
 	} else if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) {
 		newPos = tactical.GridPos{X: currentPos.X, Y: currentPos.Y + 1}
 		moved = true
-		fmt.Printf("DEBUG: Arrow DOWN pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
+		logger.Debug("Arrow DOWN pressed - moving from (%d,%d) to (%d,%d)", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
 	} else if inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft) {
 		newPos = tactical.GridPos{X: currentPos.X - 1, Y: currentPos.Y}
 		moved = true
-		fmt.Printf("DEBUG: Arrow LEFT pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
+		logger.Debug("Arrow LEFT pressed - moving from (%d,%d) to (%d,%d)", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
 	} else if inpututil.IsKeyJustPressed(ebiten.KeyArrowRight) {
 		newPos = tactical.GridPos{X: currentPos.X + 1, Y: currentPos.Y}
 		moved = true
-		fmt.Printf("DEBUG: Arrow RIGHT pressed - moving from (%d,%d) to (%d,%d)\n", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
+		logger.Debug("Arrow RIGHT pressed - moving from (%d,%d) to (%d,%d)", currentPos.X, currentPos.Y, newPos.X, newPos.Y)
 	}
 
 	if moved {
-		fmt.Printf("DEBUG: About to call tryMovePlayerToTile for player %s\n", player.GetID())
+		logger.Debug("About to call tryMovePlayerToTile for player %s", player.GetID())
 
 		// Debug: Show current grid state before attempting move
-		fmt.Printf("DEBUG: Current grid occupancy:\n")
+		logger.Debug("Current grid occupancy:")
 		occupiedCount := 0
 		for x := 0; x < g.tacticalManager.Grid.Width && x < 5; x++ { // Limit to first 5 columns for readability
 			for y := 0; y < g.tacticalManager.Grid.Height && y < 5; y++ { // Limit to first 5 rows
 				pos := tactical.GridPos{X: x, Y: y}
 				tile := g.tacticalManager.Grid.GetTile(pos)
 				if tile != nil && tile.Occupied {
-					fmt.Printf("  (%d,%d): %s\n", x, y, tile.UnitID)
+					logger.Debug("  (%d,%d): %s", x, y, tile.UnitID)
 					occupiedCount++
 				}
 			}
 		}
-		fmt.Printf("DEBUG: Total occupied tiles (partial): %d\n", occupiedCount)
+		logger.Debug("Total occupied tiles (partial): %d", occupiedCount)
 
 		g.tryMovePlayerToTile(player, newPos)
 	}
@@ -912,20 +934,20 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 	currentPos := g.worldToGridPos(transform.X, transform.Y)
 
 	// Debug: Show movement attempt
-	fmt.Printf("DEBUG: Moving from (%d, %d) to (%d, %d)\n",
+	logger.Debug("Moving from (%d, %d) to (%d, %d)",
 		currentPos.X, currentPos.Y, gridPos.X, gridPos.Y)
 
 	// Debug: Check current position state
 	currentTile := g.tacticalManager.Grid.GetTile(currentPos)
 	if currentTile != nil {
-		fmt.Printf("DEBUG: Current pos (%d,%d) - Occupied: %t, UnitID: %s\n",
+		logger.Debug("Current pos (%d,%d) - Occupied: %t, UnitID: %s",
 			currentPos.X, currentPos.Y, currentTile.Occupied, currentTile.UnitID)
 	}
 
 	// Debug: Check target position state
 	targetTile := g.tacticalManager.Grid.GetTile(gridPos)
 	if targetTile != nil {
-		fmt.Printf("DEBUG: Target pos (%d,%d) - Occupied: %t, UnitID: %s\n",
+		logger.Debug("Target pos (%d,%d) - Occupied: %t, UnitID: %s",
 			gridPos.X, gridPos.Y, targetTile.Occupied, targetTile.UnitID)
 	}
 
@@ -957,14 +979,14 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 		}
 
 		if isUndo {
-			fmt.Printf("DEBUG: Undo move detected - Distance: %d, allowing move despite %d remaining\n", distance, stats.MovesRemaining)
+			logger.Debug("Undo move detected - Distance: %d, allowing move despite %d remaining", distance, stats.MovesRemaining)
 		} else {
-			fmt.Printf("DEBUG: Normal move - Distance: %d, Moves Remaining: %d\n", distance, stats.MovesRemaining)
+			logger.Debug("Normal move - Distance: %d, Moves Remaining: %d", distance, stats.MovesRemaining)
 		}
 	}
 
 	// Debug: Show which unit is trying to move
-	fmt.Printf("DEBUG: Unit %s attempting to move\n", player.GetID())
+	logger.Debug("Unit %s attempting to move", player.GetID())
 
 	// Clear ALL positions occupied by this unit FIRST - prevents multi-occupancy
 	g.clearUnitFromAllGridPositions(player.GetID())
@@ -972,14 +994,14 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 	// Also log what we thought was the current position for debugging
 	oldTile := g.tacticalManager.Grid.GetTile(currentPos)
 	if oldTile != nil {
-		fmt.Printf("DEBUG: Expected current pos (%d,%d) - Occupied: %t, UnitID: %s\n",
+		logger.Debug("Expected current pos (%d,%d) - Occupied: %t, UnitID: %s",
 			currentPos.X, currentPos.Y, oldTile.Occupied, oldTile.UnitID)
 	}
 
 	// Debug: Check target tile state after clearing
 	targetTileAfterClear := g.tacticalManager.Grid.GetTile(gridPos)
 	if targetTileAfterClear != nil {
-		fmt.Printf("DEBUG: Target pos (%d,%d) after clearing - Occupied: %t, UnitID: %s\n",
+		logger.Debug("Target pos (%d,%d) after clearing - Occupied: %t, UnitID: %s",
 			gridPos.X, gridPos.Y, targetTileAfterClear.Occupied, targetTileAfterClear.UnitID)
 	}
 
@@ -1005,6 +1027,10 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 	transform.Y = worldY + offsetY
 	g.tacticalManager.Grid.SetOccupied(gridPos, true, player.GetID())
 
+	// Log the actual position update for debugging
+	logger.Debug("POSITION UPDATE: Unit %s moved to World(%.1f,%.1f) Grid(%d,%d)",
+		player.GetID(), transform.X, transform.Y, gridPos.X, gridPos.Y)
+
 	// Handle movement consumption and tracking
 	if stats != nil {
 		distance := g.tacticalManager.Grid.CalculateDistance(currentPos, gridPos)
@@ -1013,16 +1039,16 @@ func (g *Game) tryMovePlayerToTile(player *ecs.Entity, gridPos tactical.GridPos)
 		if undoSuccessful, recoveredMoves := stats.TryUndoMove(gridPos.X, gridPos.Y); undoSuccessful {
 			g.uiManager.AddMessage(fmt.Sprintf("%s returned to previous position - recovered %d moves (%d moves left)",
 				player.Name, recoveredMoves, stats.MovesRemaining))
-			fmt.Printf("DEBUG: Undo successful! Recovered %d moves, %d remaining\n", recoveredMoves, stats.MovesRemaining)
+			logger.Debug("Undo successful! Recovered %d moves, %d remaining", recoveredMoves, stats.MovesRemaining)
 		} else {
 			// Normal move - consume movement and record it
 			stats.ConsumeMovement(distance)
 			stats.RecordMove(currentPos.X, currentPos.Y, gridPos.X, gridPos.Y, distance)
 			g.uiManager.AddMessage(fmt.Sprintf("%s moved to (%d, %d) - %d moves left",
 				player.Name, gridPos.X, gridPos.Y, stats.MovesRemaining))
-			fmt.Printf("DEBUG: Normal move from (%d,%d) to (%d,%d), cost %d, %d remaining\n",
+			logger.Debug("Normal move from (%d,%d) to (%d,%d), cost %d, %d remaining",
 				currentPos.X, currentPos.Y, gridPos.X, gridPos.Y, distance, stats.MovesRemaining)
-			fmt.Printf("DEBUG: Move history: %s\n", stats.GetMoveHistoryString())
+			logger.Debug("Move history: %s", stats.GetMoveHistoryString())
 		}
 	} else {
 		g.uiManager.AddMessage(fmt.Sprintf("%s moved to (%d, %d)", player.Name, gridPos.X, gridPos.Y))

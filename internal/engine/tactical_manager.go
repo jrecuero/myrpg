@@ -2,12 +2,12 @@
 package engine
 
 import (
-	"fmt"
-
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs"
+	"github.com/jrecuero/myrpg/internal/logger"
 	"github.com/jrecuero/myrpg/internal/tactical"
+	"github.com/jrecuero/myrpg/internal/ui"
 )
 
 // GameMode represents different gameplay modes
@@ -35,6 +35,7 @@ type TacticalManager struct {
 	GridRenderer       *tactical.GridRenderer
 	Combat             *tactical.TacticalCombat         // Legacy combat system
 	TurnBasedCombat    *tactical.TurnBasedCombatManager // New turn-based combat system
+	CombatUI           *ui.CombatUI                     // Combat UI system
 	IsActive           bool
 	Participants       []*ecs.Entity // Entities involved in tactical combat
 	UseTurnBasedCombat bool          // Flag to switch between old and new combat systems
@@ -46,16 +47,26 @@ func NewTacticalManager(gridWidth, gridHeight, tileSize int) *TacticalManager {
 	gridRenderer := tactical.NewGridRenderer(grid)
 	combat := tactical.NewTacticalCombat(grid)
 	turnBasedCombat := tactical.NewTurnBasedCombatManager(grid)
+	combatUI := ui.NewCombatUI()
 
-	return &TacticalManager{
+	tm := &TacticalManager{
 		Grid:               grid,
 		GridRenderer:       gridRenderer,
 		Combat:             combat,
 		TurnBasedCombat:    turnBasedCombat,
+		CombatUI:           combatUI,
 		IsActive:           false,
 		Participants:       make([]*ecs.Entity, 0),
 		UseTurnBasedCombat: true, // Enable new turn-based system by default
 	}
+
+	// Enable debug mode for combat messages
+	turnBasedCombat.DebugMode = true
+
+	// Setup combat UI callbacks
+	tm.setupCombatUICallbacks()
+
+	return tm
 }
 
 // StartTacticalCombat switches to tactical mode with given entities
@@ -66,7 +77,7 @@ func (tm *TacticalManager) StartTacticalCombat(entities []*ecs.Entity) {
 	if tm.UseTurnBasedCombat {
 		// Initialize new turn-based combat system
 		if err := tm.TurnBasedCombat.InitializeCombat(entities); err != nil {
-			fmt.Printf("Failed to initialize turn-based combat: %v\n", err)
+			logger.Error("Failed to initialize turn-based combat: %v", err)
 			// Fall back to old system
 			tm.UseTurnBasedCombat = false
 			tm.Combat.StartCombat(entities)
@@ -86,6 +97,85 @@ func (tm *TacticalManager) EndTacticalCombat() {
 	tm.Participants = make([]*ecs.Entity, 0)
 	tm.GridRenderer.ClearHighlights()
 	tm.GridRenderer.SetShowGrid(false)
+	tm.CombatUI.Reset()
+}
+
+// setupCombatUICallbacks configures the combat UI callbacks
+func (tm *TacticalManager) setupCombatUICallbacks() {
+	tm.CombatUI.SetCallbacks(
+		func(actionType tactical.ActionType) {
+			// Handle action selection
+			activeUnit := tm.TurnBasedCombat.GetActiveUnit()
+			if activeUnit == nil {
+				return
+			}
+
+			switch actionType {
+			case tactical.ActionWait:
+				// Create and execute end turn action
+				logger.Action("End turn requested for %s (Round: %d)",
+					activeUnit.GetID(), tm.TurnBasedCombat.GetCurrentRound())
+
+				action, err := tm.TurnBasedCombat.CreateEndTurnAction(activeUnit)
+				if err != nil {
+					logger.Error("Failed to create end turn action: %v", err)
+					return
+				}
+
+				logger.Action("Executing end turn action (APCost: %d)", action.APCost)
+				if err := tm.TurnBasedCombat.ExecuteAction(action); err != nil {
+					logger.Error("Failed to execute end turn action: %v", err)
+				} else {
+					logger.Action("End turn executed. New Round: %d",
+						tm.TurnBasedCombat.GetCurrentRound())
+				}
+			}
+		},
+		func(gridPos tactical.GridPos) {
+			// Handle move target selection
+			activeUnit := tm.TurnBasedCombat.GetActiveUnit()
+			if activeUnit == nil {
+				return
+			}
+
+			action, err := tm.TurnBasedCombat.CreateMoveAction(activeUnit, gridPos)
+			if err != nil {
+				logger.Error("Failed to create move action: %v", err)
+				return
+			}
+			if err := tm.TurnBasedCombat.ExecuteAction(action); err != nil {
+				logger.Error("Failed to execute move action: %v", err)
+			}
+		},
+		func(target *ecs.Entity) {
+			// Handle attack target selection
+			activeUnit := tm.TurnBasedCombat.GetActiveUnit()
+			if activeUnit == nil {
+				logger.Action("No active unit for attack")
+				return
+			}
+
+			logger.Action("Creating attack action from %s to %s",
+				activeUnit.GetID(), target.GetID())
+
+			action, err := tm.TurnBasedCombat.CreateAttackAction(activeUnit, target)
+			if err != nil {
+				logger.Error("Failed to create attack action: %v", err)
+				return
+			}
+
+			logger.Action("Executing attack action")
+			if err := tm.TurnBasedCombat.ExecuteAction(action); err != nil {
+				logger.Error("Failed to execute attack action: %v", err)
+			} else {
+				logger.Action("Attack action executed successfully")
+			}
+		},
+		func() {
+			// Handle cancel
+			logger.Action("Attack action cancelled by user")
+		},
+	)
 }
 
 // Update handles tactical combat updates
@@ -97,7 +187,13 @@ func (tm *TacticalManager) Update() {
 	if tm.UseTurnBasedCombat {
 		// Update new turn-based combat system
 		if err := tm.TurnBasedCombat.Update(); err != nil {
-			fmt.Printf("Turn-based combat update error: %v\n", err)
+			logger.Error("Turn-based combat update error: %v", err)
+		}
+
+		// Update combat UI
+		activeUnit := tm.TurnBasedCombat.GetActiveUnit()
+		if err := tm.CombatUI.Update(tm.TurnBasedCombat, activeUnit); err != nil {
+			logger.Error("Combat UI update error: %v", err)
 		}
 
 		// Check if combat has ended
@@ -114,6 +210,14 @@ func (tm *TacticalManager) Update() {
 func (tm *TacticalManager) DrawGrid(screen *ebiten.Image, offsetX, offsetY float64) {
 	if tm.IsActive {
 		tm.GridRenderer.Draw(screen, offsetX, offsetY)
+	}
+}
+
+// DrawCombatUI renders the combat UI
+func (tm *TacticalManager) DrawCombatUI(screen *ebiten.Image) {
+	if tm.IsActive && tm.UseTurnBasedCombat {
+		activeUnit := tm.TurnBasedCombat.GetActiveUnit()
+		tm.CombatUI.Draw(screen, tm.TurnBasedCombat, activeUnit)
 	}
 }
 
@@ -171,7 +275,7 @@ func (tm *TacticalManager) HighlightMovementRangeForPlayer(player *ecs.Entity) {
 	moveRange := stats.MovesRemaining
 	validMoves := tm.Grid.CalculateMovementRange(currentPos, moveRange)
 
-	fmt.Printf("DEBUG: Highlighting movement range for player %s (%s) at (%d,%d) with %d moves remaining (max: %d)\n",
+	logger.Debug("Highlighting movement range for player %s (%s) at (%d,%d) with %d moves remaining (max: %d)",
 		player.GetID(), stats.Job.String(), currentPos.X, currentPos.Y, moveRange, stats.MoveRange)
 
 	tm.GridRenderer.HighlightTiles(validMoves, tactical.HighlightMovement)
@@ -189,7 +293,7 @@ func (tm *TacticalManager) ResetAllMovement() {
 		stats := entity.RPGStats()
 		if stats != nil {
 			stats.ResetMovement()
-			fmt.Printf("DEBUG: Reset movement for %s (%s) - %d moves available\n",
+			logger.Debug("Reset movement for %s (%s) - %d moves available",
 				entity.GetID(), stats.Job.String(), stats.MoveRange)
 		}
 	}
@@ -199,7 +303,7 @@ func (tm *TacticalManager) ResetAllMovement() {
 func (tm *TacticalManager) ResetPlayerMovement(player *ecs.Entity) {
 	if stats := player.RPGStats(); stats != nil {
 		stats.ResetMovement()
-		fmt.Printf("DEBUG: Reset movement for player %s (%s) - %d moves available\n",
+		logger.Debug("Reset movement for player %s (%s) - %d moves available",
 			player.GetID(), stats.Job.String(), stats.MoveRange)
 	}
 }
@@ -208,7 +312,7 @@ func (tm *TacticalManager) ResetPlayerMovement(player *ecs.Entity) {
 func (tm *TacticalManager) handleCombatEnd() {
 	if tm.UseTurnBasedCombat {
 		result := tm.TurnBasedCombat.GetResult()
-		fmt.Printf("Combat ended with result: %s\n", result.String())
+		logger.Combat("Combat ended with result: %s", result.String())
 
 		// TODO: Add proper victory/defeat handling
 		// This could trigger UI changes, experience gain, loot, etc.

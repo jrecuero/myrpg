@@ -2,14 +2,14 @@
 package tactical
 
 import (
-	"fmt"
 	"math/rand"
 	"sort"
 	"time"
 
-	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/constants"
+	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
+	"github.com/jrecuero/myrpg/internal/logger"
 )
 
 // TurnPhase represents the current phase of a unit's turn
@@ -92,12 +92,12 @@ func (tc *TacticalCombat) StartCombat(entities []*ecs.Entity) {
 				transform.X = worldX + offsetX
 				transform.Y = worldY + offsetY
 
-				fmt.Printf("DEBUG: Combat system aligned player %s: (%.1f,%.1f) -> (%.1f,%.1f) at grid (%d,%d)\n",
+				logger.Debug("Combat system aligned player %s: (%.1f,%.1f) -> (%.1f,%.1f) at grid (%d,%d)",
 					entity.GetID(), oldX, oldY, transform.X, transform.Y, gridPos.X, gridPos.Y)
 			} else {
 				// For enemies, always find a random position
 				gridPos = tc.FindStartingPosition(entity)
-				fmt.Printf("DEBUG: Combat system found random position for enemy %s: (%d,%d)\n", entity.GetID(), gridPos.X, gridPos.Y)
+				logger.Debug("Combat system found random position for enemy %s: (%d,%d)", entity.GetID(), gridPos.X, gridPos.Y)
 
 				// Update the entity's world position to match the grid position
 				if transform := entity.Transform(); transform != nil {
@@ -107,13 +107,13 @@ func (tc *TacticalCombat) StartCombat(entities []*ecs.Entity) {
 					transform.Y = worldY + offsetY
 
 					// Debug: Verify the positioning math
-					fmt.Printf("DEBUG: Enemy %s positioning - Grid: (%d,%d) -> GridToWorld: (%.1f,%.1f) -> Final: (%.1f,%.1f)\n",
+					logger.Debug("Enemy %s positioning - Grid: (%d,%d) -> GridToWorld: (%.1f,%.1f) -> Final: (%.1f,%.1f)",
 						entity.GetID(), gridPos.X, gridPos.Y, worldX, worldY, transform.X, transform.Y)
 
 					// Double-check: convert back to grid to verify alignment
 					backToGridX := int((transform.X - offsetX) / float64(tc.Grid.TileSize))
 					backToGridZ := int((transform.Y - offsetY) / float64(tc.Grid.TileSize))
-					fmt.Printf("DEBUG: Enemy %s round-trip verification: (%.1f,%.1f) -> (%d,%d) [should match (%d,%d)]\n",
+					logger.Debug("Enemy %s round-trip verification: (%.1f,%.1f) -> (%d,%d) [should match (%d,%d)]",
 						entity.GetID(), transform.X, transform.Y, backToGridX, backToGridZ, gridPos.X, gridPos.Y)
 				}
 			}
@@ -143,7 +143,7 @@ func (tc *TacticalCombat) StartCombat(entities []*ecs.Entity) {
 	tc.CurrentTurn = 0
 
 	// Debug: Show combat summary
-	fmt.Printf("DEBUG: Tactical combat started with %d participants:\n", len(tc.TurnOrder))
+	logger.Debug("Tactical combat started with %d participants:", len(tc.TurnOrder))
 	playerCount := 0
 	enemyCount := 0
 	for i, turn := range tc.TurnOrder {
@@ -156,12 +156,12 @@ func (tc *TacticalCombat) StartCombat(entities []*ecs.Entity) {
 		}
 		stats := turn.Entity.RPGStats()
 		if stats != nil {
-			fmt.Printf("  %d. %s %s (%s) at (%d,%d) - Initiative: %d, Move: %d\n",
+			logger.Debug("  %d. %s %s (%s) at (%d,%d) - Initiative: %d, Move: %d",
 				i+1, entityType, turn.Entity.GetID(), stats.Job.String(),
 				turn.GridPos.X, turn.GridPos.Y, turn.Initiative, turn.MoveRange)
 		}
 	}
-	fmt.Printf("DEBUG: Combat setup complete - %d players vs %d enemies\n", playerCount, enemyCount)
+	logger.Debug("Combat setup complete - %d players vs %d enemies", playerCount, enemyCount)
 
 	tc.startTurn()
 }
@@ -221,7 +221,7 @@ func (tc *TacticalCombat) findRandomPosition(minX, maxX, minY, maxY int) GridPos
 
 	// If no positions available, fallback to systematic search
 	if len(availablePositions) == 0 {
-		fmt.Printf("DEBUG: No available positions in zone (%d-%d, %d-%d), using systematic fallback\n",
+		logger.Debug("No available positions in zone (%d-%d, %d-%d), using systematic fallback",
 			minX, maxX, minY, maxY)
 		for x := minX; x < maxX; x++ {
 			for y := minY; y < maxY; y++ {
@@ -239,7 +239,7 @@ func (tc *TacticalCombat) findRandomPosition(minX, maxX, minY, maxY int) GridPos
 	randomIndex := rand.Intn(len(availablePositions))
 	selectedPos := availablePositions[randomIndex]
 
-	fmt.Printf("DEBUG: Selected random position (%d,%d) from %d available positions\n",
+	logger.Debug("Selected random position (%d,%d) from %d available positions",
 		selectedPos.X, selectedPos.Y, len(availablePositions))
 
 	return selectedPos

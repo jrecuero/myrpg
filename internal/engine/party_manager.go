@@ -2,11 +2,10 @@
 package engine
 
 import (
-	"fmt"
-
-	"github.com/jrecuero/myrpg/internal/ecs"
-	"github.com/jrecuero/myrpg/internal/tactical"
 	"github.com/jrecuero/myrpg/internal/constants"
+	"github.com/jrecuero/myrpg/internal/ecs"
+	"github.com/jrecuero/myrpg/internal/logger"
+	"github.com/jrecuero/myrpg/internal/tactical"
 )
 
 // PartyManager handles party composition and deployment
@@ -213,7 +212,7 @@ func (td *TacticalDeployment) DeployParty(party []*ecs.Entity) map[*ecs.Entity]t
 			td.Grid.SetOccupied(gridPos, true, member.GetID())
 
 			// Debug: Log deployment
-			fmt.Printf("DEBUG: Deployed unit %s at grid pos (%d,%d)\n", member.GetID(), gridPos.X, gridPos.Y)
+			logger.Debug("Deployed unit %s at grid pos (%d,%d)", member.GetID(), gridPos.X, gridPos.Y)
 
 			// Update entity transform to match grid position with offset
 			if transform := member.Transform(); transform != nil {
@@ -223,13 +222,13 @@ func (td *TacticalDeployment) DeployParty(party []*ecs.Entity) map[*ecs.Entity]t
 				transform.Y = worldY + constants.GridOffsetY // 110px top panel + 2px separator
 
 				// Debug: Log world coordinates
-				fmt.Printf("DEBUG: Unit %s world coords: (%.1f,%.1f)\n", member.GetID(), transform.X, transform.Y)
+				logger.Debug("Unit %s world coords: (%.1f,%.1f)", member.GetID(), transform.X, transform.Y)
 			}
 
 			deployedCount++
 		} else {
 			// Debug: Log failed deployment
-			fmt.Printf("DEBUG: Failed to deploy unit %s at grid pos (%d,%d) - Valid: %t, Passable: %t\n",
+			logger.Debug("Failed to deploy unit %s at grid pos (%d,%d) - Valid: %t, Passable: %t",
 				member.GetID(), gridPos.X, gridPos.Y, td.Grid.IsValidPosition(gridPos), td.Grid.IsPassable(gridPos))
 		}
 	}
@@ -245,7 +244,7 @@ func (td *TacticalDeployment) clearUnitFromGrid(unitID string) {
 			tile := td.Grid.GetTile(pos)
 			if tile != nil && tile.Occupied && tile.UnitID == unitID {
 				td.Grid.SetOccupied(pos, false, "")
-				fmt.Printf("DEBUG: Cleared unit %s from grid pos (%d,%d)\n", unitID, x,y)
+				logger.Debug("Cleared unit %s from grid pos (%d,%d)", unitID, x, y)
 			}
 		}
 	}

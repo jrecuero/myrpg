@@ -16,9 +16,18 @@ import (
 	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 	"github.com/jrecuero/myrpg/internal/engine"
+	"github.com/jrecuero/myrpg/internal/logger"
 )
 
 func main() {
+	// Initialize logger first
+	if err := logger.Init(); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	defer logger.Close()
+
+	logger.Info("Starting MyRPG Game")
+
 	// Create a new game instance
 	// Note: As of Go 1.20+, the global random generator is automatically seeded
 	game := engine.NewGame()
