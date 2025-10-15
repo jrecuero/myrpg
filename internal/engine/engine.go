@@ -1225,8 +1225,9 @@ func (g *Game) showEquipment() {
 	if equipmentComp == nil {
 		// Create a new equipment component if none exists
 		equipmentComp = components.NewEquipmentComponent()
-		// TODO: Add equipment component to the player entity
-		// For now, we'll create a temporary one
+		// Add equipment component to the player entity so it persists
+		activePlayer.AddComponent(ecs.ComponentEquipment, equipmentComp)
+		logger.Info("Created and attached new equipment component for player: %s", activePlayer.RPGStats().Name)
 	}
 
 	g.uiManager.ShowEquipment(equipmentComp, activePlayer.RPGStats())

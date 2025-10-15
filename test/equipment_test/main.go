@@ -218,6 +218,11 @@ func main() {
 
 	// Create equipment widget
 	equipmentWidget := ui.NewEquipmentWidget(ScreenWidth, ScreenHeight, equipmentComp, statsComp)
+
+	// Set up available equipment for testing equip/unequip
+	availableEquipment := ui.CreateMockEquipmentSet()
+	equipmentWidget.SetAvailableEquipment(availableEquipment)
+
 	equipmentWidget.Show() // Show immediately for testing
 
 	// Create game instance

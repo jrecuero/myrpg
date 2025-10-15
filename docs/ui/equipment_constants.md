@@ -7,7 +7,7 @@ This document defines all constants used by the Equipment Widget, following the 
 | Constant | Value | Description |
 |----------|--------|-------------|
 | `EquipmentWidgetWidth` | 500 | Widget width in pixels |
-| `EquipmentWidgetHeight` | 600 | Widget height in pixels |
+| `EquipmentWidgetHeight` | 580 | Widget height in pixels |
 | `EquipmentWidgetBorderWidth` | 2 | Border thickness |
 | `EquipmentWidgetShadowOffset` | 4 | Shadow offset distance |
 | `EquipmentWidgetPadding` | 15 | Internal padding |
@@ -30,34 +30,45 @@ This document defines all constants used by the Equipment Widget, following the 
 
 | Slot Type | X Position | Y Position | Description |
 |-----------|------------|------------|-------------|
-| `HeadSlotX` | 200 | 80 | Head/helmet slot position |
-| `HeadSlotY` | 80 | 80 | Head/helmet slot position |
-| `ChestSlotX` | 200 | 160 | Chest/armor slot position |
-| `ChestSlotY` | 160 | 160 | Chest/armor slot position |
-| `LegsSlotX` | 200 | 240 | Legs/pants slot position |
-| `LegsSlotY` | 240 | 240 | Legs/pants slot position |
-| `FeetSlotX` | 200 | 320 | Feet/boots slot position |
-| `FeetSlotY` | 320 | 320 | Feet/boots slot position |
-| `WeaponSlotX` | 120 | 160 | Main weapon slot position |
-| `WeaponSlotY` | 160 | 160 | Main weapon slot position |
-| `ShieldSlotX` | 280 | 160 | Shield/off-hand slot position |
-| `ShieldSlotY` | 160 | 160 | Shield/off-hand slot position |
-| `AccessorySlot1X` | 120 | 80 | First accessory slot position |
-| `AccessorySlot1Y` | 80 | 80 | First accessory slot position |
-| `AccessorySlot2X` | 280 | 80 | Second accessory slot position |
-| `AccessorySlot2Y` | 80 | 80 | Second accessory slot position |
+| `HeadSlotX` | 200 | 40 | Head/helmet slot position |
+| `HeadSlotY` | 40 | 40 | Head/helmet slot position |
+| `ChestSlotX` | 200 | 120 | Chest/armor slot position |
+| `ChestSlotY` | 120 | 120 | Chest/armor slot position |
+| `LegsSlotX` | 200 | 200 | Legs/pants slot position |
+| `LegsSlotY` | 200 | 200 | Legs/pants slot position |
+| `FeetSlotX` | 200 | 280 | Feet/boots slot position |
+| `FeetSlotY` | 280 | 280 | Feet/boots slot position |
+| `WeaponSlotX` | 120 | 120 | Main weapon slot position |
+| `WeaponSlotY` | 120 | 120 | Main weapon slot position |
+| `ShieldSlotX` | 280 | 120 | Shield/off-hand slot position |
+| `ShieldSlotY` | 120 | 120 | Shield/off-hand slot position |
+| `AccessorySlot1X` | 120 | 40 | First accessory slot position |
+| `AccessorySlot1Y` | 40 | 40 | First accessory slot position |
+| `AccessorySlot2X` | 280 | 40 | Second accessory slot position |
+| `AccessorySlot2Y` | 40 | 40 | Second accessory slot position |
 
 ## Stat Comparison Panel
 
 | Constant | Value | Description |
 |----------|--------|-------------|
 | `StatComparisonPanelX` | 350 | X position of stats comparison panel |
-| `StatComparisonPanelY` | 80 | Y position of stats comparison panel |
+| `StatComparisonPanelY` | 40 | Y position of stats comparison panel |
 | `StatComparisonPanelWidth` | 120 | Width of stats comparison panel |
 | `StatComparisonPanelHeight` | 320 | Height of stats comparison panel |
 | `StatComparisonLineHeight` | 16 | Height of each stat comparison line |
 | `StatComparisonArrowWidth` | 12 | Width of stat change arrows |
 | `StatComparisonValueWidth` | 40 | Width allocated for stat values |
+
+## Equipment Details Panel
+
+| Constant | Value | Description |
+|----------|--------|-------------|
+| `EquipmentDetailsPanelX` | 20 | X position of equipment details panel |
+| `EquipmentDetailsPanelY` | 420 | Y position of equipment details panel |
+| `EquipmentDetailsPanelWidth` | 460 | Width of equipment details panel |
+| `EquipmentDetailsPanelHeight` | 120 | Height of equipment details panel |
+| `EquipmentDetailsLineHeight` | 14 | Height of each text line in details |
+| `EquipmentDetailsPadding` | 8 | Internal padding for details panel |
 
 ## Color Constants (RGBA values)
 
@@ -140,6 +151,18 @@ This document defines all constants used by the Equipment Widget, following the 
 | `StatNoChangeG` | 200 | 200 | 200 | 255 | No stat change |
 | `StatNoChangeB` | 200 | 200 | 200 | 255 | No stat change |
 | `StatNoChangeA` | 255 | 200 | 200 | 255 | No stat change |
+
+### Equipment Details Panel Colors
+| Color Component | R | G | B | A | Description |
+|----------------|---|---|---|---|-------------|
+| `EquipmentDetailsPanelBgR` | 40 | 40 | 40 | 255 | Details panel background |
+| `EquipmentDetailsPanelBgG` | 40 | 40 | 40 | 255 | Details panel background |
+| `EquipmentDetailsPanelBgB` | 40 | 40 | 40 | 255 | Details panel background |
+| `EquipmentDetailsPanelBgA` | 255 | 40 | 40 | 255 | Details panel background |
+| `EquipmentDetailsPanelBorderR` | 100 | 100 | 100 | 255 | Details panel border |
+| `EquipmentDetailsPanelBorderG` | 100 | 100 | 100 | 255 | Details panel border |
+| `EquipmentDetailsPanelBorderB` | 100 | 100 | 100 | 255 | Details panel border |
+| `EquipmentDetailsPanelBorderA` | 255 | 100 | 100 | 255 | Details panel border |
 
 ## Equipment Slot Enum
 

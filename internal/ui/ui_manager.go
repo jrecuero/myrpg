@@ -435,6 +435,12 @@ func (ui *UIManager) ShowEquipment(equipmentComp *components.EquipmentComponent,
 	if ui.equipment != nil {
 		ui.equipment.EquipmentComp = equipmentComp
 		ui.equipment.CharacterStats = character
+
+		// Set up available equipment for testing (mock system)
+		if len(ui.equipment.AvailableEquipment) == 0 {
+			ui.equipment.SetAvailableEquipment(CreateMockEquipmentSet())
+		}
+
 		ui.equipment.Show()
 	}
 }

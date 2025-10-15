@@ -6,5 +6,6 @@
     },
     "gopls": {
         "experimentalWorkspaceModule": true
-    }
+    },
+    "makefile.configureOnOpen": false
 }
