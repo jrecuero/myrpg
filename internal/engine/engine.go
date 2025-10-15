@@ -391,7 +391,7 @@ func (g *Game) SwitchToNextPlayer() {
 
 func (g *Game) Update() error {
 	// Update UI manager (handles popups and other UI interactions)
-	g.uiManager.Update()
+	escConsumedByUI := g.uiManager.Update()
 
 	// Test popup widgets (demo/testing)
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) && !g.uiManager.IsPopupVisible() {
@@ -400,9 +400,12 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyI) && !g.uiManager.IsPopupVisible() {
 		g.showTestInfoPopup()
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyC) && !g.uiManager.IsPopupVisible() {
+		g.showCharacterStats()
+	}
 
-	// Block game input processing when popup is visible
-	if g.uiManager.IsPopupVisible() {
+	// Block game input processing when popup is visible OR when UI consumed ESC
+	if g.uiManager.IsPopupVisible() || escConsumedByUI {
 		return nil // Only process UI input, skip game logic
 	}
 
@@ -560,7 +563,7 @@ func (g *Game) updateTactical() error {
 	g.tacticalManager.Update()
 
 	// Handle tactical input
-	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.SwitchToExplorationMode()
 	}
 
@@ -1189,4 +1192,18 @@ Press ESC to close this help window.`
 			logger.Info("Player closed help popup")
 		},
 	)
+}
+
+// showCharacterStats displays the character statistics widget for the active player
+func (g *Game) showCharacterStats() {
+	activePlayer := g.GetActivePlayer()
+	if activePlayer == nil || activePlayer.RPGStats() == nil {
+		g.uiManager.AddMessage("No active player to display stats for")
+		logger.Info("Attempted to show character stats but no active player available")
+		return
+	}
+
+	g.uiManager.ShowCharacterStats(activePlayer.RPGStats())
+	g.uiManager.AddMessage(fmt.Sprintf("Displaying stats for %s", activePlayer.RPGStats().Name))
+	logger.Info("Showing character stats for player: %s", activePlayer.RPGStats().Name)
 }

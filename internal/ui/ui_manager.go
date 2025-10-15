@@ -98,6 +98,7 @@ type UIManager struct {
 	messageSystem  *MessageSystem
 	popupSelection *PopupSelectionWidget // Reusable popup selection widget
 	popupInfo      *PopupInfoWidget      // Reusable popup info widget
+	characterStats *CharacterStatsWidget // Character statistics widget
 }
 
 // NewUIManager creates a new UI manager
@@ -109,10 +110,16 @@ func NewUIManager() *UIManager {
 	popupSelection := NewPopupSelectionWidget("", []string{}, popupX, popupY, 300, 200)
 	popupInfo := NewPopupInfoWidget("", "", popupX, popupY, 400, 300)
 
+	// Create character stats widget centered
+	statsX := (ScreenWidth - StatsWidgetWidth) / 2
+	statsY := (ScreenHeight - StatsWidgetHeight) / 2
+	characterStats := NewCharacterStatsWidget(statsX, statsY, nil)
+
 	return &UIManager{
 		messageSystem:  NewMessageSystem(50), // Keep last 50 messages
 		popupSelection: popupSelection,
 		popupInfo:      popupInfo,
+		characterStats: characterStats,
 	}
 }
 
@@ -328,13 +335,27 @@ func (ui *UIManager) DrawBattleMenu(screen *ebiten.Image, battleText string) {
 }
 
 // Update handles input for UI components including popup widgets
-func (ui *UIManager) Update() {
+// Returns true if a popup consumed the ESC key in this frame
+func (ui *UIManager) Update() bool {
+	escConsumed := false
+
 	if ui.popupSelection != nil {
-		ui.popupSelection.Update()
+		if ui.popupSelection.Update() {
+			escConsumed = true
+		}
 	}
 	if ui.popupInfo != nil {
-		ui.popupInfo.Update()
+		if ui.popupInfo.Update() {
+			escConsumed = true
+		}
 	}
+	if ui.characterStats != nil {
+		if ui.characterStats.Update() {
+			escConsumed = true
+		}
+	}
+
+	return escConsumed
 }
 
 // DrawPopups renders any active popup widgets on top of other UI elements
@@ -344,6 +365,9 @@ func (ui *UIManager) DrawPopups(screen *ebiten.Image) {
 	}
 	if ui.popupInfo != nil {
 		ui.popupInfo.Draw(screen)
+	}
+	if ui.characterStats != nil {
+		ui.characterStats.Draw(screen)
 	}
 }
 
@@ -378,9 +402,25 @@ func (ui *UIManager) HideInfoPopup() {
 	}
 }
 
+// ShowCharacterStats displays the character statistics widget
+func (ui *UIManager) ShowCharacterStats(character *components.RPGStatsComponent) {
+	if ui.characterStats != nil {
+		ui.characterStats.SetCharacter(character)
+		ui.characterStats.Show()
+	}
+}
+
+// HideCharacterStats closes the character statistics widget
+func (ui *UIManager) HideCharacterStats() {
+	if ui.characterStats != nil {
+		ui.characterStats.Hide()
+	}
+}
+
 // IsPopupVisible returns true if any popup is currently visible
 func (ui *UIManager) IsPopupVisible() bool {
 	selectionVisible := ui.popupSelection != nil && ui.popupSelection.IsVisible
 	infoVisible := ui.popupInfo != nil && ui.popupInfo.IsVisible
-	return selectionVisible || infoVisible
+	statsVisible := ui.characterStats != nil && ui.characterStats.IsVisible()
+	return selectionVisible || infoVisible || statsVisible
 }

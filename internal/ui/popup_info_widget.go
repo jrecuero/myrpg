@@ -150,15 +150,18 @@ func (p *PopupInfoWidget) processContent() {
 }
 
 // Update handles input and updates the widget state
-func (p *PopupInfoWidget) Update() {
+// Returns true if the widget consumed the ESC key in this frame
+func (p *PopupInfoWidget) Update() bool {
 	if !p.IsVisible {
-		return
+		return false
 	}
 
 	// Handle Escape to close
+	escConsumed := false
 	escapePressed := ebiten.IsKeyPressed(ebiten.KeyEscape)
 	if escapePressed && !p.lastEscapePressed {
 		p.Hide()
+		escConsumed = true
 	}
 	p.lastEscapePressed = escapePressed
 
@@ -184,6 +187,8 @@ func (p *PopupInfoWidget) Update() {
 		p.lastUpPressed = upPressed
 		p.lastDownPressed = downPressed
 	}
+
+	return escConsumed
 }
 
 // Draw renders the popup widget to the screen

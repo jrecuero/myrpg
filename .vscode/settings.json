@@ -1,0 +1,10 @@
+{
+    "go.toolsManagement.autoUpdate": true,
+    "go.useLanguageServer": true,
+    "go.alternateTools": {
+        "go": "go"
+    },
+    "gopls": {
+        "experimentalWorkspaceModule": true
+    }
+}

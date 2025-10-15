@@ -152,9 +152,10 @@ func (p *PopupSelectionWidget) Hide() {
 }
 
 // Update handles input and updates the widget state
-func (p *PopupSelectionWidget) Update() {
+// Returns true if the widget consumed the ESC key in this frame
+func (p *PopupSelectionWidget) Update() bool {
 	if !p.IsVisible || len(p.Options) == 0 {
-		return
+		return false
 	}
 
 	// Handle Up/Down navigation
@@ -188,11 +189,13 @@ func (p *PopupSelectionWidget) Update() {
 	}
 
 	// Cancel selection
+	escConsumed := false
 	if escapePressed && !p.lastEscapePressed {
 		if p.OnCancel != nil {
 			p.OnCancel()
 		}
 		p.Hide()
+		escConsumed = true
 	}
 
 	// Update input state
@@ -200,6 +203,8 @@ func (p *PopupSelectionWidget) Update() {
 	p.lastDownPressed = downPressed
 	p.lastEnterPressed = enterPressed
 	p.lastEscapePressed = escapePressed
+
+	return escConsumed
 }
 
 // Draw renders the popup widget
