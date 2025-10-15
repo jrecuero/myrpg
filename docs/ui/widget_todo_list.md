@@ -1,0 +1,302 @@
+# Widget Development Todo List
+
+This document outlines recommended widgets for the RPG game, organized by implementation priority and complexity. Each widget builds on the existing popup widget infrastructure with constants-based customization.
+
+## 🚀 High Priority Widgets (Essential for RPG gameplay)
+
+### 1. ✅ [COMPLETED] Popup Selection Widget
+- **Status**: ✅ COMPLETED
+- **Features**: Scrollable list, arrow navigation, Enter/Escape handling, callback system
+- **Integration**: UIManager, input blocking, P key trigger
+- **Files**: `internal/ui/popup_selection_widget.go`
+
+### 2. ✅ [COMPLETED] Popup Info Widget  
+- **Status**: ✅ COMPLETED
+- **Features**: Multi-line text display, scrollable content, ESC to close
+- **Integration**: UIManager, input blocking, I key trigger
+- **Files**: `internal/ui/popup_info_widget.go`
+
+### 3. 📋 Inventory Widget
+- **Status**: ⏳ TODO - High Priority
+- **Features**: 
+  - Grid-based item display with configurable slot sizes
+  - Drag & drop item management
+  - Item tooltips with stats and descriptions
+  - Sorting options (type, value, name, rarity)
+  - Search/filter functionality
+  - Item stacking for consumables
+- **Integration**: 
+  - Triggered by 'I' key in exploration mode
+  - Links with Equipment Widget for item equipping
+  - Uses popup widget base architecture
+  - Item data structure integration
+- **Implementation Notes**:
+  - Use constants for grid sizing, slot dimensions, tooltip styling
+  - Support different inventory sizes based on character progression
+  - Include visual indicators for item quality/rarity
+- **Estimated Complexity**: Medium-High
+- **Dependencies**: Item system, Equipment system
+
+### 4. 📊 Character Stats Widget
+- **Status**: ⏳ TODO - High Priority
+- **Features**:
+  - Detailed stat breakdown organized by categories (Core, Combat, Tactical)
+  - Level progression preview with stat gains
+  - Job-specific stat highlighting
+  - Stat comparisons for equipment changes
+  - Experience bar with next level preview
+- **Integration**:
+  - Triggered by 'C' key in exploration mode
+  - Uses existing RPGStatsComponent data
+  - Links with Equipment Widget for stat previews
+  - JobType enum integration for job-specific displays
+- **Implementation Notes**:
+  - Organize stats into collapsible sections
+  - Use color coding for stat categories
+  - Show base stats vs modified stats (equipment bonuses)
+- **Estimated Complexity**: Medium
+- **Dependencies**: Existing RPGStatsComponent system
+
+### 5. ⚔️ Equipment Widget
+- **Status**: ⏳ TODO - High Priority
+- **Features**:
+  - Paperdoll-style equipment slots (Weapon, Armor, Accessories)
+  - Visual equipment preview with character model
+  - Stat comparison before/after equipping
+  - Equipment set bonuses display
+  - Quick equipment swapping
+- **Integration**:
+  - Triggered by 'E' key or from Inventory Widget
+  - Links with Inventory Widget for item selection
+  - Shows stat changes in real-time
+  - Equipment slot restrictions based on JobType
+- **Implementation Notes**:
+  - Use slot-based layout with visual equipment representation
+  - Color-code stat changes (green=better, red=worse)
+  - Support equipment requirements (level, stats, job)
+- **Estimated Complexity**: Medium-High
+- **Dependencies**: Item system, Equipment slots system
+
+### 6. 💬 Dialog Widget
+- **Status**: ⏳ TODO - High Priority
+- **Features**:
+  - NPC conversation display with portraits
+  - Multiple choice selection trees
+  - Text formatting (bold, italic, colors)
+  - Auto-advance and manual advance options
+  - Dialog history/log
+- **Integration**:
+  - Triggered by NPC interactions
+  - Can pause tactical combat for story moments
+  - Input blocking during conversations
+  - Save/load dialog state for complex conversations
+- **Implementation Notes**:
+  - Support rich text formatting
+  - Typewriter effect for immersive text display
+  - Portrait positioning and scaling
+- **Estimated Complexity**: Medium
+- **Dependencies**: NPC system, Story/Quest system
+
+## 📈 Medium Priority Widgets (Enhances experience)
+
+### 7. 🎯 Skills/Abilities Widget
+- **Status**: ⏳ TODO - Medium Priority
+- **Features**:
+  - Job-specific skill trees with branching paths
+  - Skill point allocation and preview
+  - Ability tooltips with damage/effects
+  - Cooldown and resource cost tracking
+  - Skill prerequisites visualization
+- **Integration**:
+  - Triggered by 'K' key (Skills)
+  - Uses JobType system for skill tree selection
+  - Links with Character Stats for skill point availability
+  - Combat integration for ability usage
+- **Implementation Notes**:
+  - Tree-like layout with connecting lines
+  - Interactive nodes for skill point allocation
+  - Preview mode for planning builds
+- **Estimated Complexity**: High
+- **Dependencies**: Skill system, Job progression system
+
+### 8. 📋 Quest Journal Widget
+- **Status**: ⏳ TODO - Medium Priority
+- **Features**:
+  - Active quests with objective tracking
+  - Completed quests archive
+  - Quest categories (Main, Side, Daily)
+  - Search and filtering options
+  - Quest location hints/waypoints
+- **Integration**:
+  - Triggered by 'J' key (Journal)
+  - Links with Dialog Widget for quest acceptance
+  - Map integration for quest locations
+  - Progress tracking and notifications
+- **Implementation Notes**:
+  - Tabbed interface for quest categories
+  - Progress bars for multi-step quests
+  - Rich text for quest descriptions
+- **Estimated Complexity**: Medium
+- **Dependencies**: Quest system, Map/Location system
+
+### 9. 🎁 Loot/Reward Widget
+- **Status**: ⏳ TODO - Medium Priority
+- **Features**:
+  - Item rewards display with rarity highlighting
+  - Experience and gold gain notifications
+  - Loot distribution for party members
+  - Auto-pickup options with filters
+  - Loot history and statistics
+- **Integration**:
+  - Appears after combat victories
+  - Triggered by treasure chest interactions
+  - Links with Inventory Widget for item collection
+  - Party distribution mechanics
+- **Implementation Notes**:
+  - Animated item reveals for excitement
+  - Rarity color coding and effects
+  - Batch collection options
+- **Estimated Complexity**: Medium
+- **Dependencies**: Loot system, Party management
+
+## 🔧 Lower Priority Widgets (Nice to have)
+
+### 10. 📈 Experience/Progress Widget
+- **Status**: ⏳ TODO - Lower Priority
+- **Features**:
+  - Detailed XP breakdown by source (combat, quests, exploration)
+  - Level progress visualization with milestones
+  - Recent gains log with timestamps
+  - Next level stat preview
+  - Progress statistics and achievements
+- **Integration**:
+  - Overlay display during XP gains
+  - Part of Character Stats Widget as sub-panel
+  - Uses existing Experience/ExpToNext system
+  - Achievement system integration
+- **Implementation Notes**:
+  - Smooth progress bar animations
+  - XP source categorization and tracking
+  - Level-up celebration effects
+- **Estimated Complexity**: Low-Medium
+- **Dependencies**: Existing XP system, Achievement system
+
+### 11. 🗺️ Minimap Widget
+- **Status**: ⏳ TODO - Lower Priority
+- **Features**:
+  - World overview with fog of war
+  - Unit positions (allies, enemies, NPCs)
+  - Interactive map navigation
+  - Zoom levels and detail modes
+  - Waypoint and marker system
+- **Integration**:
+  - Toggleable overlay (M key)
+  - Works with tactical grid system
+  - Links with Quest Journal for objective markers
+  - Exploration mode navigation aid
+- **Implementation Notes**:
+  - Efficient rendering for large maps
+  - Real-time unit tracking
+  - Customizable visibility options
+- **Estimated Complexity**: High
+- **Dependencies**: Map system, World generation
+
+### 12. ⚙️ Settings/Options Widget
+- **Status**: ⏳ TODO - Lower Priority
+- **Features**:
+  - Game options organized by categories
+  - Customizable key bindings with conflict detection
+  - Audio and video settings
+  - Gameplay preferences (auto-save, difficulty)
+  - Import/export settings profiles
+- **Integration**:
+  - Accessible from main menu and ESC key
+  - Settings persistence system
+  - Real-time preview for visual changes
+  - Input validation and conflict resolution
+- **Implementation Notes**:
+  - Tabbed interface for setting categories
+  - Live preview for changes
+  - Reset to defaults functionality
+- **Estimated Complexity**: Medium
+- **Dependencies**: Settings persistence, Configuration system
+
+## 🏗️ Implementation Guidelines
+
+### Architecture Patterns
+- **Base Class**: All widgets should extend popup widget architecture
+- **Constants**: Use comprehensive constants for all visual properties
+- **Input Blocking**: Integrate with existing UIManager input blocking system
+- **Callbacks**: Implement callback system for widget interactions
+- **Testing**: Create test programs for each widget (following popup widget pattern)
+
+### Code Organization
+```
+internal/ui/
+├── popup_base_widget.go          # Common popup functionality
+├── inventory_widget.go            # Inventory management
+├── character_stats_widget.go      # Character information
+├── equipment_widget.go            # Equipment management
+├── dialog_widget.go               # NPC conversations
+├── skills_widget.go               # Skill trees and abilities
+├── quest_journal_widget.go        # Quest tracking
+├── loot_widget.go                 # Reward displays
+├── progress_widget.go             # Experience tracking
+├── minimap_widget.go              # World navigation
+├── settings_widget.go             # Game options
+└── ui_manager.go                  # Central widget coordination
+```
+
+### Constants Organization
+```
+docs/ui/
+├── popup_constants.md             # ✅ COMPLETED
+├── inventory_constants.md          # Grid sizes, slot dimensions
+├── character_stats_constants.md    # Layout, colors, categories
+├── equipment_constants.md          # Slot positions, preview areas
+└── widget_constants_master.md      # Master reference for all widgets
+```
+
+### Testing Strategy
+```
+test/
+├── inventory_test/                # Inventory widget functionality
+├── character_stats_test/          # Stats display and navigation
+├── equipment_test/                # Equipment preview and swapping
+└── widget_integration_test/       # Multi-widget interactions
+```
+
+## 📋 Implementation Checklist Template
+
+For each widget implementation:
+- [ ] Create widget file with comprehensive constants
+- [ ] Implement core functionality with popup base
+- [ ] Add UIManager integration with input blocking
+- [ ] Create test program for standalone testing
+- [ ] Add Makefile target for easy testing
+- [ ] Update documentation with constants reference
+- [ ] Integrate with existing game systems
+- [ ] Add keyboard shortcuts and hotkeys
+- [ ] Test input conflicts and resolution
+- [ ] Verify visual layout and responsiveness
+
+## 🎯 Next Steps
+
+1. **Choose Implementation Order**: Start with Inventory Widget as highest impact
+2. **Set Up Base Architecture**: Create common popup base class if needed
+3. **Define Data Structures**: Ensure Item, Equipment systems are ready
+4. **Plan Integration Points**: Map out UIManager coordination
+5. **Create Development Branches**: One widget per branch for clean development
+
+## 📝 Notes
+
+- All widgets should follow the established popup widget patterns
+- Prioritize user experience and intuitive navigation
+- Maintain consistent visual style with existing UI
+- Ensure proper input handling and conflict resolution
+- Plan for future extensibility and customization options
+- Consider accessibility and usability in all designs
+
+---
+
+This todo list serves as a comprehensive roadmap for widget development. Each widget should be implemented incrementally, tested thoroughly, and integrated smoothly with the existing game systems.
