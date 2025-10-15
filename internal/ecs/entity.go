@@ -113,6 +113,17 @@ func (e *Entity) RPGStats() *components.RPGStatsComponent {
 	return nil
 }
 
+// Equipment retrieves the EquipmentComponent from the entity.
+// returns a pointer to the EquipmentComponent or nil if not found.
+func (e *Entity) Equipment() *components.EquipmentComponent {
+	if comp, exists := e.GetComponent(ComponentEquipment); exists {
+		if equipment, ok := comp.(*components.EquipmentComponent); ok {
+			return equipment
+		}
+	}
+	return nil
+}
+
 // Animation retrieves the AnimationComponent from the entity.
 // returns a pointer to the AnimationComponent or nil if not found.
 func (e *Entity) Animation() *components.AnimationComponent {

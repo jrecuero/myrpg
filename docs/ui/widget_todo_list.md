@@ -58,22 +58,30 @@ This document outlines recommended widgets for the RPG game, organized by implem
 - **Completed**: All features implemented with comprehensive constants system
 
 ### 5. ⚔️ Equipment Widget
-- **Status**: ⏳ TODO - High Priority
+- **Status**: ✅ MOSTLY COMPLETE - High Priority
 - **Features**:
-  - Paperdoll-style equipment slots (Weapon, Armor, Accessories)
-  - Visual equipment preview with character model
-  - Stat comparison before/after equipping
-  - Equipment set bonuses display
-  - Quick equipment swapping
+  - ✅ Paperdoll-style equipment slots (Weapon, Armor, Accessories)
+  - ✅ Visual equipment preview with character model
+  - ⏳ Stat comparison before/after equipping (basic framework in place)
+  - ⏳ Equipment set bonuses display (structure ready)
+  - ⏳ Quick equipment swapping (ENTER key handler placeholder)
 - **Integration**:
-  - Triggered by 'E' key or from Inventory Widget
-  - Links with Inventory Widget for item selection
-  - Shows stat changes in real-time
-  - Equipment slot restrictions based on JobType
+  - ✅ Triggered by 'E' key in exploration mode
+  - ⏳ Links with Inventory Widget for item selection (future)
+  - ⏳ Shows stat changes in real-time (framework ready)
+  - ✅ Equipment slot restrictions based on JobType
+  - ✅ UIManager integration with input blocking
+  - ✅ Engine integration with showEquipment() method
 - **Implementation Notes**:
-  - Use slot-based layout with visual equipment representation
-  - Color-code stat changes (green=better, red=worse)
-  - Support equipment requirements (level, stats, job)
+  - ✅ Use slot-based layout with visual equipment representation
+  - ⏳ Color-code stat changes (green=better, red=worse) (colors defined)
+  - ✅ Support equipment requirements (level, stats, job)
+  - ✅ ESC key handling and navigation system
+- **Files**: `internal/ui/equipment_widget.go`, `internal/ecs/components/equipment.go`, `test/equipment_test/main.go`
+- **Documentation**: `docs/ui/equipment_constants.md`
+- **Testing**: `make test-equipment` - Interactive test program
+- **Engine Integration**: ✅ Complete - 'E' key trigger, UIManager methods, Entity component access
+- **Remaining Work**: Stat comparison logic, equip/unequip functionality, inventory integration
 - **Estimated Complexity**: Medium-High
 - **Dependencies**: Item system, Equipment slots system
 

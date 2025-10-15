@@ -403,6 +403,9 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) && !g.uiManager.IsPopupVisible() {
 		g.showCharacterStats()
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyE) && !g.uiManager.IsPopupVisible() {
+		g.showEquipment()
+	}
 
 	// Block game input processing when popup is visible OR when UI consumed ESC
 	if g.uiManager.IsPopupVisible() || escConsumedByUI {
@@ -1206,4 +1209,27 @@ func (g *Game) showCharacterStats() {
 	g.uiManager.ShowCharacterStats(activePlayer.RPGStats())
 	g.uiManager.AddMessage(fmt.Sprintf("Displaying stats for %s", activePlayer.RPGStats().Name))
 	logger.Info("Showing character stats for player: %s", activePlayer.RPGStats().Name)
+}
+
+// showEquipment displays the equipment widget for the active player
+func (g *Game) showEquipment() {
+	activePlayer := g.GetActivePlayer()
+	if activePlayer == nil || activePlayer.RPGStats() == nil {
+		g.uiManager.AddMessage("No active player to display equipment for")
+		logger.Info("Attempted to show equipment but no active player available")
+		return
+	}
+
+	// Get or create equipment component for the active player
+	equipmentComp := activePlayer.Equipment()
+	if equipmentComp == nil {
+		// Create a new equipment component if none exists
+		equipmentComp = components.NewEquipmentComponent()
+		// TODO: Add equipment component to the player entity
+		// For now, we'll create a temporary one
+	}
+
+	g.uiManager.ShowEquipment(equipmentComp, activePlayer.RPGStats())
+	g.uiManager.AddMessage(fmt.Sprintf("Displaying equipment for %s", activePlayer.RPGStats().Name))
+	logger.Info("Showing equipment for player: %s", activePlayer.RPGStats().Name)
 }

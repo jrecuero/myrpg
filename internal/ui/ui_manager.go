@@ -99,6 +99,7 @@ type UIManager struct {
 	popupSelection *PopupSelectionWidget // Reusable popup selection widget
 	popupInfo      *PopupInfoWidget      // Reusable popup info widget
 	characterStats *CharacterStatsWidget // Character statistics widget
+	equipment      *EquipmentWidget      // Equipment management widget
 }
 
 // NewUIManager creates a new UI manager
@@ -115,11 +116,15 @@ func NewUIManager() *UIManager {
 	statsY := (ScreenHeight - StatsWidgetHeight) / 2
 	characterStats := NewCharacterStatsWidget(statsX, statsY, nil)
 
+	// Create equipment widget centered
+	equipment := NewEquipmentWidget(ScreenWidth, ScreenHeight, nil, nil)
+
 	return &UIManager{
 		messageSystem:  NewMessageSystem(50), // Keep last 50 messages
 		popupSelection: popupSelection,
 		popupInfo:      popupInfo,
 		characterStats: characterStats,
+		equipment:      equipment,
 	}
 }
 
@@ -354,6 +359,11 @@ func (ui *UIManager) Update() bool {
 			escConsumed = true
 		}
 	}
+	if ui.equipment != nil {
+		if ui.equipment.Update() {
+			escConsumed = true
+		}
+	}
 
 	return escConsumed
 }
@@ -368,6 +378,9 @@ func (ui *UIManager) DrawPopups(screen *ebiten.Image) {
 	}
 	if ui.characterStats != nil {
 		ui.characterStats.Draw(screen)
+	}
+	if ui.equipment != nil {
+		ui.equipment.Draw(screen)
 	}
 }
 
@@ -417,10 +430,27 @@ func (ui *UIManager) HideCharacterStats() {
 	}
 }
 
+// ShowEquipment displays the equipment widget
+func (ui *UIManager) ShowEquipment(equipmentComp *components.EquipmentComponent, character *components.RPGStatsComponent) {
+	if ui.equipment != nil {
+		ui.equipment.EquipmentComp = equipmentComp
+		ui.equipment.CharacterStats = character
+		ui.equipment.Show()
+	}
+}
+
+// HideEquipment closes the equipment widget
+func (ui *UIManager) HideEquipment() {
+	if ui.equipment != nil {
+		ui.equipment.Hide()
+	}
+}
+
 // IsPopupVisible returns true if any popup is currently visible
 func (ui *UIManager) IsPopupVisible() bool {
 	selectionVisible := ui.popupSelection != nil && ui.popupSelection.IsVisible
 	infoVisible := ui.popupInfo != nil && ui.popupInfo.IsVisible
 	statsVisible := ui.characterStats != nil && ui.characterStats.IsVisible()
-	return selectionVisible || infoVisible || statsVisible
+	equipmentVisible := ui.equipment != nil && ui.equipment.IsVisible()
+	return selectionVisible || infoVisible || statsVisible || equipmentVisible
 }
