@@ -97,18 +97,22 @@ func (ms *MessageSystem) GetRecentMessages(count int) []string {
 type UIManager struct {
 	messageSystem  *MessageSystem
 	popupSelection *PopupSelectionWidget // Reusable popup selection widget
+	popupInfo      *PopupInfoWidget      // Reusable popup info widget
 }
 
 // NewUIManager creates a new UI manager
 func NewUIManager() *UIManager {
-	// Create popup selection widget centered in screen
+	// Create popup widgets centered in screen
 	popupX := (ScreenWidth - 300) / 2
 	popupY := (ScreenHeight - 200) / 2
-	popup := NewPopupSelectionWidget("", []string{}, popupX, popupY, 300, 200)
+
+	popupSelection := NewPopupSelectionWidget("", []string{}, popupX, popupY, 300, 200)
+	popupInfo := NewPopupInfoWidget("", "", popupX, popupY, 400, 300)
 
 	return &UIManager{
 		messageSystem:  NewMessageSystem(50), // Keep last 50 messages
-		popupSelection: popup,
+		popupSelection: popupSelection,
+		popupInfo:      popupInfo,
 	}
 }
 
@@ -328,12 +332,18 @@ func (ui *UIManager) Update() {
 	if ui.popupSelection != nil {
 		ui.popupSelection.Update()
 	}
+	if ui.popupInfo != nil {
+		ui.popupInfo.Update()
+	}
 }
 
 // DrawPopups renders any active popup widgets on top of other UI elements
 func (ui *UIManager) DrawPopups(screen *ebiten.Image) {
 	if ui.popupSelection != nil {
 		ui.popupSelection.Draw(screen)
+	}
+	if ui.popupInfo != nil {
+		ui.popupInfo.Draw(screen)
 	}
 }
 
@@ -353,7 +363,24 @@ func (ui *UIManager) HideSelectionPopup() {
 	}
 }
 
+// ShowInfoPopup displays a popup with information/text content
+func (ui *UIManager) ShowInfoPopup(title string, content string, onClose func()) {
+	if ui.popupInfo != nil {
+		ui.popupInfo.OnClose = onClose
+		ui.popupInfo.Show(title, content)
+	}
+}
+
+// HideInfoPopup closes the info popup
+func (ui *UIManager) HideInfoPopup() {
+	if ui.popupInfo != nil {
+		ui.popupInfo.Hide()
+	}
+}
+
 // IsPopupVisible returns true if any popup is currently visible
 func (ui *UIManager) IsPopupVisible() bool {
-	return ui.popupSelection != nil && ui.popupSelection.IsVisible
+	selectionVisible := ui.popupSelection != nil && ui.popupSelection.IsVisible
+	infoVisible := ui.popupInfo != nil && ui.popupInfo.IsVisible
+	return selectionVisible || infoVisible
 }

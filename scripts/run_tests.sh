@@ -78,6 +78,11 @@ if [[ ! -f "test/popup_test/main.go" ]]; then
     exit 1
 fi
 
+if [[ ! -f "test/info_popup_test/main.go" ]]; then
+    echo -e "${RED}❌ Error: test/info_popup_test/main.go not found${NC}"
+    exit 1
+fi
+
 if [[ ! -f "test/input_test/main.go" ]]; then
     echo -e "${RED}❌ Error: test/input_test/main.go not found${NC}"
     exit 1
@@ -96,10 +101,21 @@ run_test "Popup Logic Tests" "go run test/logic_test/main.go" "Logic Verificatio
 
 # 3. Run popup widget functionality tests (no graphics required)
 echo -e "${YELLOW}🎯 Phase 3: Widget Functionality${NC}"
-run_test "Popup Widget Tests" "go run test/popup_test/main.go" "Widget Testing"
+run_test "Popup Selection Widget Tests" "go run test/popup_test/main.go" "Widget Testing"
 
-# 4. Run interactive input tests (requires display)
-echo -e "${YELLOW}🎮 Phase 4: Interactive Tests${NC}"
+# 4. Run info popup widget tests (requires display)
+echo -e "${YELLOW}📋 Phase 4: Info Widget Tests${NC}"
+if check_display; then
+    echo "Display detected, running info popup tests..."
+    run_test "Info Popup Widget Tests" "timeout 10s go run test/info_popup_test/main.go || true" "Info Widget Testing"
+    echo "Note: Info popup test runs for 10 seconds then auto-terminates"
+else
+    echo -e "${YELLOW}⚠️  SKIPPED: Info Popup Widget Tests (no display available)${NC}"
+    echo "Info popup tests require a GUI environment to run"
+fi
+
+# 5. Run interactive input tests (requires display)
+echo -e "${YELLOW}🎮 Phase 5: Interactive Tests${NC}"
 if check_display; then
     echo "Display detected, running interactive tests..."
     run_test "Interactive Input Tests" "timeout 10s go run test/input_test/main.go || true" "Interactive Testing"
@@ -109,8 +125,8 @@ else
     echo "Interactive tests require a GUI environment to run"
 fi
 
-# 5. Build verification
-echo -e "${YELLOW}🔨 Phase 5: Build Verification${NC}"
+# 6. Build verification
+echo -e "${YELLOW}🔨 Phase 6: Build Verification${NC}"
 run_test "Main Game Build" "go build -o /tmp/myrpg_test ./cmd/myrpg && rm -f /tmp/myrpg_test" "Build Testing"
 
 # Test Summary

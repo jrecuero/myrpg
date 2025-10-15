@@ -26,7 +26,7 @@ clean:
 	@echo "✅ Clean complete"
 
 # Run all tests
-test: test-unit test-logic test-popup test-input
+test: test-unit test-logic test-popup test-info-popup test-input
 
 # Run unit tests (if any exist)
 test-unit:
@@ -42,6 +42,12 @@ test-logic:
 test-popup:
 	@echo "Running popup widget tests..."
 	go run test/popup_test/main.go
+
+# Run info popup widget tests (requires display)
+test-info-popup:
+	@echo "Running info popup widget tests..."
+	@echo "Note: This test requires a display/GUI environment"
+	go run test/info_popup_test/main.go
 
 # Run interactive input tests (requires display)
 test-input:
@@ -78,6 +84,7 @@ help:
 	@echo "  make test-unit    - Run unit tests only"
 	@echo "  make test-logic   - Run logic verification tests"
 	@echo "  make test-popup   - Run popup widget tests"
+	@echo "  make test-info-popup - Run info popup widget tests"
 	@echo "  make test-input   - Run interactive input tests"
 	@echo "  make test-all     - Run all tests via shell script"
 	@echo "  make release  - Build optimized release version"

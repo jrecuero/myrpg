@@ -9,6 +9,67 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
+// PopupSelectionWidget layout constants
+const (
+	// Layout dimensions
+	SelectionWidgetItemHeight    = 20 // Height of each option item
+	SelectionWidgetReservedSpace = 40 // Space reserved for title and padding
+	SelectionWidgetTitleY        = 15 // Y offset for title from top
+	SelectionWidgetContentY      = 35 // Y offset for content from top
+	SelectionWidgetSidePadding   = 10 // Left/right padding for text
+	SelectionWidgetItemPadding   = 2  // Padding between items
+	SelectionWidgetBorderWidth   = 2  // Border thickness in pixels
+	SelectionWidgetShadowOffset  = 4  // Shadow offset distance
+
+	// Scrollbar constants
+	SelectionWidgetScrollbarWidth    = 10 // Width of the scrollbar track
+	SelectionWidgetScrollbarRight    = 15 // Distance from right edge to scrollbar
+	SelectionWidgetScrollbarMargin   = 20 // Vertical margin for scrollbar area
+	SelectionWidgetScrollbarMinThumb = 10 // Minimum scrollbar thumb height
+	SelectionWidgetScrollbarPadding  = 1  // Internal padding for scrollbar thumb
+
+	// Draw method layout constants
+	SelectionWidgetTitlePadding     = 10 // Left padding for title text
+	SelectionWidgetTitleMargin      = 10 // Top margin for title text
+	SelectionWidgetNoTitleMargin    = 10 // Top margin when no title is present
+	SelectionWidgetBottomMargin     = 10 // Bottom margin for instructions area
+	SelectionWidgetInstrMargin      = 15 // Bottom margin for instruction text
+	SelectionWidgetHighlightMargin  = 5  // Left margin for highlight rectangle
+	SelectionWidgetHighlightPadding = 2  // Vertical padding for highlight rectangle
+	SelectionWidgetTextPadding      = 10 // Left padding for option text
+	SelectionWidgetListReserved     = 60 // Reserved space for title and instructions
+
+	// Default colors (can be overridden per widget)
+	SelectionWidgetDefaultBgR      = 40  // Background red
+	SelectionWidgetDefaultBgG      = 40  // Background green
+	SelectionWidgetDefaultBgB      = 40  // Background blue
+	SelectionWidgetDefaultBgA      = 240 // Background alpha
+	SelectionWidgetDefaultBorderR  = 100 // Border red
+	SelectionWidgetDefaultBorderG  = 100 // Border green
+	SelectionWidgetDefaultBorderB  = 100 // Border blue
+	SelectionWidgetDefaultTextR    = 255 // Text red
+	SelectionWidgetDefaultTextG    = 255 // Text green
+	SelectionWidgetDefaultTextB    = 255 // Text blue
+	SelectionWidgetDefaultTitleR   = 255 // Title red
+	SelectionWidgetDefaultTitleG   = 255 // Title green
+	SelectionWidgetDefaultTitleB   = 0   // Title blue (yellow title)
+	SelectionWidgetScrollbarColorR = 160 // Scrollbar thumb red component
+	SelectionWidgetScrollbarColorG = 160 // Scrollbar thumb green component
+	SelectionWidgetScrollbarColorB = 160 // Scrollbar thumb blue component
+	SelectionWidgetScrollbarColorA = 255 // Scrollbar thumb alpha component
+
+	// Scrollbar background color constants
+	SelectionWidgetScrollBgColorR = 60  // Scrollbar background red component
+	SelectionWidgetScrollBgColorG = 60  // Scrollbar background green component
+	SelectionWidgetScrollBgColorB = 60  // Scrollbar background blue component
+	SelectionWidgetScrollBgColorA = 255 // Scrollbar background alpha component
+	SelectionWidgetDefaultShadowA = 100 // Shadow alpha
+	SelectionWidgetHighlightR     = 70  // Highlight red (steel blue)
+	SelectionWidgetHighlightG     = 130 // Highlight green
+	SelectionWidgetHighlightB     = 180 // Highlight blue
+	SelectionWidgetHighlightA     = 200 // Highlight alpha
+)
+
 // PopupSelectionWidget represents a popup dialog with a scrollable list of options
 type PopupSelectionWidget struct {
 	// Configuration
@@ -46,7 +107,7 @@ type PopupSelectionWidget struct {
 
 // NewPopupSelectionWidget creates a new popup selection widget
 func NewPopupSelectionWidget(title string, options []string, x, y, width, height int) *PopupSelectionWidget {
-	maxVisible := (height - 40) / 20 // Estimate based on font height + spacing
+	maxVisible := (height - SelectionWidgetReservedSpace) / SelectionWidgetItemHeight
 	if maxVisible < 1 {
 		maxVisible = 1
 	}
@@ -64,13 +125,13 @@ func NewPopupSelectionWidget(title string, options []string, x, y, width, height
 		MaxVisibleItems: maxVisible,
 
 		// Default styling
-		BackgroundColor: color.RGBA{40, 40, 40, 240},    // Semi-transparent dark
-		BorderColor:     color.RGBA{100, 100, 100, 255}, // Gray border
-		TextColor:       color.RGBA{255, 255, 255, 255}, // White text
-		HighlightColor:  color.RGBA{70, 130, 180, 200},  // Steel blue highlight
-		TitleColor:      color.RGBA{255, 255, 0, 255},   // Yellow title
-		ScrollbarColor:  color.RGBA{160, 160, 160, 255}, // Light gray scrollbar
-		ShadowColor:     color.RGBA{0, 0, 0, 100},       // Semi-transparent shadow
+		BackgroundColor: color.RGBA{SelectionWidgetDefaultBgR, SelectionWidgetDefaultBgG, SelectionWidgetDefaultBgB, SelectionWidgetDefaultBgA},
+		BorderColor:     color.RGBA{SelectionWidgetDefaultBorderR, SelectionWidgetDefaultBorderG, SelectionWidgetDefaultBorderB, 255},
+		TextColor:       color.RGBA{SelectionWidgetDefaultTextR, SelectionWidgetDefaultTextG, SelectionWidgetDefaultTextB, 255},
+		HighlightColor:  color.RGBA{SelectionWidgetHighlightR, SelectionWidgetHighlightG, SelectionWidgetHighlightB, SelectionWidgetHighlightA},
+		TitleColor:      color.RGBA{SelectionWidgetDefaultTitleR, SelectionWidgetDefaultTitleG, SelectionWidgetDefaultTitleB, 255},
+		ScrollbarColor:  color.RGBA{SelectionWidgetScrollbarColorR, SelectionWidgetScrollbarColorG, SelectionWidgetScrollbarColorB, SelectionWidgetScrollbarColorA},
+		ShadowColor:     color.RGBA{0, 0, 0, SelectionWidgetDefaultShadowA},
 	}
 }
 
@@ -148,9 +209,8 @@ func (p *PopupSelectionWidget) Draw(screen *ebiten.Image) {
 	}
 
 	// Draw shadow
-	shadowOffset := 3
 	vector.FillRect(screen,
-		float32(p.X+shadowOffset), float32(p.Y+shadowOffset),
+		float32(p.X+SelectionWidgetShadowOffset), float32(p.Y+SelectionWidgetShadowOffset),
 		float32(p.Width), float32(p.Height),
 		p.ShadowColor, false)
 
@@ -164,19 +224,19 @@ func (p *PopupSelectionWidget) Draw(screen *ebiten.Image) {
 	vector.StrokeRect(screen,
 		float32(p.X), float32(p.Y),
 		float32(p.Width), float32(p.Height),
-		2, p.BorderColor, false)
+		SelectionWidgetBorderWidth, p.BorderColor, false)
 
 	// Draw title
 	if p.Title != "" {
-		ebitenutil.DebugPrintAt(screen, p.Title, p.X+10, p.Y+10)
+		ebitenutil.DebugPrintAt(screen, p.Title, p.X+SelectionWidgetTitlePadding, p.Y+SelectionWidgetTitleMargin)
 	}
 
 	// Calculate list area
-	listStartY := p.Y + 30
+	listStartY := p.Y + SelectionWidgetContentY
 	if p.Title == "" {
-		listStartY = p.Y + 10
+		listStartY = p.Y + SelectionWidgetNoTitleMargin
 	}
-	listHeight := p.Height - (listStartY - p.Y) - 10
+	listHeight := p.Height - (listStartY - p.Y) - SelectionWidgetBottomMargin
 
 	// Draw options
 	p.drawOptions(screen, listStartY, listHeight)
@@ -187,14 +247,13 @@ func (p *PopupSelectionWidget) Draw(screen *ebiten.Image) {
 	}
 
 	// Draw instructions at bottom
-	instructionY := p.Y + p.Height - 15
-	ebitenutil.DebugPrintAt(screen, "↑↓: Navigate | Enter: Select | Esc: Cancel", p.X+10, instructionY)
+	instructionY := p.Y + p.Height - SelectionWidgetInstrMargin
+	ebitenutil.DebugPrintAt(screen, "↑↓: Navigate | Enter: Select | Esc: Cancel", p.X+SelectionWidgetTitlePadding, instructionY)
 }
 
 // drawOptions renders the visible options list
 func (p *PopupSelectionWidget) drawOptions(screen *ebiten.Image, startY, height int) {
 	_ = height
-	itemHeight := 20
 	y := startY
 
 	for i := 0; i < p.MaxVisibleItems && i+p.ScrollOffset < len(p.Options); i++ {
@@ -204,43 +263,42 @@ func (p *PopupSelectionWidget) drawOptions(screen *ebiten.Image, startY, height 
 		// Highlight selected item
 		if optionIndex == p.SelectedIndex {
 			vector.FillRect(screen,
-				float32(p.X+5), float32(y-2),
-				float32(p.Width-10), float32(itemHeight),
+				float32(p.X+SelectionWidgetHighlightMargin), float32(y-SelectionWidgetHighlightPadding),
+				float32(p.Width-SelectionWidgetHighlightMargin*2), float32(SelectionWidgetItemHeight),
 				p.HighlightColor, false)
 		}
 
 		// Draw option text
-		ebitenutil.DebugPrintAt(screen, option, p.X+10, y)
+		ebitenutil.DebugPrintAt(screen, option, p.X+SelectionWidgetTextPadding, y)
 
-		y += itemHeight
+		y += SelectionWidgetItemHeight
 	}
 }
 
 // drawScrollbar renders the scrollbar if the list is scrollable
 func (p *PopupSelectionWidget) drawScrollbar(screen *ebiten.Image, startY, height int) {
-	scrollbarX := p.X + p.Width - 15
-	scrollbarWidth := 10
-	scrollbarHeight := height - 20
+	scrollbarX := p.X + p.Width - SelectionWidgetScrollbarRight
+	scrollbarHeight := height - SelectionWidgetScrollbarMargin
 
 	// Draw scrollbar background
 	vector.FillRect(screen,
 		float32(scrollbarX), float32(startY),
-		float32(scrollbarWidth), float32(scrollbarHeight),
-		color.RGBA{60, 60, 60, 255}, false)
+		float32(SelectionWidgetScrollbarWidth), float32(scrollbarHeight),
+		color.RGBA{SelectionWidgetScrollBgColorR, SelectionWidgetScrollBgColorG, SelectionWidgetScrollBgColorB, SelectionWidgetScrollBgColorA}, false)
 
 	// Calculate thumb position and size
 	totalItems := len(p.Options)
 	thumbHeight := (p.MaxVisibleItems * scrollbarHeight) / totalItems
-	if thumbHeight < 10 {
-		thumbHeight = 10
+	if thumbHeight < SelectionWidgetScrollbarMinThumb {
+		thumbHeight = SelectionWidgetScrollbarMinThumb
 	}
 
 	thumbY := startY + (p.ScrollOffset*scrollbarHeight)/totalItems
 
 	// Draw scrollbar thumb
 	vector.FillRect(screen,
-		float32(scrollbarX+1), float32(thumbY),
-		float32(scrollbarWidth-2), float32(thumbHeight),
+		float32(scrollbarX+SelectionWidgetScrollbarPadding), float32(thumbY),
+		float32(SelectionWidgetScrollbarWidth-SelectionWidgetScrollbarPadding*2), float32(thumbHeight),
 		p.ScrollbarColor, false)
 }
 
@@ -255,9 +313,8 @@ func (p *PopupSelectionWidget) ensureSelectedVisible() {
 
 // updateMaxVisibleItems recalculates how many items can be displayed
 func (p *PopupSelectionWidget) updateMaxVisibleItems() {
-	itemHeight := 20
-	listHeight := p.Height - 60 // Account for title and instructions
-	p.MaxVisibleItems = listHeight / itemHeight
+	listHeight := p.Height - SelectionWidgetListReserved // Account for title and instructions
+	p.MaxVisibleItems = listHeight / SelectionWidgetItemHeight
 	if p.MaxVisibleItems < 1 {
 		p.MaxVisibleItems = 1
 	}

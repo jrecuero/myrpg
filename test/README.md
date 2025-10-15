@@ -9,7 +9,8 @@ test/
 ├── README.md           # This file
 ├── input_test/         # Interactive input blocking test 
 ├── logic_test/         # Non-interactive logic verification
-└── popup_test/         # Popup widget functionality test
+├── popup_test/         # Popup selection widget functionality test
+└── info_popup_test/    # Popup info widget functionality test
 ```
 
 ## Test Programs
@@ -37,7 +38,37 @@ go run test/popup_test/main.go
 
 ---
 
-### `logic_test/` - Input Blocking Logic Test  
+### 2. **`info_popup_test/`** - Info Popup Widget Test
+- **File**: `test/info_popup_test/main.go`
+- **Purpose**: Comprehensive testing of PopupInfoWidget functionality
+- **Type**: Interactive test (requires display/graphics)
+- **Features Tested**:
+
+**Usage:**
+```bash
+# Info popup widget test
+go run test/info_popup_test/main.go
+```
+
+**What it tests:**
+- ✅ Info widget creation and display
+- ✅ Multi-line text content display
+- ✅ Scrollable content with arrow key navigation
+- ✅ Title display and close functionality (ESC)
+- ✅ Input blocking integration
+- ✅ Long content handling and scrollbar display
+
+**Controls:**
+- Press 'I' to show info popup with test content
+- Use ↑↓ arrows to scroll content (when popup is open)
+- Press ESC to close popup
+- ESC exits test when no popup is open
+
+**Note:** May have graphics allocation issues on macOS 15.0 due to Ebiten/Metal compatibility.
+
+---
+
+### 3. **`logic_test/`** - Input Blocking Logic Test  
 **Purpose:** Verify that popup widgets properly block game input to prevent conflicts.
 
 **Usage:**
@@ -55,7 +86,7 @@ go run test/logic_test/main.go
 
 ---
 
-### `input_test/` - Interactive Input Test
+### 4. **`input_test/`** - Interactive Input Test
 **Purpose:** Interactive test for verifying input blocking behavior with actual key presses.
 
 **Usage:**
@@ -77,8 +108,12 @@ To run all test programs in sequence:
 
 ```bash
 # Popup functionality test
-echo "=== Popup Widget Test ==="
+echo "=== Popup Selection Widget Test ==="
 go run test/popup_test/main.go
+
+echo -e "\n=== Info Popup Widget Test ==="
+# Note: May fail due to graphics issues on macOS 15.0
+go run test/info_popup_test/main.go
 
 echo -e "\n=== Input Blocking Logic Test ==="  
 go run test/logic_test/main.go

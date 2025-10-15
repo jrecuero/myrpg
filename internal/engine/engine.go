@@ -393,9 +393,12 @@ func (g *Game) Update() error {
 	// Update UI manager (handles popups and other UI interactions)
 	g.uiManager.Update()
 
-	// Test popup widget with P key (demo/testing)
+	// Test popup widgets (demo/testing)
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) && !g.uiManager.IsPopupVisible() {
 		g.showTestPopup()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyI) && !g.uiManager.IsPopupVisible() {
+		g.showTestInfoPopup()
 	}
 
 	// Block game input processing when popup is visible
@@ -1129,6 +1132,61 @@ func (g *Game) showTestPopup() {
 			// Handle cancel
 			g.uiManager.AddMessage("Selection cancelled")
 			logger.Info("Player cancelled popup selection")
+		},
+	)
+}
+
+// showTestInfoPopup displays a test info popup to demonstrate the popup info widget
+func (g *Game) showTestInfoPopup() {
+	helpContent := `GAME HELP & INFORMATION
+
+BASIC CONTROLS:
+• Arrow Keys: Move player/units
+• TAB: Switch between Exploration and Tactical modes
+• SPACE: Enter tactical combat (in exploration)
+• T: End turn (in tactical mode)
+• E: End player turn
+• A: Attack (when adjacent to enemy)
+• ESC: Exit to desktop
+
+EXPLORATION MODE:
+- Move freely around the world
+- Search for items and encounters
+- Switch to tactical mode for combat
+
+TACTICAL MODE:
+- Grid-based movement system
+- Turn-based combat mechanics
+- Plan strategic unit positioning
+- Use attacks and abilities
+
+POPUP WIDGETS:
+• P: Test selection popup
+• I: Show this help information
+• ESC: Close any open popup
+
+CHARACTER STATS:
+HP: Health Points - When this reaches 0, the character is defeated
+MP: Magic Points - Used for casting spells and abilities
+STR: Strength - Affects physical damage and carrying capacity
+DEF: Defense - Reduces incoming physical damage
+AGI: Agility - Affects turn order and evasion chance
+
+COMBAT SYSTEM:
+1. Position units strategically on the grid
+2. Use terrain and positioning advantages
+3. Manage resources (HP/MP) carefully
+4. Plan multi-turn strategies
+
+Press ESC to close this help window.`
+
+	g.uiManager.ShowInfoPopup(
+		"Game Help & Information",
+		helpContent,
+		func() {
+			// Handle close
+			g.uiManager.AddMessage("Help closed")
+			logger.Info("Player closed help popup")
 		},
 	)
 }
