@@ -5,7 +5,12 @@
         "go": "go"
     },
     "gopls": {
-        "experimentalWorkspaceModule": true
+        "ui.semanticTokens": true,
+        "ui.completion.usePlaceholders": true,
+        "ui.diagnostic.analyses": {
+            "unusedparams": true,
+            "shadow": true
+        }
     },
     "makefile.configureOnOpen": false
 }
