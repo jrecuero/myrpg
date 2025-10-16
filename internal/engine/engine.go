@@ -828,7 +828,7 @@ func (g *Game) validateGridState() {
 	// Check for units occupying multiple positions
 	for unitID, positions := range unitPositions {
 		if len(positions) > 1 {
-			fmt.Printf("WARNING: Unit %s occupies multiple positions: %v\n", unitID, positions)
+			logger.Warn("WARNING: Unit %s occupies multiple positions: %v\n", unitID, positions)
 			// Fix: Clear all positions except the first one
 			for i := 1; i < len(positions); i++ {
 				g.tacticalManager.Grid.SetOccupied(positions[i], false, "")
@@ -854,7 +854,7 @@ func (g *Game) clearUnitFromAllGridPositions(unitID string) {
 		}
 	}
 	if clearedCount > 1 {
-		fmt.Printf("WARNING: Unit %s was occupying %d positions!\n", unitID, clearedCount)
+		logger.Warn("WARNING: Unit %s was occupying %d positions!\n", unitID, clearedCount)
 	}
 }
 

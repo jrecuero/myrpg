@@ -14,6 +14,7 @@ type Logger struct {
 	debugLogger *log.Logger
 	infoLogger  *log.Logger
 	errorLogger *log.Logger
+	warnLogger  *log.Logger
 	file        *os.File
 }
 
@@ -24,6 +25,7 @@ const (
 	DEBUG LogLevel = iota
 	INFO
 	ERROR
+	WARM
 )
 
 var (
@@ -62,6 +64,7 @@ func Init() error {
 		debugLogger: log.New(file, "[DEBUG] ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile),
 		infoLogger:  log.New(file, "[INFO]  ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile),
 		errorLogger: log.New(file, "[ERROR] ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile),
+		warnLogger:  log.New(file, "[WARN]  ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile),
 	}
 
 	// Also log to stdout for immediate feedback
@@ -90,6 +93,13 @@ func Debug(format string, args ...interface{}) {
 func Info(format string, args ...interface{}) {
 	if gameLogger != nil {
 		gameLogger.infoLogger.Printf(format, args...)
+	}
+}
+
+// Warn logs warning messages
+func Warn(format string, args ...interface{}) {
+	if gameLogger != nil {
+		gameLogger.warnLogger.Printf(format, args...)
 	}
 }
 

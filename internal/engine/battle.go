@@ -8,6 +8,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
+	"github.com/jrecuero/myrpg/internal/logger"
 )
 
 // AttackType represents the type of attack in battle
@@ -103,7 +104,7 @@ func (bs *BattleSystem) addMessage(msg string) {
 	if bs.messageCallback != nil {
 		bs.messageCallback(msg)
 	} else {
-		fmt.Println(msg)
+		logger.Info("%s", msg)
 	}
 }
 

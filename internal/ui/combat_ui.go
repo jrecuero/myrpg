@@ -196,9 +196,9 @@ func (cui *CombatUI) updateValidActions(combatManager *tactical.TurnBasedCombatM
 					len(newTargets), activeUnit.GetID(), actionPoints.Current, actionPoints.Maximum)
 				// Also log to console for immediate user feedback
 				if len(newTargets) == 0 {
-					fmt.Printf("⚠️  No enemies in attack range (must be adjacent) for %s\n", activeUnit.GetID())
+					logger.Warn("⚠️  No enemies in attack range (must be adjacent) for %s\n", activeUnit.GetID())
 				} else {
-					fmt.Printf("✅ Found %d valid attack targets for %s\n", len(newTargets), activeUnit.GetID())
+					logger.Debug("✅ Found %d valid attack targets for %s\n", len(newTargets), activeUnit.GetID())
 				}
 			}
 			cui.ValidAttackTargets = newTargets
@@ -227,7 +227,7 @@ func (cui *CombatUI) updateActionSelection() error {
 					return nil
 				} else if button.ActionType == tactical.ActionAttack {
 					// Provide feedback when clicking disabled attack button
-					fmt.Printf("❌ Cannot attack: No enemies in range! Move closer to an enemy first.\n")
+					logger.Warn("❌ Cannot attack: No enemies in range! Move closer to an enemy first.")
 				}
 			}
 		}
@@ -264,14 +264,11 @@ func (cui *CombatUI) selectAction(actionType tactical.ActionType) {
 		if len(cui.ValidAttackTargets) > 0 {
 			cui.State = CombatUIStateSelectingAttackTarget
 			message := fmt.Sprintf("🎯 Select an enemy to attack (found %d targets)", len(cui.ValidAttackTargets))
-			fmt.Printf("%s\n", message)
 			logger.UI("%s", message)
 		} else {
 			// Provide feedback when no targets available
 			message1 := "❌ No enemies in attack range! Move closer to an enemy first."
 			message2 := "💡 Tip: Use the Move button to get within 1 tile of an enemy"
-			fmt.Printf("%s\n", message1)
-			fmt.Printf("%s\n", message2)
 			logger.UI("%s", message1)
 			logger.UI("%s", message2)
 			// Stay in action selection mode
@@ -344,7 +341,7 @@ func (cui *CombatUI) updateAttackTargetSelection(combatManager *tactical.TurnBas
 					if transform := target.Transform(); transform != nil {
 						targetPos := combatManager.Grid.WorldToGrid(transform.X-offsetX, transform.Y-offsetY)
 						if targetPos.X == gridPos.X && targetPos.Y == gridPos.Y {
-							fmt.Printf("🗡️  Attacking %s!\n", target.GetID())
+							logger.Debug("🗡️  Attacking %s!\n", target.GetID())
 							if cui.OnAttackTarget != nil {
 								cui.OnAttackTarget(target)
 							}
@@ -357,9 +354,9 @@ func (cui *CombatUI) updateAttackTargetSelection(combatManager *tactical.TurnBas
 
 				// If no valid target was clicked, provide feedback
 				if !targetFound && len(cui.ValidAttackTargets) > 0 {
-					fmt.Printf("❌ Click on a highlighted enemy to attack (found %d valid targets)\n", len(cui.ValidAttackTargets))
+					logger.Info("❌ Click on a highlighted enemy to attack (found %d valid targets)\n", len(cui.ValidAttackTargets))
 				} else if len(cui.ValidAttackTargets) == 0 {
-					fmt.Printf("❌ No valid attack targets! Move closer to enemies first.\n")
+					logger.Warn("❌ No valid attack targets! Move closer to enemies first.\n")
 					cui.State = CombatUIStateSelectingAction
 				}
 			}
