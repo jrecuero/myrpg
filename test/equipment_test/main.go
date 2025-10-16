@@ -235,7 +235,7 @@ func main() {
 	// Set window properties
 	ebiten.SetWindowSize(ScreenWidth, ScreenHeight)
 	ebiten.SetWindowTitle("Equipment Widget Test")
-	ebiten.SetWindowResizable(false)
+	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeDisabled)
 
 	// Run game
 	if err := ebiten.RunGame(game); err != nil {

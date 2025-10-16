@@ -1,0 +1,423 @@
+{
+  "dialog_id": "town_elder_intro",
+  "title": "Meeting the Elder",
+  "description": "First conversation with the town elder",
+  "variables": {
+    "met_elder": false,
+    "elder_trust": 0,
+    "knows_prophecy": false,
+    "player_name": "Hero"
+  },
+  "nodes": {
+    "start": {
+      "speaker": "town_elder",
+      "text": "Welcome to our humble village, traveler. I am Elder Aldric, keeper of Rivertown's ancient traditions.",
+      "conditions": [],
+      "actions": [
+        {"type": "set_variable", "name": "met_elder", "value": true}
+      ],
+      "choices": [
+        {
+          "text": "Greetings, Elder. I seek information about the ancient prophecy.",
+          "target": "ask_prophecy",
+          "conditions": []
+        },
+        {
+          "text": "Hello. Can you tell me about this village?",
+          "target": "ask_village"
+        },
+        {
+          "text": "I'm looking for work. Any tasks need doing?",
+          "target": "ask_work"
+        },
+        {
+          "text": "Farewell for now.",
+          "target": "end_friendly"
+        }
+      ]
+    },
+    "ask_prophecy": {
+      "speaker": "town_elder",
+      "text": "Ah, the ancient prophecy... Few know of it these days. It speaks of a hero who will emerge when darkness threatens our realm. What brings you to seek such knowledge?",
+      "conditions": [],
+      "actions": [
+        {"type": "set_variable", "name": "elder_trust", "value": 1},
+        {"type": "set_variable", "name": "knows_prophecy", "value": true}
+      ],
+      "choices": [
+        {
+          "text": "I believe I may be the one foretold in the prophecy.",
+          "target": "claim_hero"
+        },
+        {
+          "text": "I'm just curious about local legends.",
+          "target": "casual_interest"
+        },
+        {
+          "text": "Tell me more about this darkness you mention.",
+          "target": "ask_darkness"
+        }
+      ]
+    },
+    "ask_village": {
+      "speaker": "town_elder", 
+      "text": "Rivertown has stood for three centuries beside the great river. We are simple folk who work the land and trade with passing merchants. Our people value peace and tradition above all else.",
+      "choices": [
+        {
+          "text": "Are there any dangers I should know about?",
+          "target": "ask_dangers"
+        },
+        {
+          "text": "What kind of trade passes through here?",
+          "target": "ask_trade"
+        },
+        {
+          "text": "Thank you for the information.",
+          "target": "end_friendly"
+        }
+      ]
+    },
+    "ask_work": {
+      "speaker": "town_elder",
+      "text": "A willing soul! Indeed, there are always tasks for those with strong arms and good hearts. The merchant Gareth has been troubled by bandits on the road, and our guard captain Marcus could use help with patrols.",
+      "actions": [
+        {"type": "set_variable", "name": "elder_trust", "value": 2}
+      ],
+      "choices": [
+        {
+          "text": "I'll speak with the merchant about the bandits.",
+          "target": "accept_bandit_quest"
+        },
+        {
+          "text": "Tell me more about these patrols.",
+          "target": "ask_patrols"
+        },
+        {
+          "text": "Perhaps later. What else can you tell me?",
+          "target": "general_info"
+        }
+      ]
+    },
+    "claim_hero": {
+      "speaker": "town_elder",
+      "text": "Bold words, young one. The prophecy speaks of trials that will test the true hero's resolve. If you truly believe you are the chosen one, you must prove yourself through deeds, not words.",
+      "actions": [
+        {"type": "set_variable", "name": "elder_trust", "value": 3}
+      ],
+      "choices": [
+        {
+          "text": "What trials must I face?",
+          "target": "ask_trials"
+        },
+        {
+          "text": "I'm ready to prove myself.",
+          "target": "accept_challenge"
+        }
+      ]
+    },
+    "casual_interest": {
+      "speaker": "town_elder",
+      "text": "Curiosity is the mark of a sharp mind. The prophecy tells of a time when shadows will lengthen across the land, and only one pure of heart can restore the light. Perhaps it is merely an old tale, but recent events make me wonder...",
+      "choices": [
+        {
+          "text": "What recent events?",
+          "target": "ask_events"
+        },
+        {
+          "text": "Do you believe the prophecy is true?",
+          "target": "ask_belief"
+        }
+      ]
+    },
+    "ask_darkness": {
+      "speaker": "town_elder",
+      "text": "Strange creatures have been seen in the night, and the old magic stirs restlessly. Traders speak of villages gone silent, and even our bravest scouts dare not venture too far into the deep forest. Something ancient awakens.",
+      "actions": [
+        {"type": "set_variable", "name": "knows_darkness", "value": true}
+      ],
+      "choices": [
+        {
+          "text": "I must investigate these creatures.",
+          "target": "volunteer_investigate"
+        },
+        {
+          "text": "How can the village be protected?",
+          "target": "ask_protection"
+        }
+      ]
+    },
+    "ask_dangers": {
+      "speaker": "town_elder",
+      "text": "Mostly we face the common perils of any frontier settlement - wild beasts, the occasional bandit, harsh weather. But lately... lately there have been stranger threats. Things that move in shadows.",
+      "choices": [
+        {
+          "text": "Tell me about these shadow creatures.",
+          "target": "ask_darkness"
+        },
+        {
+          "text": "I could help deal with these threats.",
+          "target": "offer_help"
+        }
+      ]
+    },
+    "offer_help": {
+      "speaker": "town_elder",
+      "text": "Your courage is admirable, ${player_name}. Speak with Captain Marcus at the guard barracks if you truly wish to help protect our people. He can always use another sword.",
+      "actions": [
+        {"type": "set_variable", "name": "elder_trust", "value": 4}
+      ],
+      "choices": [
+        {
+          "text": "I will seek out the Captain.",
+          "target": "end_helpful"
+        },
+        {
+          "text": "What other aid does the village need?",
+          "target": "ask_work"
+        }
+      ]
+    },
+    "volunteer_investigate": {
+      "speaker": "town_elder",
+      "text": "Brave words, but do not underestimate the danger. If you truly mean to face this threat, prepare yourself well. Seek allies, gather supplies, and learn all you can before venturing forth.",
+      "actions": [
+        {"type": "set_variable", "name": "accepted_main_quest", "value": true},
+        {"type": "set_variable", "name": "elder_trust", "value": 5}
+      ],
+      "choices": [
+        {
+          "text": "I understand. Where should I begin?",
+          "target": "quest_guidance"
+        },
+        {
+          "text": "I need time to prepare.",
+          "target": "end_preparation"
+        }
+      ]
+    },
+    "quest_guidance": {
+      "speaker": "town_elder",
+      "text": "Wise to ask. First, speak with our guard captain about recent sightings. The merchant Gareth may have news from other towns. And if you can find the old hermit who lives by the eastern bridge, he knows much about the ancient magics.",
+      "actions": [
+        {"type": "set_variable", "name": "has_guidance", "value": true}
+      ],
+      "choices": [
+        {
+          "text": "Thank you for the counsel.",
+          "target": "end_quest_given"
+        }
+      ]
+    },
+    "end_friendly": {
+      "speaker": "town_elder",
+      "text": "May the winds guide your path, traveler. You are always welcome in Rivertown. Return if you have need of counsel or aid.",
+      "actions": [
+        {"type": "set_variable", "name": "elder_reputation", "value": "friendly"}
+      ],
+      "end": true
+    },
+    "end_helpful": {
+      "speaker": "town_elder",
+      "text": "Your willingness to aid our people marks you as one of good character. Go with our blessing, and know that Rivertown considers you a friend.",
+      "actions": [
+        {"type": "set_variable", "name": "elder_reputation", "value": "helpful"}
+      ],
+      "end": true
+    },
+    "end_quest_given": {
+      "speaker": "town_elder", 
+      "text": "The path ahead is perilous, but I sense great potential in you. May fortune favor your quest, and may you return to us victorious.",
+      "actions": [
+        {"type": "set_variable", "name": "elder_reputation", "value": "quest_giver"}
+      ],
+      "end": true
+    },
+    "end_preparation": {
+      "speaker": "town_elder",
+      "text": "Preparation is the mark of wisdom. Take all the time you need - the darkness is patient, and we must be patient too. Return when you are ready.",
+      "end": true
+    },
+    "ask_patrols": {
+      "speaker": "town_elder",
+      "text": "Our patrols have been reporting strange movements in the forest lately. Dark shapes moving between the trees, and our scouts refuse to venture too far from the village roads.",
+      "conditions": [],
+      "actions": [],
+      "choices": [
+        {
+          "text": "I could investigate these movements.",
+          "target": "volunteer_investigate"
+        },
+        {
+          "text": "What kind of dark shapes?",
+          "target": "ask_darkness"
+        },
+        {
+          "text": "The village should increase security.",
+          "target": "ask_protection"
+        }
+      ]
+    },
+    "accept_bandit_quest": {
+      "speaker": "town_elder",
+      "text": "Excellent! The bandits have been plaguing our trade routes for weeks. Clear the roads and return to me with proof of your success. The village will reward you handsomely.",
+      "conditions": [],
+      "actions": [
+        {"type": "set_variable", "name": "bandit_quest_accepted", "value": true},
+        {"type": "set_variable", "name": "elder_trust", "value": 3}
+      ],
+      "choices": [
+        {
+          "text": "I'll clear the roads and return.",
+          "target": "end_quest_given"
+        },
+        {
+          "text": "Tell me more about these bandits.",
+          "target": "ask_dangers"
+        }
+      ]
+    },
+    "general_info": {
+      "speaker": "town_elder",
+      "text": "Rivertown has stood for three generations, built where the old river bends toward the mountains. We're simple folk - farmers, traders, and craftsmen who value peace and honest work.",
+      "conditions": [],
+      "actions": [],
+      "choices": [
+        {
+          "text": "What about the surrounding lands?",
+          "target": "ask_dangers"
+        },
+        {
+          "text": "Any notable landmarks nearby?",
+          "target": "ask_events"
+        },
+        {
+          "text": "Thank you for the information.",
+          "target": "end_friendly"
+        }
+      ]
+    },
+    "ask_trials": {
+      "speaker": "town_elder",
+      "text": "The ancient trials were tests of courage, wisdom, and strength that heroes of old had to complete. They say the trials still exist, hidden in forgotten places, waiting for one worthy enough to attempt them.",
+      "conditions": [],
+      "actions": [
+        {"type": "set_variable", "name": "knows_trials", "value": true}
+      ],
+      "choices": [
+        {
+          "text": "I'm ready to face these trials.",
+          "target": "accept_challenge"
+        },
+        {
+          "text": "Where might I find these trials?",
+          "target": "quest_guidance"
+        },
+        {
+          "text": "Perhaps I should prepare more first.",
+          "target": "end_preparation"
+        }
+      ]
+    },
+    "accept_challenge": {
+      "speaker": "town_elder",
+      "text": "Bold words! The first trial is said to lie in the Whispering Caves to the north. But beware - many have entered, few have returned, and none unchanged.",
+      "conditions": [],
+      "actions": [
+        {"type": "set_variable", "name": "trial_quest_given", "value": true},
+        {"type": "set_variable", "name": "elder_trust", "value": 4}
+      ],
+      "choices": [
+        {
+          "text": "I'll seek out the Whispering Caves.",
+          "target": "end_quest_given"
+        },
+        {
+          "text": "What should I expect in the caves?",
+          "target": "quest_guidance"
+        }
+      ]
+    },
+    "ask_events": {
+      "speaker": "town_elder",
+      "text": "Strange times we live in. The old standing stones have begun to glow at night, and travelers speak of ruins awakening in distant lands. Some say it heralds the return of ancient powers.",
+      "conditions": [],
+      "actions": [],
+      "choices": [
+        {
+          "text": "These could be signs of the prophecy.",
+          "target": "ask_belief"
+        },
+        {
+          "text": "I should investigate these ruins.",
+          "target": "volunteer_investigate"
+        },
+        {
+          "text": "The village should prepare for trouble.",
+          "target": "ask_protection"
+        }
+      ]
+    },
+    "ask_belief": {
+      "speaker": "town_elder",
+      "text": "I've lived long enough to see that legends often hold more truth than we dare believe. If the prophecy stirs, then perhaps hope stirs with it. The question is: are you ready to answer destiny's call?",
+      "conditions": [],
+      "actions": [
+        {"type": "set_variable", "name": "elder_trust", "value": 2}
+      ],
+      "choices": [
+        {
+          "text": "I believe I am the one foretold.",
+          "target": "claim_hero"
+        },
+        {
+          "text": "I'll do what I can to help.",
+          "target": "offer_help"
+        },
+        {
+          "text": "Time will tell what I'm capable of.",
+          "target": "end_helpful"
+        }
+      ]
+    },
+    "ask_protection": {
+      "speaker": "town_elder",
+      "text": "You speak wisely. We've already doubled the night watch and reinforced the gates, but our guards are farmers and merchants, not warriors. We could use someone with real fighting experience.",
+      "conditions": [],
+      "actions": [],
+      "choices": [
+        {
+          "text": "I can help train your guards.",
+          "target": "offer_help"
+        },
+        {
+          "text": "I'll deal with the threats directly.",
+          "target": "volunteer_investigate"
+        },
+        {
+          "text": "Consider hiring professional guards.",
+          "target": "general_info"
+        }
+      ]
+    },
+    "ask_trade": {
+      "speaker": "town_elder",
+      "text": "Trade is the lifeblood of Rivertown. We export grain and river fish to the mountain settlements, and they send us metals and crafted goods. At least, they did before the bandit troubles began.",
+      "conditions": [],
+      "actions": [],
+      "choices": [
+        {
+          "text": "I could clear the trade routes.",
+          "target": "accept_bandit_quest"
+        },
+        {
+          "text": "What goods does the village need most?",
+          "target": "general_info"
+        },
+        {
+          "text": "Trade will resume when it's safe.",
+          "target": "end_friendly"
+        }
+      ]
+    }
+  }
+}

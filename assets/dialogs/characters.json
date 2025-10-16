@@ -1,0 +1,34 @@
+{
+  "characters": {
+    "town_elder": {
+      "name": "Elder Aldric",
+      "portrait": "elder_portrait.png",
+      "voice_style": "wise",
+      "description": "The wise elder of Rivertown"
+    },
+    "merchant": {
+      "name": "Trader Gareth",
+      "portrait": "merchant_portrait.png",
+      "voice_style": "cheerful",
+      "description": "A traveling merchant"
+    },
+    "player": {
+      "name": "Hero",
+      "portrait": "player_portrait.png",
+      "voice_style": "determined", 
+      "description": "The game protagonist"
+    },
+    "guard": {
+      "name": "Captain Marcus",
+      "portrait": "guard_portrait.png",
+      "voice_style": "stern",
+      "description": "Captain of the town guard"
+    },
+    "mysterious_figure": {
+      "name": "???",
+      "portrait": "mystery_portrait.png",
+      "voice_style": "mysterious",
+      "description": "An enigmatic stranger"
+    }
+  }
+}

@@ -87,25 +87,33 @@ This document outlines recommended widgets for the RPG game, organized by implem
 - **Estimated Complexity**: Medium-High
 - **Dependencies**: ✅ Complete for basic functionality
 
-### 6. 💬 Dialog Widget
-- **Status**: ⏳ TODO - High Priority
+### 6. ✅ [COMPLETED] Dialog Widget
+- **Status**: ✅ COMPLETED - Fully integrated with main game
 - **Features**:
-  - NPC conversation display with portraits
-  - Multiple choice selection trees
-  - Text formatting (bold, italic, colors)
-  - Auto-advance and manual advance options
-  - Dialog history/log
+  - ✅ External dialog script system (JSON format)
+  - ✅ NPC conversation display with portraits
+  - ✅ Branching dialog trees with conditions
+  - ✅ Multiple choice selection trees
+  - ✅ Game event integration and variable system
+  - ✅ Typewriter text effect for immersive display
+  - ⏳ Text formatting (bold, italic, colors) - Future enhancement
+  - ⏳ Dialog history/log - Future enhancement
 - **Integration**:
-  - Triggered by NPC interactions
-  - Can pause tactical combat for story moments
-  - Input blocking during conversations
-  - Save/load dialog state for complex conversations
+  - ✅ UIManager integration with input blocking
+  - ✅ Triggered by D key in main game engine
+  - ✅ Game state conditions and variable tracking
+  - ⏳ Save/load dialog state for complex conversations - Future enhancement
 - **Implementation Notes**:
-  - Support rich text formatting
-  - Typewriter effect for immersive text display
-  - Portrait positioning and scaling
-- **Estimated Complexity**: Medium
-- **Dependencies**: NPC system, Story/Quest system
+  - External JSON script files for dialog content
+  - Conditional branching based on game events
+  - Portrait positioning and character display
+  - Follows established popup widget patterns
+- **Files**: `internal/ui/dialog_widget.go`, `assets/dialogs/*.json`, `test/dialog_test/main.go`
+- **Documentation**: `docs/ui/dialog_constants.md`, `docs/ui/dialog_script_format.md`, `docs/ui/dialog_integration.md`
+- **Testing**: `make test-dialog` - Interactive dialog test with sample scripts
+- **Engine Integration**: `internal/engine/engine.go` - D key trigger, showDialog() method
+- **Completed**: Full dialog system with external JSON scripts, branching conversations, variable system
+- **Future Enhancements**: Dynamic NPC selection, save/load state, quest integration
 
 ## 📈 Medium Priority Widgets (Enhances experience)
 

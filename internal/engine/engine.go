@@ -406,6 +406,9 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyE) && !g.uiManager.IsPopupVisible() {
 		g.showEquipment()
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyD) && !g.uiManager.IsPopupVisible() {
+		g.showDialog()
+	}
 
 	// Block game input processing when popup is visible OR when UI consumed ESC
 	if g.uiManager.IsPopupVisible() || escConsumedByUI {
@@ -1169,6 +1172,9 @@ TACTICAL MODE:
 POPUP WIDGETS:
 • P: Test selection popup
 • I: Show this help information
+• C: Character stats
+• E: Equipment
+• D: Dialog with NPCs
 • ESC: Close any open popup
 
 CHARACTER STATS:
@@ -1233,4 +1239,24 @@ func (g *Game) showEquipment() {
 	g.uiManager.ShowEquipment(equipmentComp, activePlayer.RPGStats())
 	g.uiManager.AddMessage(fmt.Sprintf("Displaying equipment for %s", activePlayer.RPGStats().Name))
 	logger.Info("Showing equipment for player: %s", activePlayer.RPGStats().Name)
+}
+
+func (g *Game) showDialog() {
+	activePlayer := g.GetActivePlayer()
+	if activePlayer == nil || activePlayer.RPGStats() == nil {
+		g.uiManager.AddMessage("No active player to show dialog for")
+		logger.Info("Attempted to show dialog but no active player available")
+		return
+	}
+
+	// Initialize dialog with town elder as example
+	err := g.uiManager.ShowDialog("assets/dialogs", "characters.json", "town_elder.json", "start")
+	if err != nil {
+		g.uiManager.AddMessage(fmt.Sprintf("Failed to load dialog: %v", err))
+		logger.Error("Failed to show dialog: %v", err)
+		return
+	}
+
+	g.uiManager.AddMessage("Started dialog with town elder")
+	logger.Info("Showing dialog for player: %s", activePlayer.RPGStats().Name)
 }

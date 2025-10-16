@@ -1,0 +1,247 @@
+{
+  "dialog_id": "merchant_encounter", 
+  "title": "Merchant Conversation",
+  "description": "Meeting with the traveling merchant Gareth",
+  "variables": {
+    "merchant_met": false,
+    "merchant_reputation": 0,
+    "bought_items": false,
+    "heard_road_news": false
+  },
+  "nodes": {
+    "start": {
+      "speaker": "merchant",
+      "text": "Well met, traveler! I am Gareth, a humble merchant who trades along these roads. What brings you to our fair village?",
+      "actions": [
+        {"type": "set_variable", "name": "merchant_met", "value": true}
+      ],
+      "choices": [
+        {
+          "text": "What goods do you have for sale?",
+          "target": "show_wares"
+        },
+        {
+          "text": "Any news from the road?",
+          "target": "road_news"
+        },
+        {
+          "text": "I've heard you've had trouble with bandits.",
+          "target": "bandit_trouble"
+        },
+        {
+          "text": "Just passing through. Farewell.",
+          "target": "polite_farewell"
+        }
+      ]
+    },
+    "show_wares": {
+      "speaker": "merchant",
+      "text": "Ah, a customer! I carry the finest goods from across the realm - sturdy weapons, protective armor, healing potions, and useful tools. Fair prices for quality merchandise!",
+      "actions": [
+        {"type": "set_variable", "name": "merchant_reputation", "value": 1}
+      ],
+      "choices": [
+        {
+          "text": "I'd like to browse your inventory.",
+          "target": "open_shop"
+        },
+        {
+          "text": "What's your best weapon?",
+          "target": "best_weapon"
+        },
+        {
+          "text": "Do you have healing supplies?",
+          "target": "healing_supplies"
+        },
+        {
+          "text": "Maybe later. What else can you tell me?",
+          "target": "other_topics"
+        }
+      ]
+    },
+    "open_shop": {
+      "speaker": "merchant",
+      "text": "Excellent! Take your time and examine everything carefully. I stand by the quality of every item I sell. If you're a friend of Elder Aldric, I might even offer a special discount!",
+      "actions": [
+        {"type": "open_shop", "shop_id": "traveling_merchant"},
+        {"type": "set_variable", "name": "accessed_shop", "value": true}
+      ],
+      "end": true
+    },
+    "road_news": {
+      "speaker": "merchant",
+      "text": "The roads have been... troubling lately. Bandits grow bolder, and there are stranger things in the shadows. I've heard tales from other merchants - whole caravans vanishing without trace.",
+      "actions": [
+        {"type": "set_variable", "name": "heard_road_news", "value": true}
+      ],
+      "choices": [
+        {
+          "text": "What kind of strange things?",
+          "target": "strange_creatures"
+        },
+        {
+          "text": "Tell me more about these missing caravans.",
+          "target": "missing_caravans"
+        },
+        {
+          "text": "How do you stay safe on the roads?",
+          "target": "road_safety"
+        }
+      ]
+    },
+    "bandit_trouble": {
+      "speaker": "merchant",
+      "text": "Ah, so word has spread! Yes, I've had several encounters with brigands on the northern road. They've cost me profits and nearly my life. The local guards do what they can, but the roads are long and their numbers few.",
+      "choices": [
+        {
+          "text": "I could help deal with these bandits.",
+          "target": "offer_bandit_help"
+        },
+        {
+          "text": "Where exactly did these attacks occur?",
+          "target": "bandit_locations"
+        },
+        {
+          "text": "How many bandits are we talking about?",
+          "target": "bandit_numbers"
+        }
+      ]
+    },
+    "offer_bandit_help": {
+      "speaker": "merchant",
+      "text": "By the gods, a true hero! If you could clear those roads, it would mean the difference between profit and ruin for my trade. I'd be willing to pay handsomely for such service, and throw in some fine equipment as well!",
+      "actions": [
+        {"type": "set_variable", "name": "bandit_quest_offered", "value": true},
+        {"type": "set_variable", "name": "merchant_reputation", "value": 3}
+      ],
+      "choices": [
+        {
+          "text": "I accept. Where should I start looking?",
+          "target": "accept_bandit_quest"
+        },
+        {
+          "text": "What kind of payment are we talking about?",
+          "target": "negotiate_payment"
+        },
+        {
+          "text": "I need to think about this.",
+          "target": "consider_quest"
+        }
+      ]
+    },
+    "accept_bandit_quest": {
+      "speaker": "merchant",
+      "text": "Wonderful! The attacks happen most often at the old stone bridge, about two miles north. They strike at dawn or dusk when the light is poor. Be careful - their leader is said to be a cunning and ruthless man.",
+      "actions": [
+        {"type": "start_quest", "quest_id": "clear_bandit_camp"},
+        {"type": "set_variable", "name": "bandit_quest_accepted", "value": true}
+      ],
+      "choices": [
+        {
+          "text": "I'll take care of them.",
+          "target": "quest_accepted_end"
+        },
+        {
+          "text": "Any other advice before I go?",
+          "target": "bandit_advice"
+        }
+      ]
+    },
+    "strange_creatures": {
+      "speaker": "merchant",
+      "text": "Dark shapes that move like liquid shadow, eyes that glow in the night, and sounds... sounds that make your blood freeze. I saw one myself near the old ruins - it seemed to drink the very light from my lantern.",
+      "actions": [
+        {"type": "set_variable", "name": "knows_shadow_creatures", "value": true}
+      ],
+      "choices": [
+        {
+          "text": "Where are these old ruins?",
+          "target": "ask_ruins_location"
+        },
+        {
+          "text": "How did you escape?",
+          "target": "escape_story"
+        }
+      ]
+    },
+    "missing_caravans": {
+      "speaker": "merchant",
+      "text": "Three caravans in the past month, all heading east toward the mountain passes. Good friends of mine, experienced traders who knew the roads well. Search parties found the wagons empty, goods scattered, but no bodies. It's... unnatural.",
+      "choices": [
+        {
+          "text": "Could this be related to the shadow creatures?",
+          "target": "connect_mysteries"
+        },
+        {
+          "text": "I should investigate these disappearances.",
+          "target": "investigate_caravans"
+        }
+      ]
+    },
+    "negotiate_payment": {
+      "speaker": "merchant",
+      "text": "Fair question! I'm prepared to offer 200 gold pieces, plus your choice of a fine weapon or armor piece from my stock. Clear those roads, and you'll have earned every coin!",
+      "actions": [
+        {"type": "set_variable", "name": "bandit_reward_known", "value": true}
+      ],
+      "choices": [
+        {
+          "text": "That's a fair offer. I accept.",
+          "target": "accept_bandit_quest"
+        },
+        {
+          "text": "I'll need more than that for such dangerous work.",
+          "target": "demand_more_payment"
+        }
+      ]
+    },
+    "demand_more_payment": {
+      "speaker": "merchant", 
+      "text": "You drive a hard bargain! Very well - 300 gold and two items from my stock. But that's my final offer. These bandits have already cost me too much as it is.",
+      "actions": [
+        {"type": "set_variable", "name": "negotiated_better_payment", "value": true}
+      ],
+      "choices": [
+        {
+          "text": "Deal. You've got yourself a bandit hunter.",
+          "target": "accept_bandit_quest"
+        },
+        {
+          "text": "I'll consider it.",
+          "target": "consider_quest"
+        }
+      ]
+    },
+    "quest_accepted_end": {
+      "speaker": "merchant",
+      "text": "May fortune smile upon you, brave adventurer! Return to me when the deed is done, and your reward will be waiting. Safe travels!",
+      "actions": [
+        {"type": "set_variable", "name": "merchant_reputation", "value": 5}
+      ],
+      "end": true
+    },
+    "polite_farewell": {
+      "speaker": "merchant",
+      "text": "Safe travels, friend! Should you ever need quality goods at fair prices, you know where to find me. May the roads treat you kindly!",
+      "end": true
+    },
+    "other_topics": {
+      "speaker": "merchant",
+      "text": "What would you like to know? I've traveled these lands for years and have many tales to share.",
+      "choices": [
+        {
+          "text": "Tell me about the road conditions.",
+          "target": "road_news"
+        },
+        {
+          "text": "Any other merchants I should know about?",
+          "target": "other_merchants"
+        },
+        {
+          "text": "What's the best route to the eastern mountains?",
+          "target": "mountain_routes"
+        }
+      ]
+    }
+  }
+}

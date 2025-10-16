@@ -160,7 +160,7 @@ func main() {
 	// Configure window
 	ebiten.SetWindowSize(800, 600)
 	ebiten.SetWindowTitle("MyRPG - PopupInfoWidget Test")
-	ebiten.SetWindowResizable(false)
+	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeDisabled)
 
 	log.Println("🧪 Starting PopupInfoWidget test...")
 	log.Println("📋 Press 'I' to show info popup")

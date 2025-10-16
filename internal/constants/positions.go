@@ -10,7 +10,7 @@ const (
 	Player2StartY = 150.0
 	Player3StartX = 200.0
 	Player3StartY = 150.0
-	
+
 	// Enemy Starting Positions
 	Enemy1StartX = 300.0
 	Enemy1StartY = 250.0
@@ -30,14 +30,14 @@ const (
 const (
 	// Party Member Spacing
 	PartyMemberOffset = 5.0 // Small offset between party members
-	
+
 	// Enemy Positioning
-	EnemyBaseDistance = 100.0 // Base distance from player
-	EnemySpacing      = 20.0  // Additional spacing per enemy
+	EnemyBaseDistance        = 100.0 // Base distance from player
+	EnemySpacing             = 20.0  // Additional spacing per enemy
 	EnemyPositionMultiplierX = 1.0
 	EnemyPositionMultiplierY = 0.5
-	EnemyVerticalSpacing = 30.0
-	
+	EnemyVerticalSpacing     = 30.0
+
 	// Boundary Constraints for Enemy Positioning
 	EnemyMinX = 50.0
 	EnemyMaxX = 700.0

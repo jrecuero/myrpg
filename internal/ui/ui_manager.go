@@ -100,6 +100,7 @@ type UIManager struct {
 	popupInfo      *PopupInfoWidget      // Reusable popup info widget
 	characterStats *CharacterStatsWidget // Character statistics widget
 	equipment      *EquipmentWidget      // Equipment management widget
+	dialog         *DialogWidget         // Dialog conversation widget
 }
 
 // NewUIManager creates a new UI manager
@@ -119,12 +120,16 @@ func NewUIManager() *UIManager {
 	// Create equipment widget centered
 	equipment := NewEquipmentWidget(ScreenWidth, ScreenHeight, nil, nil)
 
+	// Create dialog widget centered
+	dialog := NewDialogWidget(ScreenWidth, ScreenHeight)
+
 	return &UIManager{
 		messageSystem:  NewMessageSystem(50), // Keep last 50 messages
 		popupSelection: popupSelection,
 		popupInfo:      popupInfo,
 		characterStats: characterStats,
 		equipment:      equipment,
+		dialog:         dialog,
 	}
 }
 
@@ -364,6 +369,11 @@ func (ui *UIManager) Update() bool {
 			escConsumed = true
 		}
 	}
+	if ui.dialog != nil {
+		if ui.dialog.Update() {
+			escConsumed = true
+		}
+	}
 
 	return escConsumed
 }
@@ -381,6 +391,9 @@ func (ui *UIManager) DrawPopups(screen *ebiten.Image) {
 	}
 	if ui.equipment != nil {
 		ui.equipment.Draw(screen)
+	}
+	if ui.dialog != nil {
+		ui.dialog.Draw(screen)
 	}
 }
 
@@ -452,11 +465,64 @@ func (ui *UIManager) HideEquipment() {
 	}
 }
 
+// ShowDialog starts a dialog conversation
+func (ui *UIManager) ShowDialog(scriptsPath, charactersFile, dialogFile, startNode string) error {
+	if ui.dialog == nil {
+		return fmt.Errorf("dialog widget not initialized")
+	}
+
+	// Load characters if not already loaded
+	if len(ui.dialog.Characters) == 0 {
+		charactersPath := fmt.Sprintf("%s/%s", scriptsPath, charactersFile)
+		if err := ui.dialog.LoadCharacters(charactersPath); err != nil {
+			return fmt.Errorf("failed to load characters: %w", err)
+		}
+	}
+
+	// Load dialog script
+	dialogPath := fmt.Sprintf("%s/%s", scriptsPath, dialogFile)
+	if err := ui.dialog.LoadDialog(dialogPath); err != nil {
+		return fmt.Errorf("failed to load dialog: %w", err)
+	}
+
+	// Start dialog
+	ui.dialog.StartDialog(startNode)
+	return nil
+}
+
+// HideDialog closes the dialog widget
+func (ui *UIManager) HideDialog() {
+	if ui.dialog != nil {
+		ui.dialog.Hide()
+	}
+}
+
+// IsDialogVisible returns true if dialog widget is visible
+func (ui *UIManager) IsDialogVisible() bool {
+	return ui.dialog != nil && ui.dialog.IsVisible()
+}
+
+// GetDialogVariable gets a dialog variable value
+func (ui *UIManager) GetDialogVariable(name string) (interface{}, bool) {
+	if ui.dialog != nil {
+		return ui.dialog.GetVariable(name)
+	}
+	return nil, false
+}
+
+// SetDialogVariable sets a dialog variable value
+func (ui *UIManager) SetDialogVariable(name string, value interface{}) {
+	if ui.dialog != nil {
+		ui.dialog.SetVariable(name, value)
+	}
+}
+
 // IsPopupVisible returns true if any popup is currently visible
 func (ui *UIManager) IsPopupVisible() bool {
 	selectionVisible := ui.popupSelection != nil && ui.popupSelection.IsVisible
 	infoVisible := ui.popupInfo != nil && ui.popupInfo.IsVisible
 	statsVisible := ui.characterStats != nil && ui.characterStats.IsVisible()
 	equipmentVisible := ui.equipment != nil && ui.equipment.IsVisible()
-	return selectionVisible || infoVisible || statsVisible || equipmentVisible
+	dialogVisible := ui.dialog != nil && ui.dialog.IsVisible()
+	return selectionVisible || infoVisible || statsVisible || equipmentVisible || dialogVisible
 }

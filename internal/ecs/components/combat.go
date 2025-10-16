@@ -41,11 +41,11 @@ func (ap *ActionPointsComponent) IsExhausted() bool {
 
 // CombatStateComponent tracks combat-specific state for units
 type CombatStateComponent struct {
-	HasActed     bool  // Has this unit completed its turn
-	IsActive     bool  // Is this unit currently taking their turn
-	Team         Team  // Which team does this unit belong to
-	Initiative   int   // Initiative value for turn order
-	CanAct       bool  // Can this unit still act (not stunned, etc.)
+	HasActed   bool // Has this unit completed its turn
+	IsActive   bool // Is this unit currently taking their turn
+	Team       Team // Which team does this unit belong to
+	Initiative int  // Initiative value for turn order
+	CanAct     bool // Can this unit still act (not stunned, etc.)
 }
 
 // Team represents which side a unit fights for

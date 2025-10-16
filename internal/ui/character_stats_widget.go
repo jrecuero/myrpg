@@ -272,10 +272,10 @@ func (csw *CharacterStatsWidget) Draw(screen *ebiten.Image) {
 	// Draw shadow
 	shadowX := float32(csw.X + StatsWidgetShadowOffset)
 	shadowY := float32(csw.Y + StatsWidgetShadowOffset)
-	vector.DrawFilledRect(screen, shadowX, shadowY, float32(csw.Width), float32(csw.Height), csw.ShadowColor, false)
+	vector.FillRect(screen, shadowX, shadowY, float32(csw.Width), float32(csw.Height), csw.ShadowColor, false)
 
 	// Draw background
-	vector.DrawFilledRect(screen, float32(csw.X), float32(csw.Y), float32(csw.Width), float32(csw.Height), csw.BackgroundColor, false)
+	vector.FillRect(screen, float32(csw.X), float32(csw.Y), float32(csw.Width), float32(csw.Height), csw.BackgroundColor, false)
 
 	// Draw border
 	vector.StrokeRect(screen, float32(csw.X), float32(csw.Y), float32(csw.Width), float32(csw.Height), StatsWidgetBorderWidth, csw.BorderColor, false)
@@ -301,7 +301,7 @@ func (csw *CharacterStatsWidget) Draw(screen *ebiten.Image) {
 		StatsWidgetBackgroundB + 5,
 		StatsWidgetBackgroundA - 20,
 	}
-	vector.DrawFilledRect(screen, contentX, contentY, contentWidth, contentHeight, contentBgColor, false)
+	vector.FillRect(screen, contentX, contentY, contentWidth, contentHeight, contentBgColor, false)
 
 	// Draw content area border
 	contentBorderColor := color.RGBA{StatsWidgetBorderR, StatsWidgetBorderG, StatsWidgetBorderB, 100}
@@ -341,7 +341,7 @@ func (csw *CharacterStatsWidget) drawTabs(screen *ebiten.Image) {
 		}
 
 		// Draw tab background
-		vector.DrawFilledRect(screen, tabX, tabY, tabWidth, float32(StatsWidgetTabHeight), tabColor, false)
+		vector.FillRect(screen, tabX, tabY, tabWidth, float32(StatsWidgetTabHeight), tabColor, false)
 
 		// Draw tab border
 		borderColor := color.RGBA{StatsWidgetBorderR, StatsWidgetBorderG, StatsWidgetBorderB, 150}
@@ -435,13 +435,13 @@ func (csw *CharacterStatsWidget) drawOverview(screen *ebiten.Image) {
 func (csw *CharacterStatsWidget) drawProgressBar(screen *ebiten.Image, x, y, width, height float32, current, max int, barColor color.RGBA) {
 	// Background
 	bgColor := color.RGBA{StatsWidgetBarBackgroundR, StatsWidgetBarBackgroundG, StatsWidgetBarBackgroundB, StatsWidgetBarBackgroundA}
-	vector.DrawFilledRect(screen, x, y, width, height, bgColor, false)
+	vector.FillRect(screen, x, y, width, height, bgColor, false)
 
 	// Progress fill
 	if max > 0 {
 		fillWidth := width * float32(current) / float32(max)
 		if fillWidth > 0 {
-			vector.DrawFilledRect(screen, x, y, fillWidth, height, barColor, false)
+			vector.FillRect(screen, x, y, fillWidth, height, barColor, false)
 		}
 	}
 
@@ -611,7 +611,7 @@ func (csw *CharacterStatsWidget) drawTacticalStats(screen *ebiten.Image) {
 func (csw *CharacterStatsWidget) drawSectionHeader(screen *ebiten.Image, title string, x, y int, headerColor color.RGBA) {
 	// Draw header background
 	headerWidth := float32(csw.Width - StatsWidgetPadding*2)
-	vector.DrawFilledRect(screen, float32(x), float32(y), headerWidth, float32(StatsWidgetHeaderHeight), headerColor, false)
+	vector.FillRect(screen, float32(x), float32(y), headerWidth, float32(StatsWidgetHeaderHeight), headerColor, false)
 
 	// Draw header text
 	ebitenutil.DebugPrintAt(screen, title, x+10, y+8)

@@ -392,14 +392,14 @@ func (ew *EquipmentWidget) Draw(screen *ebiten.Image) {
 
 	// Draw shadow
 	shadowColor := color.RGBA{0, 0, 0, 100}
-	vector.DrawFilledRect(screen,
+	vector.FillRect(screen,
 		float32(ew.X+EquipmentWidgetShadowOffset), float32(ew.Y+EquipmentWidgetShadowOffset),
 		float32(ew.Width), float32(ew.Height),
 		shadowColor, false)
 
 	// Draw main widget background
 	bgColor := color.RGBA{EquipmentWidgetBackgroundR, EquipmentWidgetBackgroundG, EquipmentWidgetBackgroundB, EquipmentWidgetBackgroundA}
-	vector.DrawFilledRect(screen,
+	vector.FillRect(screen,
 		float32(ew.X), float32(ew.Y),
 		float32(ew.Width), float32(ew.Height),
 		bgColor, false)
@@ -456,7 +456,7 @@ func (ew *EquipmentWidget) drawEquipmentSlots(screen *ebiten.Image) {
 			slotBgColor = color.RGBA{EquipmentSlotEmptyR, EquipmentSlotEmptyG, EquipmentSlotEmptyB, EquipmentSlotEmptyA}
 		}
 
-		vector.DrawFilledRect(screen,
+		vector.FillRect(screen,
 			float32(slotX), float32(slotY),
 			float32(EquipmentSlotSize), float32(EquipmentSlotSize),
 			slotBgColor, false)
@@ -506,7 +506,7 @@ func (ew *EquipmentWidget) drawStatComparison(screen *ebiten.Image) {
 
 	// Draw panel background
 	panelBg := color.RGBA{40, 40, 50, 200}
-	vector.DrawFilledRect(screen,
+	vector.FillRect(screen,
 		float32(panelX), float32(panelY),
 		float32(StatComparisonPanelWidth), float32(StatComparisonPanelHeight),
 		panelBg, false)
@@ -533,7 +533,7 @@ func (ew *EquipmentWidget) drawEquipmentDetails(screen *ebiten.Image) {
 
 	// Draw panel background
 	panelBg := color.RGBA{EquipmentDetailsPanelR, EquipmentDetailsPanelG, EquipmentDetailsPanelB, EquipmentDetailsPanelA}
-	vector.DrawFilledRect(screen,
+	vector.FillRect(screen,
 		float32(panelX), float32(panelY),
 		float32(EquipmentDetailsPanelWidth), float32(EquipmentDetailsPanelHeight),
 		panelBg, false)
