@@ -20,6 +20,12 @@ const (
 	JobArcher                 // High Range Attack and Speed, low Defense
 )
 
+const (
+	DefaultRPGStateSpeed    = 50
+	DefaultRPGStateAccuracy = 85
+	DefaultRPGStatCritRate  = 5
+)
+
 // String returns the string representation of a JobType
 func (j JobType) String() string {
 	switch j {
@@ -79,9 +85,9 @@ func NewRPGStatsComponent(name string, job JobType, level int) *RPGStatsComponen
 		Level:      level,
 		Experience: 0,
 		ExpToNext:  level * 100, // Simple EXP formula
-		Speed:      50,
-		Accuracy:   85,
-		CritRate:   5,
+		Speed:      DefaultRPGStateSpeed,
+		Accuracy:   DefaultRPGStateAccuracy,
+		CritRate:   DefaultRPGStatCritRate,
 	}
 
 	// Apply job-specific base stats
