@@ -6,11 +6,16 @@ This directory contains standalone test programs for verifying specific function
 
 ```
 test/
-├── README.md           # This file
-├── input_test/         # Interactive input blocking test 
-├── logic_test/         # Non-interactive logic verification
-├── popup_test/         # Popup selection widget functionality test
-└── info_popup_test/    # Popup info widget functionality test
+├── README.md              # This file
+├── input_test/            # Interactive input blocking test 
+├── logic_test/            # Non-interactive logic verification
+├── popup_test/            # Popup selection widget functionality test
+├── info_popup_test/       # Popup info widget functionality test
+├── dialog_test/           # Dialog widget conversation system test
+├── equipment_test/        # Equipment management widget test  
+├── character_stats_test/  # Character statistics widget test
+├── info_layout_test/      # Info layout widget test
+└── inventory_test/        # Inventory management widget test
 ```
 
 ## Test Programs
@@ -65,6 +70,51 @@ go run test/info_popup_test/main.go
 - ESC exits test when no popup is open
 
 **Note:** May have graphics allocation issues on macOS 15.0 due to Ebiten/Metal compatibility.
+
+---
+
+### 9. **`inventory_test/`** - Inventory Management Widget Test
+- **File**: `test/inventory_test/main.go`
+- **Purpose**: Comprehensive testing of InventoryWidget functionality
+- **Type**: Interactive test (requires display/graphics)
+- **Features Tested**:
+
+**Usage:**
+```bash
+# Inventory widget test
+go run test/inventory_test/main.go
+```
+
+**What it tests:**
+- ✅ Grid-based inventory display (8x6 = 48 slots)
+- ✅ Item creation and display with different types and rarities
+- ✅ Drag & drop functionality between inventory slots
+- ✅ Item stacking for stackable items (potions, materials)
+- ✅ Item tooltips on hover with detailed information
+- ✅ Sorting functionality (by name, type, rarity)
+- ✅ Filtering by item category (equipment, consumables, all)
+- ✅ Keyboard shortcuts (Delete to remove, 1-9 to split stacks)
+- ✅ Rarity-based color coding (Common: Gray, Rare: Blue, Epic: Purple, etc.)
+- ✅ Action panel with sort/filter buttons
+- ✅ ECS integration with Entity and InventoryComponent
+
+**Controls:**
+- Press 'I' to toggle inventory open/close
+- Left-click to select items and start dragging
+- Right-click to select items (context menu ready for future)
+- Drag & drop items between slots
+- Use action panel buttons for sorting/filtering
+- Delete key to remove selected item
+- Number keys (1-9) to split selected stack
+- Press ESC to close inventory
+
+**Test Items Included:**
+- Equipment: Iron Sword (Common), Steel Helmet (Uncommon), Magic Ring (Epic)
+- Consumables: Health Potions (stackable), Mana Potions (stackable), Greater Elixir (Legendary)
+- Materials: Iron Ore (stackable x25)
+- Quest Items: Mysterious Key (Rare, unique)
+
+**Note:** Demonstrates complete inventory management system ready for integration.
 
 ---
 

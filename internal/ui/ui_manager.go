@@ -13,6 +13,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/jrecuero/myrpg/internal/constants"
+	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 	"github.com/jrecuero/myrpg/internal/logger"
 )
@@ -101,6 +102,7 @@ type UIManager struct {
 	characterStats *CharacterStatsWidget // Character statistics widget
 	equipment      *EquipmentWidget      // Equipment management widget
 	dialog         *DialogWidget         // Dialog conversation widget
+	inventory      *InventoryWidget      // Inventory management widget
 }
 
 // NewUIManager creates a new UI manager
@@ -123,6 +125,8 @@ func NewUIManager() *UIManager {
 	// Create dialog widget centered
 	dialog := NewDialogWidget(ScreenWidth, ScreenHeight)
 
+	// Inventory widget will be initialized when player entity is available
+
 	return &UIManager{
 		messageSystem:  NewMessageSystem(50), // Keep last 50 messages
 		popupSelection: popupSelection,
@@ -130,6 +134,7 @@ func NewUIManager() *UIManager {
 		characterStats: characterStats,
 		equipment:      equipment,
 		dialog:         dialog,
+		inventory:      nil, // Will be set when player entity is available
 	}
 }
 
@@ -374,6 +379,15 @@ func (ui *UIManager) Update() bool {
 			escConsumed = true
 		}
 	}
+	if ui.inventory != nil {
+		if err := ui.inventory.Update(); err != nil {
+			logger.Error("Inventory widget update error: %v", err)
+		}
+		// Check if inventory was closed
+		if !ui.inventory.Visible {
+			ui.inventory = nil
+		}
+	}
 
 	return escConsumed
 }
@@ -394,6 +408,9 @@ func (ui *UIManager) DrawPopups(screen *ebiten.Image) {
 	}
 	if ui.dialog != nil {
 		ui.dialog.Draw(screen)
+	}
+	if ui.inventory != nil {
+		ui.inventory.Draw(screen)
 	}
 }
 
@@ -517,6 +534,40 @@ func (ui *UIManager) SetDialogVariable(name string, value interface{}) {
 	}
 }
 
+// ShowInventory creates and shows the inventory widget for the given entity
+func (ui *UIManager) ShowInventory(entity *ecs.Entity) error {
+	if entity == nil {
+		return fmt.Errorf("entity is nil")
+	}
+
+	// Check if entity has inventory component
+	if entity.Inventory() == nil {
+		return fmt.Errorf("entity does not have an inventory component")
+	}
+
+	// Create inventory widget if it doesn't exist or entity changed
+	inventoryX := (ScreenWidth - 600) / 2  // Center horizontally
+	inventoryY := (ScreenHeight - 500) / 2 // Center vertically
+
+	// Create new inventory widget
+	ui.inventory = NewInventoryWidget(inventoryX, inventoryY, entity)
+	ui.inventory.Visible = true
+
+	return nil
+}
+
+// HideInventory closes the inventory widget
+func (ui *UIManager) HideInventory() {
+	if ui.inventory != nil {
+		ui.inventory.Close()
+	}
+}
+
+// IsInventoryVisible returns true if inventory widget is visible
+func (ui *UIManager) IsInventoryVisible() bool {
+	return ui.inventory != nil && ui.inventory.IsOpen()
+}
+
 // IsPopupVisible returns true if any popup is currently visible
 func (ui *UIManager) IsPopupVisible() bool {
 	selectionVisible := ui.popupSelection != nil && ui.popupSelection.IsVisible
@@ -524,5 +575,6 @@ func (ui *UIManager) IsPopupVisible() bool {
 	statsVisible := ui.characterStats != nil && ui.characterStats.IsVisible()
 	equipmentVisible := ui.equipment != nil && ui.equipment.IsVisible()
 	dialogVisible := ui.dialog != nil && ui.dialog.IsVisible()
-	return selectionVisible || infoVisible || statsVisible || equipmentVisible || dialogVisible
+	inventoryVisible := ui.inventory != nil && ui.inventory.IsOpen()
+	return selectionVisible || infoVisible || statsVisible || equipmentVisible || dialogVisible || inventoryVisible
 }

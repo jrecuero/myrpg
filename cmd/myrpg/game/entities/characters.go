@@ -27,6 +27,7 @@ func CreatePlayer() *ecs.Entity {
 	player.AddComponent(ecs.ComponentSprite, components.NewSpriteComponent(playerSprite, 1.0, 0, 0))
 	player.AddComponent(ecs.ComponentCollider, components.NewColliderComponent(true, 32, 32, 0, 0))
 	player.AddComponent(ecs.ComponentRPGStats, components.NewRPGStatsComponent("Hero", components.JobWarrior, 1))
+	player.AddComponent(ecs.ComponentInventory, components.NewInventoryComponent(8, 6)) // 8x6 inventory grid
 	player.AddTag(ecs.TagPlayer)
 
 	return player
@@ -65,6 +66,7 @@ func CreatePlayerAtPosition(name string, x, y float64) *ecs.Entity {
 	player.AddComponent(ecs.ComponentSprite, components.NewSpriteComponent(playerSprite, 1.0, 0, 0))
 	player.AddComponent(ecs.ComponentCollider, components.NewColliderComponent(true, 32, 32, 0, 0))
 	player.AddComponent(ecs.ComponentRPGStats, components.NewRPGStatsComponent(name, components.JobWarrior, 1))
+	player.AddComponent(ecs.ComponentInventory, components.NewInventoryComponent(8, 6)) // 8x6 inventory grid
 	player.AddTag(ecs.TagPlayer)
 
 	return player
@@ -84,6 +86,7 @@ func CreatePlayerWithJob(name string, x, y float64, job components.JobType, leve
 	player.AddComponent(ecs.ComponentSprite, components.NewSpriteComponent(playerSprite, 1.0, 0, 0))
 	player.AddComponent(ecs.ComponentCollider, components.NewColliderComponent(true, 32, 32, 0, 0))
 	player.AddComponent(ecs.ComponentRPGStats, components.NewRPGStatsComponent(name, job, level))
+	player.AddComponent(ecs.ComponentInventory, components.NewInventoryComponent(8, 6)) // 8x6 inventory grid
 	player.AddTag(ecs.TagPlayer)
 
 	return player
@@ -115,6 +118,7 @@ func CreateAnimatedPlayerWithJob(name string, x, y float64, job components.JobTy
 	player.AddComponent(ecs.ComponentTransform, components.NewTransform(x, y, 32, 32))
 	player.AddComponent(ecs.ComponentCollider, components.NewColliderComponent(true, 32, 32, 0, 0))
 	player.AddComponent(ecs.ComponentRPGStats, components.NewRPGStatsComponent(name, job, level))
+	player.AddComponent(ecs.ComponentInventory, components.NewInventoryComponent(8, 6)) // 8x6 inventory grid
 	player.AddTag(ecs.TagPlayer)
 
 	// Load animations

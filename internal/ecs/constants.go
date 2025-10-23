@@ -16,6 +16,7 @@ const (
 	ComponentActionPoints = "actionpoints"
 	ComponentCombatState  = "combatstate"
 	ComponentEquipment    = "equipment"
+	ComponentInventory    = "inventory"
 )
 
 // Common entity tags

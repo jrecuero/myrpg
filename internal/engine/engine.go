@@ -325,7 +325,7 @@ func (g *Game) CheckAndRemoveDeadEntities() {
 func (g *Game) InitializeGame() {
 	g.uiManager.AddMessage("Welcome to MyRPG!")
 	g.uiManager.AddMessage("Use arrow keys to move, TAB to switch between players")
-	g.uiManager.AddMessage("Press C near enemies for tactical combat")
+	g.uiManager.AddMessage("Press I to open/close inventory, H for help, C near enemies for combat")
 	g.uiManager.AddMessage("In tactical mode: R to reset movement, ESC to exit")
 	g.uiManager.AddMessage("Move back to previous positions to recover movement!")
 
@@ -398,7 +398,7 @@ func (g *Game) Update() error {
 		g.showTestPopup()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyI) && !g.uiManager.IsPopupVisible() {
-		g.showTestInfoPopup()
+		g.toggleInventory()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) && !g.uiManager.IsPopupVisible() {
 		g.showCharacterStats()
@@ -408,6 +408,9 @@ func (g *Game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyD) && !g.uiManager.IsPopupVisible() {
 		g.showDialog()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyH) && !g.uiManager.IsPopupVisible() {
+		g.showTestInfoPopup()
 	}
 
 	// Block game input processing when popup is visible OR when UI consumed ESC
@@ -1259,4 +1262,99 @@ func (g *Game) showDialog() {
 
 	g.uiManager.AddMessage("Started dialog with town elder")
 	logger.Info("Showing dialog for player: %s", activePlayer.RPGStats().Name)
+}
+
+// populatePlayerInventoryWithTestItems adds sample items to a player's inventory for testing
+func (g *Game) populatePlayerInventoryWithTestItems(player *ecs.Entity) {
+	if player == nil || player.Inventory() == nil {
+		return
+	}
+
+	inventory := player.Inventory()
+
+	// Create sample items for testing
+	items := []*components.Item{
+		{
+			ID:          1,
+			Name:        "Iron Sword",
+			Description: "A sturdy iron sword with a sharp blade. +5 Attack",
+			Type:        components.ItemTypeEquipment,
+			Rarity:      components.ItemRarityCommon,
+			Value:       100,
+			IconID:      1,
+			Stackable:   false,
+			MaxStack:    1,
+		},
+		{
+			ID:          2,
+			Name:        "Health Potion",
+			Description: "Restores 50 HP when consumed",
+			Type:        components.ItemTypeConsumable,
+			Rarity:      components.ItemRarityCommon,
+			Value:       25,
+			IconID:      2,
+			Stackable:   true,
+			MaxStack:    10,
+		},
+		{
+			ID:          3,
+			Name:        "Magic Crystal",
+			Description: "A glowing crystal used for enchanting equipment",
+			Type:        components.ItemTypeMaterial,
+			Rarity:      components.ItemRarityRare,
+			Value:       200,
+			IconID:      3,
+			Stackable:   true,
+			MaxStack:    5,
+		},
+	}
+
+	// Add items to inventory
+	for _, item := range items {
+		inventory.AddItem(item, 1)
+	}
+
+	logger.Info("Added %d test items to %s's inventory", len(items), player.RPGStats().Name)
+}
+
+// PopulateAllPlayerInventoriesWithTestItems adds sample items to all player inventories
+func (g *Game) PopulateAllPlayerInventoriesWithTestItems() {
+	players := g.world.FindWithTag(ecs.TagPlayer)
+	for _, player := range players {
+		g.populatePlayerInventoryWithTestItems(player)
+	}
+	logger.Info("Populated inventories for %d players with test items", len(players))
+}
+
+// toggleInventory shows/hides the inventory for the active player
+func (g *Game) toggleInventory() {
+	activePlayer := g.GetActivePlayer()
+	if activePlayer == nil || activePlayer.RPGStats() == nil {
+		g.uiManager.AddMessage("No active player to show inventory for")
+		logger.Info("Attempted to toggle inventory but no active player available")
+		return
+	}
+
+	// Check if player has inventory component
+	if activePlayer.Inventory() == nil {
+		g.uiManager.AddMessage(fmt.Sprintf("%s does not have an inventory", activePlayer.RPGStats().Name))
+		logger.Info("Player %s does not have inventory component", activePlayer.RPGStats().Name)
+		return
+	}
+
+	// Toggle inventory visibility
+	if g.uiManager.IsInventoryVisible() {
+		g.uiManager.HideInventory()
+		g.uiManager.AddMessage("Inventory closed")
+		logger.Info("Inventory closed for player: %s", activePlayer.RPGStats().Name)
+	} else {
+		err := g.uiManager.ShowInventory(activePlayer)
+		if err != nil {
+			g.uiManager.AddMessage(fmt.Sprintf("Failed to show inventory: %v", err))
+			logger.Error("Failed to show inventory for player %s: %v", activePlayer.RPGStats().Name, err)
+			return
+		}
+		g.uiManager.AddMessage(fmt.Sprintf("Opened %s's inventory", activePlayer.RPGStats().Name))
+		logger.Info("Inventory opened for player: %s", activePlayer.RPGStats().Name)
+	}
 }

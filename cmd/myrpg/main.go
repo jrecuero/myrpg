@@ -104,6 +104,9 @@ func main() {
 	// Initialize the game with welcome messages
 	game.InitializeGame()
 
+	// Populate player inventories with test items for demonstration
+	game.PopulateAllPlayerInventoriesWithTestItems()
+
 	// Set window properties and run the game
 	ebiten.SetWindowSize(constants.ScreenWidth, constants.ScreenHeight)
 	ebiten.SetWindowTitle("My RPG")
