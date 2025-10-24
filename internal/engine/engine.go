@@ -705,7 +705,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	activePlayer := g.GetActivePlayer()
 	var activePlayerStats *components.RPGStatsComponent
 	if activePlayer != nil {
-		activePlayerStats = activePlayer.RPGStats()
+		if stats := activePlayer.RPGStats(); stats != nil {
+			activePlayerStats = stats
+		}
 	}
 
 	// Prepare UI data based on current mode
@@ -718,8 +720,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		// Get all party members' stats for exploration view
 		partyMembers := g.partyManager.GetPartyForTactical()
 		for _, member := range partyMembers {
-			if member != nil && member.RPGStats() != nil {
-				partyStats = append(partyStats, member.RPGStats())
+			if member != nil {
+				if stats := member.RPGStats(); stats != nil {
+					partyStats = append(partyStats, stats)
+				}
 			}
 		}
 	} else {
