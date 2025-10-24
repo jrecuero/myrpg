@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 	"github.com/jrecuero/myrpg/internal/ui"
 )
@@ -216,8 +217,13 @@ func main() {
 	// Setup mock character data
 	equipmentComp, statsComp := setupMockCharacter()
 
+	// Create mock entity with inventory for testing equipment widget
+	mockEntity := ecs.NewEntity("TestPlayer")
+	inventoryComp := components.NewInventoryComponent(8, 6) // 8x6 inventory grid
+	mockEntity.AddComponent(ecs.ComponentInventory, inventoryComp)
+
 	// Create equipment widget
-	equipmentWidget := ui.NewEquipmentWidget(ScreenWidth, ScreenHeight, equipmentComp, statsComp)
+	equipmentWidget := ui.NewEquipmentWidget(ScreenWidth, ScreenHeight, equipmentComp, statsComp, mockEntity)
 
 	// Set up available equipment for testing equip/unequip
 	availableEquipment := ui.CreateMockEquipmentSet()

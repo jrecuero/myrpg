@@ -326,6 +326,7 @@ func (g *Game) InitializeGame() {
 	g.uiManager.AddMessage("Welcome to MyRPG!")
 	g.uiManager.AddMessage("Use arrow keys to move, TAB to switch between players")
 	g.uiManager.AddMessage("Press I to open/close inventory, H for help, C near enemies for combat")
+	g.uiManager.AddMessage("In inventory: Right-click equipment to equip, drag items to move")
 	g.uiManager.AddMessage("In tactical mode: R to reset movement, ESC to exit")
 	g.uiManager.AddMessage("Move back to previous positions to recover movement!")
 
@@ -1239,7 +1240,7 @@ func (g *Game) showEquipment() {
 		logger.Info("Created and attached new equipment component for player: %s", activePlayer.RPGStats().Name)
 	}
 
-	g.uiManager.ShowEquipment(equipmentComp, activePlayer.RPGStats())
+	g.uiManager.ShowEquipment(equipmentComp, activePlayer.RPGStats(), activePlayer)
 	g.uiManager.AddMessage(fmt.Sprintf("Displaying equipment for %s", activePlayer.RPGStats().Name))
 	logger.Info("Showing equipment for player: %s", activePlayer.RPGStats().Name)
 }
@@ -1284,6 +1285,28 @@ func (g *Game) populatePlayerInventoryWithTestItems(player *ecs.Entity) {
 			IconID:      1,
 			Stackable:   false,
 			MaxStack:    1,
+			Equipment: &components.Equipment{
+				ID:          1,
+				Name:        "Iron Sword",
+				Description: "A sturdy iron sword with a sharp blade. +5 Attack",
+				Slot:        components.SlotWeapon,
+				Rarity:      components.RarityCommon,
+				Value:       100,
+				IconID:      1,
+				Stats: components.EquipmentStats{
+					AttackBonus:     5,
+					DefenseBonus:    0,
+					HPBonus:         0,
+					MPBonus:         0,
+					CritChanceBonus: 0,
+					CritDamageBonus: 0,
+				},
+				LevelRequirement: 1,
+				JobRestrictions: []components.JobType{
+					components.JobWarrior,
+					components.JobRogue,
+				},
+			},
 		},
 		{
 			ID:          2,

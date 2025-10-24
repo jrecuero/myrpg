@@ -175,9 +175,10 @@ func (iw *InventoryWidget) initializeSlots() {
 }
 
 // Update handles input and state changes
-func (iw *InventoryWidget) Update() error {
+// Returns true if ESC key was consumed (to prevent propagation)
+func (iw *InventoryWidget) Update() bool {
 	if !iw.Visible {
-		return nil
+		return false
 	}
 
 	// Update mouse position
@@ -186,7 +187,7 @@ func (iw *InventoryWidget) Update() error {
 	// Handle escape key to close
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		iw.Visible = false
-		return nil
+		return true // ESC key consumed
 	}
 
 	// Update hover states
@@ -214,7 +215,7 @@ func (iw *InventoryWidget) Update() error {
 	// Handle keyboard shortcuts
 	iw.handleKeyboardInput()
 
-	return nil
+	return false
 }
 
 // updateHoverStates updates which slots are being hovered
@@ -369,13 +370,85 @@ func (iw *InventoryWidget) getSlotIndex(slot *InventorySlot) int {
 
 // showItemContextMenu shows context menu for an item
 func (iw *InventoryWidget) showItemContextMenu(slot *InventorySlot) {
-	// TODO: Implement context menu system
-	// For now, just select the slot
+	if slot.Item == nil {
+		return
+	}
+
+	// Select the slot first
 	if iw.selectedSlot != nil {
 		iw.selectedSlot.IsSelected = false
 	}
 	slot.IsSelected = true
 	iw.selectedSlot = slot
+
+	// For equipment items, try to equip them directly
+	if slot.Item.Type == components.ItemTypeEquipment && slot.Item.Equipment != nil {
+		iw.tryEquipItem(slot)
+	}
+}
+
+// tryEquipItem attempts to equip an item from inventory
+func (iw *InventoryWidget) tryEquipItem(slot *InventorySlot) {
+	if slot.Item == nil || slot.Item.Equipment == nil {
+		return
+	}
+
+	// Get the player's equipment component
+	equipmentComp := iw.entity.Equipment()
+	if equipmentComp == nil {
+		// Create equipment component if it doesn't exist
+		equipmentComp = components.NewEquipmentComponent()
+		iw.entity.AddComponent(ecs.ComponentEquipment, equipmentComp)
+	}
+
+	// Check if player can use this equipment
+	if playerStats := iw.entity.RPGStats(); playerStats != nil {
+		if !slot.Item.CanUse(playerStats.Level, playerStats.Job) {
+			// Player can't use this item - could show a message here
+			return
+		}
+	}
+
+	equipment := slot.Item.Equipment
+	equipSlot := equipment.Slot
+
+	// Check if something is already equipped in that slot
+	if currentEquip := equipmentComp.GetEquipped(equipSlot); currentEquip != nil {
+		// Unequip current item and add it back to inventory
+		unequipped := equipmentComp.Unequip(equipSlot)
+		if unequipped != nil {
+			// Create an inventory item for the unequipped equipment
+			unequippedItem := &components.Item{
+				ID:          unequipped.ID,
+				Name:        unequipped.Name,
+				Description: unequipped.Description,
+				Type:        components.ItemTypeEquipment,
+				Rarity:      components.ItemRarity(unequipped.Rarity),
+				Value:       unequipped.Value,
+				IconID:      unequipped.IconID,
+				Equipment:   unequipped,
+				Stackable:   false,
+				MaxStack:    1,
+			}
+
+			// Try to add unequipped item back to inventory
+			remaining := iw.inventory.AddItem(unequippedItem, 1)
+			if remaining > 0 {
+				// If inventory is full, re-equip the old item
+				equipmentComp.Equip(unequipped)
+				return
+			}
+		}
+	}
+
+	// Equip the new item
+	equipmentComp.Equip(equipment)
+
+	// Remove the item from inventory
+	iw.inventory.RemoveItem(slot.Item.ID, 1)
+
+	// Update the slot display to reflect changes
+	iw.initializeSlots()
 }
 
 // handleActionPanelClick processes clicks in the action panel
@@ -676,14 +749,46 @@ func (iw *InventoryWidget) drawItemInSlot(screen *ebiten.Image, slot *InventoryS
 	}
 
 	vector.FillRect(screen, itemX, itemY, itemW, itemH, itemColor, false)
+
+	// Draw item name as text fallback (when sprites are not available)
+	itemName := slot.Item.Name
+
+	// Calculate max characters that fit in slot (6 pixels per character, with padding)
+	maxChars := int((itemW - 4) / 6)
+	if maxChars < 3 {
+		maxChars = 3 // Minimum 3 characters
+	}
+
+	if len(itemName) > maxChars {
+		if maxChars > 3 {
+			itemName = itemName[:maxChars-3] + "..."
+		} else {
+			itemName = itemName[:maxChars]
+		}
+	}
+
+	// Calculate proper text centering
+	textWidth := len(itemName) * 6 // 6 pixels per character
+	textX := int(itemX + (itemW-float32(textWidth))/2)
+	textY := int(itemY + itemH/2 - 4) // Center vertically
+
+	// Ensure text stays within slot bounds
+	if textX < int(itemX)+2 {
+		textX = int(itemX) + 2
+	}
+
+	ebitenutil.DebugPrintAt(screen, itemName, textX, textY)
 }
 
 // drawQuantity draws the item quantity number
 func (iw *InventoryWidget) drawQuantity(screen *ebiten.Image, slot *InventorySlot) {
-	_ = screen
-	// TODO: Draw quantity text when font system is available
-	quantityText := fmt.Sprintf("%d", slot.Quantity)
-	_ = quantityText
+	if slot.Quantity > 1 {
+		quantityText := fmt.Sprintf("%d", slot.Quantity)
+		// Draw quantity in bottom-right corner of slot
+		textX := slot.X + slot.Width - len(quantityText)*6 - 2
+		textY := slot.Y + slot.Height - 10
+		ebitenutil.DebugPrintAt(screen, quantityText, textX, textY)
+	}
 }
 
 // drawActionPanel draws the action buttons panel

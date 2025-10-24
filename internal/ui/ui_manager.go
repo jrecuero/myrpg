@@ -120,7 +120,7 @@ func NewUIManager() *UIManager {
 	characterStats := NewCharacterStatsWidget(statsX, statsY, nil)
 
 	// Create equipment widget centered
-	equipment := NewEquipmentWidget(ScreenWidth, ScreenHeight, nil, nil)
+	equipment := NewEquipmentWidget(ScreenWidth, ScreenHeight, nil, nil, nil)
 
 	// Create dialog widget centered
 	dialog := NewDialogWidget(ScreenWidth, ScreenHeight)
@@ -380,8 +380,8 @@ func (ui *UIManager) Update() bool {
 		}
 	}
 	if ui.inventory != nil {
-		if err := ui.inventory.Update(); err != nil {
-			logger.Error("Inventory widget update error: %v", err)
+		if ui.inventory.Update() {
+			escConsumed = true
 		}
 		// Check if inventory was closed
 		if !ui.inventory.Visible {
@@ -461,10 +461,11 @@ func (ui *UIManager) HideCharacterStats() {
 }
 
 // ShowEquipment displays the equipment widget
-func (ui *UIManager) ShowEquipment(equipmentComp *components.EquipmentComponent, character *components.RPGStatsComponent) {
+func (ui *UIManager) ShowEquipment(equipmentComp *components.EquipmentComponent, character *components.RPGStatsComponent, entity *ecs.Entity) {
 	if ui.equipment != nil {
 		ui.equipment.EquipmentComp = equipmentComp
 		ui.equipment.CharacterStats = character
+		ui.equipment.Entity = entity
 
 		// Set up available equipment for testing (mock system)
 		if len(ui.equipment.AvailableEquipment) == 0 {

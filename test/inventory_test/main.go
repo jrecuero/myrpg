@@ -198,10 +198,8 @@ func (g *Game) Update() error {
 
 	// Update inventory widget if open
 	if g.isInventoryOpen {
-		err := g.inventoryWidget.Update()
-		if err != nil {
-			return err
-		}
+		consumed := g.inventoryWidget.Update()
+		_ = consumed // Ignore ESC key consumption in test
 
 		// Check if widget was closed via escape key
 		if !g.inventoryWidget.Visible {

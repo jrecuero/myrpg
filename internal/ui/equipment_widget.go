@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 )
 
@@ -182,6 +183,7 @@ type EquipmentWidget struct {
 	EquipmentComp      *components.EquipmentComponent
 	CharacterStats     *components.RPGStatsComponent
 	AvailableEquipment []*components.Equipment // Mock equipment available to equip
+	Entity             *ecs.Entity             // Player entity for inventory access
 
 	// Navigation and selection
 	SelectedSlot  components.EquipmentSlot
@@ -193,7 +195,7 @@ type EquipmentWidget struct {
 }
 
 // NewEquipmentWidget creates a new equipment widget
-func NewEquipmentWidget(screenWidth, screenHeight int, equipmentComp *components.EquipmentComponent, stats *components.RPGStatsComponent) *EquipmentWidget {
+func NewEquipmentWidget(screenWidth, screenHeight int, equipmentComp *components.EquipmentComponent, stats *components.RPGStatsComponent, entity *ecs.Entity) *EquipmentWidget {
 	x := (screenWidth - EquipmentWidgetWidth) / 2
 	y := (screenHeight - EquipmentWidgetHeight) / 2
 
@@ -205,6 +207,7 @@ func NewEquipmentWidget(screenWidth, screenHeight int, equipmentComp *components
 		Visible:        false,
 		EquipmentComp:  equipmentComp,
 		CharacterStats: stats,
+		Entity:         entity,
 		SelectedSlot:   components.SlotHead,
 		SlotPositions:  getSlotPositions(),
 		SlotOrder: []components.EquipmentSlot{
@@ -343,8 +346,32 @@ func (ew *EquipmentWidget) unequipItem(slot components.EquipmentSlot) {
 
 	unequippedItem := ew.EquipmentComp.Unequip(slot)
 	if unequippedItem != nil {
-		// Add the item back to available equipment for re-equipping
-		ew.AvailableEquipment = append(ew.AvailableEquipment, unequippedItem)
+		// Return the unequipped item to player's inventory
+		if ew.Entity != nil && ew.Entity.Inventory() != nil {
+			// Create an inventory item for the unequipped equipment
+			inventoryItem := &components.Item{
+				ID:          unequippedItem.ID,
+				Name:        unequippedItem.Name,
+				Description: unequippedItem.Description,
+				Type:        components.ItemTypeEquipment,
+				Rarity:      components.ItemRarity(unequippedItem.Rarity),
+				Value:       unequippedItem.Value,
+				IconID:      unequippedItem.IconID,
+				Equipment:   unequippedItem,
+				Stackable:   false,
+				MaxStack:    1,
+			}
+
+			// Try to add to inventory
+			remaining := ew.Entity.Inventory().AddItem(inventoryItem, 1)
+			if remaining > 0 {
+				// If inventory is full, add back to available equipment as fallback
+				ew.AvailableEquipment = append(ew.AvailableEquipment, unequippedItem)
+			}
+		} else {
+			// Fallback: Add the item back to available equipment for re-equipping
+			ew.AvailableEquipment = append(ew.AvailableEquipment, unequippedItem)
+		}
 	}
 }
 
