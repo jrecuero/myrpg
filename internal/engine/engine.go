@@ -81,6 +81,9 @@ func NewGame() *Game {
 		}
 	})
 
+	// Initialize item system
+	components.InitializeItemSystem()
+
 	return game
 }
 
@@ -325,9 +328,9 @@ func (g *Game) CheckAndRemoveDeadEntities() {
 func (g *Game) InitializeGame() {
 	g.uiManager.AddMessage("Welcome to MyRPG!")
 	g.uiManager.AddMessage("Use arrow keys to move, TAB to switch between players")
-	g.uiManager.AddMessage("Press I to open/close inventory, H for help, C near enemies for combat")
+	g.uiManager.AddMessage("Press I for inventory, Q for equipment, H for help, C near enemies for combat")
 	g.uiManager.AddMessage("In inventory: Right-click equipment to equip, drag items to move")
-	g.uiManager.AddMessage("In tactical mode: R to reset movement, ESC to exit")
+	g.uiManager.AddMessage("In tactical mode: A to attack, E to end turn, R to reset movement, ESC to exit")
 	g.uiManager.AddMessage("Move back to previous positions to recover movement!")
 
 	// Add message about the current active player
@@ -404,7 +407,7 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) && !g.uiManager.IsPopupVisible() {
 		g.showCharacterStats()
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyE) && !g.uiManager.IsPopupVisible() {
+	if inpututil.IsKeyJustPressed(ebiten.KeyQ) && !g.uiManager.IsPopupVisible() {
 		g.showEquipment()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyD) && !g.uiManager.IsPopupVisible() {
@@ -585,6 +588,64 @@ func (g *Game) updateTactical() error {
 		}
 	} else {
 		g.tabKeyPressed = false
+	}
+
+	// Handle A key to attack in tactical mode
+	if inpututil.IsKeyJustPressed(ebiten.KeyA) {
+		activePlayer := g.GetActivePlayer()
+		if activePlayer != nil {
+
+			// Find adjacent enemies to attack
+			target := g.tacticalManager.GetTurnBasedCombat().FindAdjacentTarget(activePlayer, components.TeamEnemy)
+			if target != nil {
+				// Create and execute attack action
+				action := &tactical.CombatAction{
+					Type:    tactical.ActionAttack,
+					Actor:   activePlayer,
+					Target:  target,
+					APCost:  constants.AttackAPCost,
+					Message: fmt.Sprintf("%s attacks %s", activePlayer.RPGStats().Name, target.RPGStats().Name),
+				}
+
+				err := g.tacticalManager.GetTurnBasedCombat().ExecuteAction(action)
+				if err != nil {
+					g.uiManager.AddMessage(fmt.Sprintf("Attack failed: %v", err))
+					logger.Error("Failed to execute attack action: %v", err)
+				} else {
+					g.uiManager.AddMessage(fmt.Sprintf("%s attacks %s!", activePlayer.RPGStats().Name, target.RPGStats().Name))
+					logger.Info("Player %s attacked %s", activePlayer.RPGStats().Name, target.RPGStats().Name)
+				}
+			} else {
+				g.uiManager.AddMessage("No adjacent enemies to attack")
+				logger.Info("Player %s tried to attack but no adjacent enemies found", activePlayer.RPGStats().Name)
+			}
+		} else {
+			g.uiManager.AddMessage("No active player to attack with")
+		}
+	}
+
+	// Handle E key to end turn in tactical mode
+	if inpututil.IsKeyJustPressed(ebiten.KeyE) {
+		activePlayer := g.GetActivePlayer()
+		if activePlayer != nil {
+			// Create and execute end turn action
+			action, err := g.tacticalManager.GetTurnBasedCombat().CreateEndTurnAction(activePlayer)
+			if err != nil {
+				g.uiManager.AddMessage(fmt.Sprintf("Failed to end turn: %v", err))
+				logger.Error("Failed to create end turn action: %v", err)
+			} else {
+				err = g.tacticalManager.GetTurnBasedCombat().ExecuteAction(action)
+				if err != nil {
+					g.uiManager.AddMessage(fmt.Sprintf("Failed to execute end turn: %v", err))
+					logger.Error("Failed to execute end turn action: %v", err)
+				} else {
+					g.uiManager.AddMessage(fmt.Sprintf("%s ended their turn", activePlayer.RPGStats().Name))
+					logger.Info("Player %s ended their turn", activePlayer.RPGStats().Name)
+				}
+			}
+		} else {
+			g.uiManager.AddMessage("No active player to end turn for")
+		}
 	}
 
 	// Handle R key to reset all movement (for testing/turn management)
@@ -1157,8 +1218,9 @@ BASIC CONTROLS:
 • Arrow Keys: Move player/units
 • TAB: Switch between Exploration and Tactical modes
 • SPACE: Enter tactical combat (in exploration)
-• T: End turn (in tactical mode)
-• E: End player turn
+• T: Enter tactical mode manually
+• E: End turn (in tactical mode)
+• Q: Open equipment menu
 • A: Attack (when adjacent to enemy)
 • ESC: Exit to desktop
 
@@ -1265,7 +1327,7 @@ func (g *Game) showDialog() {
 	logger.Info("Showing dialog for player: %s", activePlayer.RPGStats().Name)
 }
 
-// populatePlayerInventoryWithTestItems adds sample items to a player's inventory for testing
+// populatePlayerInventoryWithTestItems adds sample items to a player's inventory using the item registry
 func (g *Game) populatePlayerInventoryWithTestItems(player *ecs.Entity) {
 	if player == nil || player.Inventory() == nil {
 		return
@@ -1273,71 +1335,36 @@ func (g *Game) populatePlayerInventoryWithTestItems(player *ecs.Entity) {
 
 	inventory := player.Inventory()
 
-	// Create sample items for testing
-	items := []*components.Item{
-		{
-			ID:          1,
-			Name:        "Iron Sword",
-			Description: "A sturdy iron sword with a sharp blade. +5 Attack",
-			Type:        components.ItemTypeEquipment,
-			Rarity:      components.ItemRarityCommon,
-			Value:       100,
-			IconID:      1,
-			Stackable:   false,
-			MaxStack:    1,
-			Equipment: &components.Equipment{
-				ID:          1,
-				Name:        "Iron Sword",
-				Description: "A sturdy iron sword with a sharp blade. +5 Attack",
-				Slot:        components.SlotWeapon,
-				Rarity:      components.RarityCommon,
-				Value:       100,
-				IconID:      1,
-				Stats: components.EquipmentStats{
-					AttackBonus:     5,
-					DefenseBonus:    0,
-					HPBonus:         0,
-					MPBonus:         0,
-					CritChanceBonus: 0,
-					CritDamageBonus: 0,
-				},
-				LevelRequirement: 1,
-				JobRestrictions: []components.JobType{
-					components.JobWarrior,
-					components.JobRogue,
-				},
-			},
-		},
-		{
-			ID:          2,
-			Name:        "Health Potion",
-			Description: "Restores 50 HP when consumed",
-			Type:        components.ItemTypeConsumable,
-			Rarity:      components.ItemRarityCommon,
-			Value:       25,
-			IconID:      2,
-			Stackable:   true,
-			MaxStack:    10,
-		},
-		{
-			ID:          3,
-			Name:        "Magic Crystal",
-			Description: "A glowing crystal used for enchanting equipment",
-			Type:        components.ItemTypeMaterial,
-			Rarity:      components.ItemRarityRare,
-			Value:       200,
-			IconID:      3,
-			Stackable:   true,
-			MaxStack:    5,
-		},
+	// Get the item registry
+	registry := components.GlobalItemRegistry
+	if registry == nil {
+		logger.Error("Item registry not initialized")
+		return
 	}
 
-	// Add items to inventory
-	for _, item := range items {
-		inventory.AddItem(item, 1)
+	// Create items from the registry
+	testItems := []struct {
+		itemID   int
+		quantity int
+	}{
+		{1, 1}, // Iron Sword
+		{2, 3}, // Health Potion x3
+		{3, 2}, // Mana Potion x2
+		{4, 1}, // Magic Crystal
 	}
 
-	logger.Info("Added %d test items to %s's inventory", len(items), player.RPGStats().Name)
+	itemsAdded := 0
+	for _, testItem := range testItems {
+		item := registry.CreateItem(testItem.itemID)
+		if item != nil {
+			inventory.AddItem(item, testItem.quantity)
+			itemsAdded++
+		} else {
+			logger.Warn("Failed to create item with ID %d from registry", testItem.itemID)
+		}
+	}
+
+	logger.Info("Added %d test items to %s's inventory using item registry", itemsAdded, player.RPGStats().Name)
 }
 
 // PopulateAllPlayerInventoriesWithTestItems adds sample items to all player inventories

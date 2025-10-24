@@ -414,3 +414,162 @@ func (inv *InventoryComponent) GetUsedSlots() int {
 	}
 	return used
 }
+
+// ===== ITEM SYSTEM =====
+
+// ItemRegistry manages all item definitions in the game
+type ItemRegistry struct {
+	items  map[int]*Item
+	byName map[string]*Item
+	nextID int
+}
+
+// NewItemRegistry creates a new item registry
+func NewItemRegistry() *ItemRegistry {
+	return &ItemRegistry{
+		items:  make(map[int]*Item),
+		byName: make(map[string]*Item),
+		nextID: 1000, // Start at 1000 to leave room for base items
+	}
+}
+
+// RegisterItem adds an item to the registry
+func (ir *ItemRegistry) RegisterItem(item *Item) {
+	ir.items[item.ID] = item
+	ir.byName[item.Name] = item
+}
+
+// GetItem retrieves an item by ID
+func (ir *ItemRegistry) GetItem(id int) *Item {
+	return ir.items[id]
+}
+
+// GetItemByName retrieves an item by name
+func (ir *ItemRegistry) GetItemByName(name string) *Item {
+	return ir.byName[name]
+}
+
+// CreateItem creates a new item instance (copy of registered item)
+func (ir *ItemRegistry) CreateItem(id int) *Item {
+	template := ir.items[id]
+	if template == nil {
+		return nil
+	}
+
+	// Create a deep copy of the item
+	newItem := *template
+
+	// Deep copy equipment if present
+	if template.Equipment != nil {
+		newEquipment := *template.Equipment
+		newItem.Equipment = &newEquipment
+	}
+
+	// Deep copy effects if present
+	if len(template.Effects) > 0 {
+		newItem.Effects = make([]ConsumableEffect, len(template.Effects))
+		copy(newItem.Effects, template.Effects)
+	}
+
+	return &newItem
+}
+
+// Global item registry
+var GlobalItemRegistry *ItemRegistry
+
+// InitializeItemSystem sets up the global item system
+func InitializeItemSystem() {
+	GlobalItemRegistry = NewItemRegistry()
+	registerBaseItems()
+}
+
+// registerBaseItems adds essential items to the registry
+func registerBaseItems() {
+	// Health Potion
+	healthPotion := &Item{
+		ID:          200,
+		Name:        "Health Potion",
+		Description: "Restores 50 HP when consumed.",
+		Type:        ItemTypeConsumable,
+		Rarity:      ItemRarityCommon,
+		Value:       25,
+		IconID:      200,
+		Stackable:   true,
+		MaxStack:    10,
+		Effects: []ConsumableEffect{
+			{Type: "heal_hp", Value: 50, Target: "self"},
+		},
+		LevelRequirement: 1,
+	}
+	GlobalItemRegistry.RegisterItem(healthPotion)
+
+	// Mana Potion
+	manaPotion := &Item{
+		ID:          210,
+		Name:        "Mana Potion",
+		Description: "Restores 30 MP when consumed.",
+		Type:        ItemTypeConsumable,
+		Rarity:      ItemRarityCommon,
+		Value:       20,
+		IconID:      210,
+		Stackable:   true,
+		MaxStack:    10,
+		Effects: []ConsumableEffect{
+			{Type: "heal_mp", Value: 30, Target: "self"},
+		},
+		LevelRequirement: 1,
+	}
+	GlobalItemRegistry.RegisterItem(manaPotion)
+
+	// Iron Sword
+	ironSword := &Item{
+		ID:          1,
+		Name:        "Iron Sword",
+		Description: "A sturdy iron sword. Basic but reliable weapon.",
+		Type:        ItemTypeEquipment,
+		Rarity:      ItemRarityCommon,
+		Value:       100,
+		IconID:      1,
+		Stackable:   false,
+		MaxStack:    1,
+		Equipment: &Equipment{
+			Slot: SlotWeapon,
+			Stats: EquipmentStats{
+				AttackBonus:     12,
+				CritChanceBonus: 5,
+			},
+		},
+		LevelRequirement: 1,
+		JobRestrictions:  []JobType{JobWarrior, JobArcher},
+	}
+	GlobalItemRegistry.RegisterItem(ironSword)
+
+	// Magic Crystal
+	magicCrystal := &Item{
+		ID:               301,
+		Name:             "Magic Crystal",
+		Description:      "A crystallized form of magical energy used in enchanting.",
+		Type:             ItemTypeMaterial,
+		Rarity:           ItemRarityRare,
+		Value:            50,
+		IconID:           301,
+		Stackable:        true,
+		MaxStack:         20,
+		LevelRequirement: 10,
+	}
+	GlobalItemRegistry.RegisterItem(magicCrystal)
+}
+
+// GetAllItems returns a copy of all registered items
+func (ir *ItemRegistry) GetAllItems() map[int]*Item {
+	result := make(map[int]*Item)
+	for id, item := range ir.items {
+		result[id] = item
+	}
+	return result
+}
+
+// GetItemCount returns the total number of registered items
+func (ir *ItemRegistry) GetItemCount() int {
+	return len(ir.items)
+}

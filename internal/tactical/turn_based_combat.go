@@ -173,6 +173,16 @@ func (cbm *TurnBasedCombatManager) InitializeCombat(entities []*ecs.Entity) erro
 		return fmt.Errorf("failed to create teams: %v", err)
 	}
 
+	// Update grid positions for all entities
+	for _, entity := range entities {
+		if transform := entity.Transform(); transform != nil {
+			gridPos := cbm.Grid.WorldToGrid(transform.X, transform.Y)
+			cbm.Grid.SetOccupied(gridPos, true, entity.GetID())
+			logger.Debug("Grid position updated: %s at world (%.1f,%.1f) = grid (%d,%d)",
+				cbm.getEntityName(entity), transform.X, transform.Y, gridPos.X, gridPos.Y)
+		}
+	}
+
 	// Log initial positions of all units
 	cbm.logAllUnitPositions("INITIAL")
 
@@ -548,6 +558,11 @@ func (cbm *TurnBasedCombatManager) findAdjacentTarget(actor *ecs.Entity, targetT
 	return nil
 }
 
+// FindAdjacentTarget is a public wrapper for finding adjacent enemy targets
+func (cbm *TurnBasedCombatManager) FindAdjacentTarget(actor *ecs.Entity, targetTeam components.Team) *ecs.Entity {
+	return cbm.findAdjacentTarget(actor, targetTeam)
+}
+
 // getUnitAtPosition returns the unit at a specific grid position
 func (cbm *TurnBasedCombatManager) getUnitAtPosition(pos GridPos) *ecs.Entity {
 	tile := cbm.Grid.GetTile(pos)
@@ -607,7 +622,7 @@ func (cbm *TurnBasedCombatManager) ExecuteAction(action *CombatAction) error {
 // updateActionExecution processes the pending action
 func (cbm *TurnBasedCombatManager) updateActionExecution() error {
 	if cbm.PendingAction == nil {
-		cbm.changePhase(CombatPhaseEndTurn)
+		cbm.changePhase(CombatPhaseTeamTurn)
 		return nil
 	}
 
@@ -621,7 +636,9 @@ func (cbm *TurnBasedCombatManager) updateActionExecution() error {
 		return err
 	}
 
-	cbm.changePhase(CombatPhaseEndTurn)
+	// Return to team turn phase to allow other units to act
+	// The turn only ends when explicitly requested via End Turn action
+	cbm.changePhase(CombatPhaseTeamTurn)
 	return nil
 }
 
@@ -827,10 +844,49 @@ func (cbm *TurnBasedCombatManager) executeAttack(action *CombatAction) error {
 	if !targetStats.IsAlive() {
 		cbm.sendUIMessage(fmt.Sprintf("%s defeated!", targetStats.Name))
 		cbm.sendLogMessage(fmt.Sprintf("%s has been defeated by %s", targetStats.Name, attackerStats.Name))
-		// TODO: Remove from grid and mark as dead
+
+		// Remove from grid and handle death
+		cbm.handleUnitDeath(action.Target)
 	}
 
 	return nil
+}
+
+// handleUnitDeath removes a dead unit from the grid and handles cleanup
+func (cbm *TurnBasedCombatManager) handleUnitDeath(unit *ecs.Entity) {
+	if unit == nil {
+		return
+	}
+
+	// Get unit position and clear from grid
+	if transform := unit.Transform(); transform != nil {
+		gridPos := cbm.Grid.WorldToGrid(transform.X, transform.Y)
+		cbm.Grid.SetOccupied(gridPos, false, "")
+		logger.Debug("Removed dead unit %s from grid position (%d,%d)",
+			cbm.getEntityName(unit), gridPos.X, gridPos.Y)
+	}
+
+	// Mark unit as invisible/dead (move off screen or mark for removal)
+	if transform := unit.Transform(); transform != nil {
+		// Move the dead unit far off screen so it's not visible
+		transform.X = -1000
+		transform.Y = -1000
+		logger.Debug("Moved dead unit %s off screen", cbm.getEntityName(unit))
+	}
+
+	// Remove from active combat if it was the active unit
+	if cbm.ActiveUnit == unit {
+		cbm.ActiveUnit = nil
+		logger.Debug("Cleared dead unit as active unit")
+	}
+
+	// Mark combat state as inactive
+	if combatState := unit.CombatState(); combatState != nil {
+		combatState.CanAct = false
+		logger.Debug("Marked dead unit %s as unable to act", cbm.getEntityName(unit))
+	}
+
+	cbm.sendLogMessage(fmt.Sprintf("Unit %s removed from combat (death)", cbm.getEntityName(unit)))
 }
 
 // updateEndTurn handles end of turn processing
