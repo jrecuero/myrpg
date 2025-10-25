@@ -300,9 +300,188 @@ func (sr *SkillRegistry) initializeMageSkills() {
 	sr.skillTrees[components.JobMage] = mageTree
 }
 
-// Placeholder initializers for other classes
+// initializeRogueSkills creates the rogue skill tree
 func (sr *SkillRegistry) initializeRogueSkills() {
-	// TODO: Implement rogue skills
+	// Tier 1 Skills
+	sneak := &components.Skill{
+		ID:            "rogue_sneak",
+		Name:          "Sneak",
+		Description:   "Move silently to avoid detection. Increases movement speed.",
+		Type:          components.SkillTypePassive,
+		JobClass:      components.JobRogue,
+		Tier:          1,
+		Prerequisites: []string{},
+		SkillPoints:   1,
+		Effects: []components.SkillEffect{
+			{
+				Type:        "stat_bonus",
+				Target:      "Speed",
+				Value:       3,
+				Description: "+3 Speed",
+			},
+		},
+		IconPath: "assets/icons/skills/sneak.png",
+	}
+
+	quickReflexes := &components.Skill{
+		ID:            "rogue_quick_reflexes",
+		Name:          "Quick Reflexes",
+		Description:   "Enhanced reflexes improve defense and agility.",
+		Type:          components.SkillTypePassive,
+		JobClass:      components.JobRogue,
+		Tier:          1,
+		Prerequisites: []string{},
+		SkillPoints:   1,
+		Effects: []components.SkillEffect{
+			{
+				Type:        "stat_bonus",
+				Target:      "Defense",
+				Value:       2,
+				Description: "+2 Defense",
+			},
+			{
+				Type:        "stat_bonus",
+				Target:      "Speed",
+				Value:       2,
+				Description: "+2 Speed",
+			},
+		},
+		IconPath: "assets/icons/skills/quick_reflexes.png",
+	}
+
+	preciseStrike := &components.Skill{
+		ID:            "rogue_precise_strike",
+		Name:          "Precise Strike",
+		Description:   "Target weak points for increased attack damage.",
+		Type:          components.SkillTypePassive,
+		JobClass:      components.JobRogue,
+		Tier:          1,
+		Prerequisites: []string{},
+		SkillPoints:   1,
+		Effects: []components.SkillEffect{
+			{
+				Type:        "stat_bonus",
+				Target:      "Attack",
+				Value:       4,
+				Description: "+4 Attack Damage",
+			},
+		},
+		IconPath: "assets/icons/skills/precise_strike.png",
+	}
+
+	// Tier 2 Skills
+	shadowStep := &components.Skill{
+		ID:            "rogue_shadow_step",
+		Name:          "Shadow Step",
+		Description:   "Advanced stealth techniques grant massive speed boost.",
+		Type:          components.SkillTypePassive,
+		JobClass:      components.JobRogue,
+		Tier:          2,
+		Prerequisites: []string{"rogue_sneak"},
+		SkillPoints:   2,
+		Effects: []components.SkillEffect{
+			{
+				Type:        "stat_bonus",
+				Target:      "Speed",
+				Value:       5,
+				Description: "+5 Speed",
+			},
+			{
+				Type:        "stat_bonus",
+				Target:      "Attack",
+				Value:       3,
+				Description: "+3 Attack Damage",
+			},
+		},
+		IconPath: "assets/icons/skills/shadow_step.png",
+	}
+
+	evasion := &components.Skill{
+		ID:            "rogue_evasion",
+		Name:          "Evasion",
+		Description:   "Master dodging techniques dramatically increase survival.",
+		Type:          components.SkillTypePassive,
+		JobClass:      components.JobRogue,
+		Tier:          2,
+		Prerequisites: []string{"rogue_quick_reflexes"},
+		SkillPoints:   2,
+		Effects: []components.SkillEffect{
+			{
+				Type:        "stat_bonus",
+				Target:      "Defense",
+				Value:       6,
+				Description: "+6 Defense",
+			},
+			{
+				Type:        "stat_bonus",
+				Target:      "MaxHP",
+				Value:       8,
+				Description: "+8 Maximum HP",
+			},
+		},
+		IconPath: "assets/icons/skills/evasion.png",
+	}
+
+	deadlyStrike := &components.Skill{
+		ID:            "rogue_deadly_strike",
+		Name:          "Deadly Strike",
+		Description:   "Devastating attack techniques for maximum damage.",
+		Type:          components.SkillTypePassive,
+		JobClass:      components.JobRogue,
+		Tier:          2,
+		Prerequisites: []string{"rogue_precise_strike"},
+		SkillPoints:   2,
+		Effects: []components.SkillEffect{
+			{
+				Type:        "stat_bonus",
+				Target:      "Attack",
+				Value:       7,
+				Description: "+7 Attack Damage",
+			},
+		},
+		IconPath: "assets/icons/skills/deadly_strike.png",
+	}
+
+	// Register all skills
+	sr.RegisterSkill(sneak)
+	sr.RegisterSkill(quickReflexes)
+	sr.RegisterSkill(preciseStrike)
+	sr.RegisterSkill(shadowStep)
+	sr.RegisterSkill(evasion)
+	sr.RegisterSkill(deadlyStrike)
+
+	// Create the skill tree
+	rogueTree := &components.SkillTree{
+		JobClass: components.JobRogue,
+		Name:     "Rogue Arts",
+		Nodes:    make(map[string]*components.SkillNode),
+		Layout:   make([][]*components.SkillNode, 3), // 3 rows for tiers
+		MaxTier:  2,
+	}
+
+	// Create skill nodes
+	sneakNode := &components.SkillNode{Skill: sneak, X: 0, Y: 0, Children: []string{"rogue_shadow_step"}}
+	quickReflexesNode := &components.SkillNode{Skill: quickReflexes, X: 1, Y: 0, Children: []string{"rogue_evasion"}}
+	preciseStrikeNode := &components.SkillNode{Skill: preciseStrike, X: 2, Y: 0, Children: []string{"rogue_deadly_strike"}}
+	shadowStepNode := &components.SkillNode{Skill: shadowStep, X: 0, Y: 1, Children: []string{}}
+	evasionNode := &components.SkillNode{Skill: evasion, X: 1, Y: 1, Children: []string{}}
+	deadlyStrikeNode := &components.SkillNode{Skill: deadlyStrike, X: 2, Y: 1, Children: []string{}}
+
+	// Add nodes to tree
+	rogueTree.Nodes["rogue_sneak"] = sneakNode
+	rogueTree.Nodes["rogue_quick_reflexes"] = quickReflexesNode
+	rogueTree.Nodes["rogue_precise_strike"] = preciseStrikeNode
+	rogueTree.Nodes["rogue_shadow_step"] = shadowStepNode
+	rogueTree.Nodes["rogue_evasion"] = evasionNode
+	rogueTree.Nodes["rogue_deadly_strike"] = deadlyStrikeNode
+
+	// Set up layout grid
+	rogueTree.Layout[0] = []*components.SkillNode{sneakNode, quickReflexesNode, preciseStrikeNode}
+	rogueTree.Layout[1] = []*components.SkillNode{shadowStepNode, evasionNode, deadlyStrikeNode}
+	rogueTree.Layout[2] = []*components.SkillNode{} // Empty tier 3 for now
+
+	// Register the skill tree
+	sr.skillTrees[components.JobRogue] = rogueTree
 }
 
 func (sr *SkillRegistry) initializeClericSkills() {
