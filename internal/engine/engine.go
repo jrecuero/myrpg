@@ -20,6 +20,7 @@ import (
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 	"github.com/jrecuero/myrpg/internal/gfx"
 	"github.com/jrecuero/myrpg/internal/logger"
+	"github.com/jrecuero/myrpg/internal/skills"
 	"github.com/jrecuero/myrpg/internal/tactical"
 	"github.com/jrecuero/myrpg/internal/ui"
 )
@@ -60,6 +61,9 @@ func NewGame() *Game {
 		tacticalDeployment: tacticalDeployment,
 		currentMode:        ModeExploration, // Start in exploration mode
 	}
+
+	// Initialize skills system
+	skills.InitializeSkillRegistry()
 
 	// Set up battle system callbacks
 	battleSystem.SetMessageCallback(uiManager.AddMessage)
@@ -328,7 +332,7 @@ func (g *Game) CheckAndRemoveDeadEntities() {
 func (g *Game) InitializeGame() {
 	g.uiManager.AddMessage("Welcome to MyRPG!")
 	g.uiManager.AddMessage("Use arrow keys to move, TAB to switch between players")
-	g.uiManager.AddMessage("Press I for inventory, Q for equipment, H for help, C near enemies for combat")
+	g.uiManager.AddMessage("Press I for inventory, K for skills, Q for equipment, H for help, C near enemies for combat")
 	g.uiManager.AddMessage("In inventory: Right-click equipment to equip, drag items to move")
 	g.uiManager.AddMessage("In tactical mode: A to attack, E to end turn, R to reset movement, ESC to exit")
 	g.uiManager.AddMessage("Move back to previous positions to recover movement!")
@@ -395,7 +399,7 @@ func (g *Game) SwitchToNextPlayer() {
 
 func (g *Game) Update() error {
 	// Update UI manager (handles popups and other UI interactions)
-	escConsumedByUI := g.uiManager.Update()
+	uiInputResult := g.uiManager.Update()
 
 	// Test popup widgets (demo/testing)
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) && !g.uiManager.IsPopupVisible() {
@@ -403,6 +407,9 @@ func (g *Game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyI) && !g.uiManager.IsPopupVisible() {
 		g.toggleInventory()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyK) && !g.uiManager.IsPopupVisible() {
+		g.toggleSkills()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) && !g.uiManager.IsPopupVisible() {
 		g.showCharacterStats()
@@ -418,7 +425,7 @@ func (g *Game) Update() error {
 	}
 
 	// Block game input processing when popup is visible OR when UI consumed ESC
-	if g.uiManager.IsPopupVisible() || escConsumedByUI {
+	if g.uiManager.IsPopupVisible() || uiInputResult.EscConsumed {
 		return nil // Only process UI input, skip game logic
 	}
 
@@ -427,7 +434,7 @@ func (g *Game) Update() error {
 	case ModeExploration:
 		return g.updateExploration()
 	case ModeTactical:
-		return g.updateTactical()
+		return g.updateTactical(uiInputResult)
 	}
 	return nil
 }
@@ -571,7 +578,7 @@ func (g *Game) updateExploration() error {
 }
 
 // updateTactical handles tactical combat mode updates
-func (g *Game) updateTactical() error {
+func (g *Game) updateTactical(uiInputResult ui.InputResult) error {
 	// Update tactical manager
 	g.tacticalManager.Update()
 
@@ -672,7 +679,8 @@ func (g *Game) updateTactical() error {
 	}
 
 	// Handle mouse input for tile selection and movement
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+	// Only process mouse clicks if UI didn't consume them
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) && !uiInputResult.MouseConsumed {
 		x, y := ebiten.CursorPosition()
 		screenX, screenY := float64(x), float64(y)
 		offsetX, offsetY := constants.GridOffsetX, constants.GridOffsetY
@@ -1410,5 +1418,40 @@ func (g *Game) toggleInventory() {
 		}
 		g.uiManager.AddMessage(fmt.Sprintf("Opened %s's inventory", activePlayer.RPGStats().Name))
 		logger.Info("Inventory opened for player: %s", activePlayer.RPGStats().Name)
+	}
+}
+
+// toggleSkills shows/hides the skills window for the active player
+func (g *Game) toggleSkills() {
+	activePlayer := g.GetActivePlayer()
+	if activePlayer == nil || activePlayer.RPGStats() == nil {
+		g.uiManager.AddMessage("No active player to show skills for")
+		logger.Info("Attempted to toggle skills but no active player available")
+		return
+	}
+
+	// Check if player has skills component, if not create one
+	if activePlayer.Skills() == nil {
+		// Create skills component for the player
+		skillsComp := components.NewSkillsComponent(activePlayer.RPGStats().Job)
+		skillsComp.AddSkillPoints(5) // Give some initial skill points
+		activePlayer.AddComponent(ecs.ComponentSkills, skillsComp)
+		logger.Info("Created skills component for player %s", activePlayer.RPGStats().Name)
+	}
+
+	// Toggle skills visibility
+	if g.uiManager.IsSkillsVisible() {
+		g.uiManager.HideSkills()
+		g.uiManager.AddMessage("Skills window closed")
+		logger.Info("Skills closed for player: %s", activePlayer.RPGStats().Name)
+	} else {
+		err := g.uiManager.ShowSkills(activePlayer)
+		if err != nil {
+			g.uiManager.AddMessage(fmt.Sprintf("Failed to show skills: %v", err))
+			logger.Error("Failed to show skills for player %s: %v", activePlayer.RPGStats().Name, err)
+			return
+		}
+		g.uiManager.AddMessage(fmt.Sprintf("Opened %s's skills", activePlayer.RPGStats().Name))
+		logger.Info("Skills opened for player: %s", activePlayer.RPGStats().Name)
 	}
 }

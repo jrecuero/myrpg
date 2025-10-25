@@ -103,6 +103,7 @@ type UIManager struct {
 	equipment      *EquipmentWidget      // Equipment management widget
 	dialog         *DialogWidget         // Dialog conversation widget
 	inventory      *InventoryWidget      // Inventory management widget
+	skills         *SkillsWidget         // Skills and abilities widget
 }
 
 // NewUIManager creates a new UI manager
@@ -125,7 +126,7 @@ func NewUIManager() *UIManager {
 	// Create dialog widget centered
 	dialog := NewDialogWidget(ScreenWidth, ScreenHeight)
 
-	// Inventory widget will be initialized when player entity is available
+	// Inventory and skills widgets will be initialized when player entity is available
 
 	return &UIManager{
 		messageSystem:  NewMessageSystem(50), // Keep last 50 messages
@@ -135,6 +136,7 @@ func NewUIManager() *UIManager {
 		equipment:      equipment,
 		dialog:         dialog,
 		inventory:      nil, // Will be set when player entity is available
+		skills:         nil, // Will be set when player entity is available
 	}
 }
 
@@ -351,45 +353,52 @@ func (ui *UIManager) DrawBattleMenu(screen *ebiten.Image, battleText string) {
 
 // Update handles input for UI components including popup widgets
 // Returns true if a popup consumed the ESC key in this frame
-func (ui *UIManager) Update() bool {
-	escConsumed := false
+// Update returns InputResult indicating what input was consumed by UI widgets
+func (ui *UIManager) Update() InputResult {
+	result := NewInputResult()
 
 	if ui.popupSelection != nil {
 		if ui.popupSelection.Update() {
-			escConsumed = true
+			result.EscConsumed = true
 		}
 	}
 	if ui.popupInfo != nil {
 		if ui.popupInfo.Update() {
-			escConsumed = true
+			result.EscConsumed = true
 		}
 	}
 	if ui.characterStats != nil {
 		if ui.characterStats.Update() {
-			escConsumed = true
+			result.EscConsumed = true
 		}
 	}
 	if ui.equipment != nil {
-		if ui.equipment.Update() {
-			escConsumed = true
-		}
+		equipResult := ui.equipment.Update()
+		result.Combine(equipResult)
 	}
 	if ui.dialog != nil {
 		if ui.dialog.Update() {
-			escConsumed = true
+			result.EscConsumed = true
 		}
 	}
 	if ui.inventory != nil {
-		if ui.inventory.Update() {
-			escConsumed = true
-		}
+		invResult := ui.inventory.Update()
+		result.Combine(invResult)
 		// Check if inventory was closed
 		if !ui.inventory.Visible {
 			ui.inventory = nil
 		}
 	}
+	if ui.skills != nil {
+		skillsResult := ui.skills.Update()
+		result.Combine(skillsResult)
+		// Check if skills was closed
+		if !ui.skills.Visible {
+			ui.skills = nil
+		}
+	}
 
-	return escConsumed
+	return result
 }
 
 // DrawPopups renders any active popup widgets on top of other UI elements
@@ -411,6 +420,9 @@ func (ui *UIManager) DrawPopups(screen *ebiten.Image) {
 	}
 	if ui.inventory != nil {
 		ui.inventory.Draw(screen)
+	}
+	if ui.skills != nil {
+		ui.skills.Draw(screen)
 	}
 }
 
@@ -562,6 +574,49 @@ func (ui *UIManager) HideInventory() {
 	if ui.inventory != nil {
 		ui.inventory.Close()
 	}
+}
+
+// ShowSkills creates and shows the skills widget for the given entity
+func (ui *UIManager) ShowSkills(entity *ecs.Entity) error {
+	if entity == nil {
+		return fmt.Errorf("entity is nil")
+	}
+
+	// Check if entity has skills component
+	if entity.Skills() == nil {
+		return fmt.Errorf("entity does not have a skills component")
+	}
+
+	// Create skills widget if it doesn't exist or entity changed
+	skillsX := (ScreenWidth - 700) / 2  // Center horizontally
+	skillsY := (ScreenHeight - 500) / 2 // Center vertically
+
+	// Create new skills widget
+	ui.skills = NewSkillsWidget(skillsX, skillsY, 700, 500, entity)
+	ui.skills.Visible = true
+
+	return nil
+}
+
+// HideSkills closes the skills widget
+func (ui *UIManager) HideSkills() {
+	if ui.skills != nil {
+		ui.skills.Visible = false
+	}
+}
+
+// IsSkillsVisible returns true if skills widget is visible
+func (ui *UIManager) IsSkillsVisible() bool {
+	return ui.skills != nil && ui.skills.Visible
+}
+
+// ToggleSkills toggles the skills widget visibility
+func (ui *UIManager) ToggleSkills(entity *ecs.Entity) error {
+	if ui.IsSkillsVisible() {
+		ui.HideSkills()
+		return nil
+	}
+	return ui.ShowSkills(entity)
 }
 
 // IsInventoryVisible returns true if inventory widget is visible

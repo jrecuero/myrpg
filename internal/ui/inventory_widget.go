@@ -175,10 +175,12 @@ func (iw *InventoryWidget) initializeSlots() {
 }
 
 // Update handles input and state changes
-// Returns true if ESC key was consumed (to prevent propagation)
-func (iw *InventoryWidget) Update() bool {
+// Returns InputResult indicating what input was consumed
+func (iw *InventoryWidget) Update() InputResult {
+	result := NewInputResult()
+	
 	if !iw.Visible {
-		return false
+		return result
 	}
 
 	// Update mouse position
@@ -187,7 +189,16 @@ func (iw *InventoryWidget) Update() bool {
 	// Handle escape key to close
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		iw.Visible = false
-		return true // ESC key consumed
+		result.EscConsumed = true
+		return result
+	}
+
+	// Check if mouse is over the widget area
+	isMouseOverWidget := iw.mouseX >= iw.X && iw.mouseX <= iw.X+iw.Width &&
+	                    iw.mouseY >= iw.Y && iw.mouseY <= iw.Y+iw.Height
+
+	if isMouseOverWidget {
+		result.MouseConsumed = true
 	}
 
 	// Update hover states
@@ -215,7 +226,7 @@ func (iw *InventoryWidget) Update() bool {
 	// Handle keyboard shortcuts
 	iw.handleKeyboardInput()
 
-	return false
+	return result
 }
 
 // updateHoverStates updates which slots are being hovered

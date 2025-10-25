@@ -254,18 +254,27 @@ func (ew *EquipmentWidget) AddAvailableEquipment(equipment *components.Equipment
 }
 
 // Update handles input and updates the equipment widget state
-// Returns true if ESC key was consumed by this widget
-func (ew *EquipmentWidget) Update() bool {
+// Returns InputResult indicating what input was consumed
+func (ew *EquipmentWidget) Update() InputResult {
+	result := NewInputResult()
+	
 	if !ew.Visible {
-		return false
+		return result
 	}
-
-	escConsumed := false
 
 	// Handle ESC key to close widget
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		ew.Hide()
-		escConsumed = true
+		result.EscConsumed = true
+	}
+
+	// Check if mouse is over the widget area
+	mouseX, mouseY := ebiten.CursorPosition()
+	isMouseOverWidget := mouseX >= ew.X && mouseX <= ew.X+ew.Width &&
+	                    mouseY >= ew.Y && mouseY <= ew.Y+ew.Height
+
+	if isMouseOverWidget {
+		result.MouseConsumed = true
 	}
 
 	// Handle TAB key for slot navigation
@@ -292,7 +301,7 @@ func (ew *EquipmentWidget) Update() bool {
 		ew.toggleEquipment()
 	}
 
-	return escConsumed
+	return result
 }
 
 // nextSlot advances to the next equipment slot in tab order
