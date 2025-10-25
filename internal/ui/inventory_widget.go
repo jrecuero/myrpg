@@ -178,7 +178,7 @@ func (iw *InventoryWidget) initializeSlots() {
 // Returns InputResult indicating what input was consumed
 func (iw *InventoryWidget) Update() InputResult {
 	result := NewInputResult()
-	
+
 	if !iw.Visible {
 		return result
 	}
@@ -195,7 +195,7 @@ func (iw *InventoryWidget) Update() InputResult {
 
 	// Check if mouse is over the widget area
 	isMouseOverWidget := iw.mouseX >= iw.X && iw.mouseX <= iw.X+iw.Width &&
-	                    iw.mouseY >= iw.Y && iw.mouseY <= iw.Y+iw.Height
+		iw.mouseY >= iw.Y && iw.mouseY <= iw.Y+iw.Height
 
 	if isMouseOverWidget {
 		result.MouseConsumed = true

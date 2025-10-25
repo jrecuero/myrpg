@@ -8,7 +8,7 @@ import (
 
 // SkillRegistry manages all available skills in the game
 type SkillRegistry struct {
-	skills     map[string]*components.Skill     // All skills keyed by ID
+	skills     map[string]*components.Skill                 // All skills keyed by ID
 	skillTrees map[components.JobType]*components.SkillTree // Skill trees by job class
 }
 
@@ -66,7 +66,7 @@ func (sr *SkillRegistry) initializeDefaultSkills() {
 	// Initialize Warrior skills
 	sr.initializeWarriorSkills()
 
-	// Initialize Mage skills  
+	// Initialize Mage skills
 	sr.initializeMageSkills()
 
 	// Initialize Rogue skills
@@ -306,7 +306,7 @@ func (sr *SkillRegistry) initializeRogueSkills() {
 }
 
 func (sr *SkillRegistry) initializeClericSkills() {
-	// TODO: Implement cleric skills  
+	// TODO: Implement cleric skills
 }
 
 func (sr *SkillRegistry) initializeArcherSkills() {

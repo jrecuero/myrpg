@@ -257,7 +257,7 @@ func (ew *EquipmentWidget) AddAvailableEquipment(equipment *components.Equipment
 // Returns InputResult indicating what input was consumed
 func (ew *EquipmentWidget) Update() InputResult {
 	result := NewInputResult()
-	
+
 	if !ew.Visible {
 		return result
 	}
@@ -271,7 +271,7 @@ func (ew *EquipmentWidget) Update() InputResult {
 	// Check if mouse is over the widget area
 	mouseX, mouseY := ebiten.CursorPosition()
 	isMouseOverWidget := mouseX >= ew.X && mouseX <= ew.X+ew.Width &&
-	                    mouseY >= ew.Y && mouseY <= ew.Y+ew.Height
+		mouseY >= ew.Y && mouseY <= ew.Y+ew.Height
 
 	if isMouseOverWidget {
 		result.MouseConsumed = true

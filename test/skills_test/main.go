@@ -34,7 +34,7 @@ func NewGame() *Game {
 
 	// Create test entity with warrior job
 	entity := ecs.NewEntity("TestWarrior")
-	
+
 	// Add RPG stats component
 	rpgStats := components.NewRPGStatsComponent("Test Warrior", components.JobWarrior, 1)
 	entity.AddComponent(ecs.ComponentRPGStats, rpgStats)
@@ -101,7 +101,7 @@ func (g *Game) Update() error {
 func (g *Game) switchJobClass(newJob components.JobType) {
 	if stats := g.testEntity.RPGStats(); stats != nil {
 		stats.Job = newJob
-		
+
 		// Create new skills component for the new job
 		skillsComp := components.NewSkillsComponent(newJob)
 		skillsComp.AddSkillPoints(10) // Give skill points
@@ -129,7 +129,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Draw current character info
 	if stats := g.testEntity.RPGStats(); stats != nil {
-		info := fmt.Sprintf("Character: %s | Job: %s | Level: %d", 
+		info := fmt.Sprintf("Character: %s | Job: %s | Level: %d",
 			stats.Name, stats.Job.String(), stats.Level)
 		ebitenutil.DebugPrintAt(screen, info, 10, 30)
 	}

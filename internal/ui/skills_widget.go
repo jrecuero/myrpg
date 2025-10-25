@@ -43,13 +43,13 @@ type SkillsWidget struct {
 	tooltipY        int
 
 	// Layout constants
-	nodeWidth      int
-	nodeHeight     int
-	nodeSpacingX   int
-	nodeSpacingY   int
-	treeOffsetX    int
-	treeOffsetY    int
-	
+	nodeWidth    int
+	nodeHeight   int
+	nodeSpacingX int
+	nodeSpacingY int
+	treeOffsetX  int
+	treeOffsetY  int
+
 	// Colors
 	colorLearned    color.Color
 	colorAvailable  color.Color
@@ -62,17 +62,17 @@ type SkillsWidget struct {
 // NewSkillsWidget creates a new skills widget
 func NewSkillsWidget(x, y, width, height int, entity *ecs.Entity) *SkillsWidget {
 	widget := &SkillsWidget{
-		X:        x,
-		Y:        y,
-		Width:    width,
-		Height:   height,
-		Visible:  false,
-		Enabled:  true,
+		X:       x,
+		Y:       y,
+		Width:   width,
+		Height:  height,
+		Visible: false,
+		Enabled: true,
 
 		entity:          entity,
 		skillsComponent: entity.Skills(),
 		skillNodes:      make([]*SkillNodeUI, 0),
-		
+
 		// Layout settings
 		nodeWidth:    80,
 		nodeHeight:   60,
@@ -80,7 +80,7 @@ func NewSkillsWidget(x, y, width, height int, entity *ecs.Entity) *SkillsWidget 
 		nodeSpacingY: 80,
 		treeOffsetX:  50,
 		treeOffsetY:  80,
-		
+
 		// Colors
 		colorLearned:    color.RGBA{0, 255, 0, 255},     // Green
 		colorAvailable:  color.RGBA{255, 255, 0, 255},   // Yellow
@@ -153,7 +153,7 @@ func (sw *SkillsWidget) buildSkillNodeUI() {
 // Returns InputResult indicating what input was consumed
 func (sw *SkillsWidget) Update() InputResult {
 	result := NewInputResult()
-	
+
 	if !sw.Visible || !sw.Enabled {
 		return result
 	}
@@ -175,18 +175,18 @@ func (sw *SkillsWidget) Update() InputResult {
 
 	// Check if mouse is over the widget area first
 	isMouseOverWidget := mouseX >= sw.X && mouseX <= sw.X+sw.Width &&
-	                    mouseY >= sw.Y && mouseY <= sw.Y+sw.Height
+		mouseY >= sw.Y && mouseY <= sw.Y+sw.Height
 
 	if isMouseOverWidget {
 		result.MouseConsumed = true
-		
+
 		// Check for node hover and clicks
 		for _, node := range sw.skillNodes {
 			if mouseX >= node.X && mouseX <= node.X+node.Width &&
-			   mouseY >= node.Y && mouseY <= node.Y+node.Height {
-				
+				mouseY >= node.Y && mouseY <= node.Y+node.Height {
+
 				node.IsHovered = true
-				
+
 				// Show tooltip
 				sw.showTooltip = true
 				sw.tooltipX = mouseX + 10
@@ -232,7 +232,7 @@ func (sw *SkillsWidget) learnSkill(skill *components.Skill) {
 	if sw.skillsComponent.LearnSkill(skill) {
 		// Rebuild UI to reflect changes
 		sw.buildSkillNodeUI()
-		
+
 		// Apply skill effects (this would be handled by a skill system)
 		sw.applySkillEffects(skill)
 	}
@@ -324,12 +324,12 @@ func (sw *SkillsWidget) drawSkillNode(screen *ebiten.Image, node *SkillNodeUI) {
 	// Add hover or selection effects
 	if node.IsHovered {
 		// Draw border for hover effect
-		ebitenutil.DrawRect(screen, float64(node.X-2), float64(node.Y-2), 
+		ebitenutil.DrawRect(screen, float64(node.X-2), float64(node.Y-2),
 			float64(node.Width+4), float64(node.Height+4), sw.colorHovered)
 	}
 
 	// Draw node background
-	ebitenutil.DrawRect(screen, float64(node.X), float64(node.Y), 
+	ebitenutil.DrawRect(screen, float64(node.X), float64(node.Y),
 		float64(node.Width), float64(node.Height), nodeColor)
 
 	// Draw node border - thicker for better visibility
@@ -378,7 +378,7 @@ func (sw *SkillsWidget) drawSkillConnections(screen *ebiten.Image) {
 				for _, childUINode := range sw.skillNodes {
 					if childUINode.Skill.ID == childID {
 						// Draw line from current node to child
-						sw.drawLine(screen, 
+						sw.drawLine(screen,
 							node.X+node.Width/2, node.Y+node.Height,
 							childUINode.X+childUINode.Width/2, childUINode.Y,
 							lineColor)

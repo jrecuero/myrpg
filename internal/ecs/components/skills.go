@@ -52,18 +52,18 @@ type Skill struct {
 
 // SkillNode represents a skill in the visual skill tree
 type SkillNode struct {
-	Skill    *Skill  // The actual skill data
-	X, Y     int     // Position in the skill tree grid
+	Skill    *Skill   // The actual skill data
+	X, Y     int      // Position in the skill tree grid
 	Children []string // Child skill IDs that this unlocks
 }
 
 // SkillTree represents a complete skill tree for a job class
 type SkillTree struct {
-	JobClass JobType                // Which job this tree belongs to
-	Name     string                 // Display name of the tree
-	Nodes    map[string]*SkillNode  // All skills in this tree, keyed by skill ID
-	Layout   [][]*SkillNode         // 2D grid layout for visual representation
-	MaxTier  int                    // Maximum tier available in this tree
+	JobClass JobType               // Which job this tree belongs to
+	Name     string                // Display name of the tree
+	Nodes    map[string]*SkillNode // All skills in this tree, keyed by skill ID
+	Layout   [][]*SkillNode        // 2D grid layout for visual representation
+	MaxTier  int                   // Maximum tier available in this tree
 }
 
 // SkillsComponent manages a character's learned skills and available skill points
