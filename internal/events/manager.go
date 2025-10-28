@@ -33,6 +33,7 @@ type EventManager struct {
 	completedEvents map[string]bool                       // Track completed events
 	eventHistory    []EventExecutionRecord                // History of executed events
 	currentGameMode components.GameMode                   // Current game mode for event filtering
+	collidingEvents map[string]bool                       // Track events currently colliding with player
 }
 
 // EventExecutionRecord tracks when and how events were executed
@@ -52,6 +53,7 @@ func NewEventManager() *EventManager {
 		activeEvents:    make(map[string]*components.EventComponent),
 		completedEvents: make(map[string]bool),
 		eventHistory:    make([]EventExecutionRecord, 0),
+		collidingEvents: make(map[string]bool),
 	}
 }
 
@@ -114,6 +116,8 @@ func (em *EventManager) Update(deltaTime float64) {
 		return
 	}
 
+	currentlyColliding := make(map[string]bool)
+
 	// Check all entities with events
 	for _, entity := range em.entities {
 		eventComp := entity.Event()
@@ -132,10 +136,22 @@ func (em *EventManager) Update(deltaTime float64) {
 		}
 
 		// Check trigger condition
-		if em.checkTriggerCondition(entity, eventComp, playerTransform, deltaTime) {
-			em.executeEvent(entity, eventComp)
+		isTriggering := em.checkTriggerCondition(entity, eventComp, playerTransform, deltaTime)
+
+		if isTriggering {
+			currentlyColliding[eventComp.ID] = true
+
+			// Only execute if this is a new collision or if it's a battle event (which should always trigger)
+			wasAlreadyColliding := em.collidingEvents[eventComp.ID]
+
+			if !wasAlreadyColliding || eventComp.EventType == components.EventBattle {
+				em.executeEvent(entity, eventComp)
+			}
 		}
 	}
+
+	// Update collision state for next frame
+	em.collidingEvents = currentlyColliding
 }
 
 // checkPrerequisites checks if all prerequisite events have been completed

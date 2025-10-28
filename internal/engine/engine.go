@@ -540,6 +540,13 @@ func (g *Game) updateExploration() error {
 	} else {
 		g.eventManager.SetGameMode(components.GameModeTactical)
 	}
+
+	// Set the current active player as the player entity for events
+	activePlayer := g.GetActivePlayer()
+	if activePlayer != nil {
+		g.eventManager.SetPlayer(activePlayer)
+	}
+
 	g.eventManager.Update(1.0 / 60.0) // Assuming 60 FPS delta time
 
 	// Only handle movement and player switching if not in battle
@@ -625,9 +632,20 @@ func (g *Game) updateExploration() error {
 			if entity.Collider() == nil {
 				continue
 			}
+			// Skip hidden party members in exploration mode
+			if g.currentMode == ModeExploration && entity.HasTag("player") {
+				if entity != g.partyManager.GetPartyLeader() {
+					continue // Skip non-leader party members that aren't visible
+				}
+			}
 
 			// Check collision type
 			if CheckCollision(playerT.Bounds(), entity.Transform().Bounds()) {
+				// Check if this is an event entity first - don't block movement but let EventManager handle it
+				if entity.Event() != nil {
+					continue // Event entities are walkable, EventManager will handle triggering
+				}
+
 				playerT.X, playerT.Y = oldX, oldY // Revert to old position on collision
 
 				// Determine if this is an enemy or regular collision
