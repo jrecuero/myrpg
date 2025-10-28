@@ -104,6 +104,7 @@ type UIManager struct {
 	dialog         *DialogWidget         // Dialog conversation widget
 	inventory      *InventoryWidget      // Inventory management widget
 	skills         *SkillsWidget         // Skills and abilities widget
+	questJournal   *QuestJournalWidget   // Quest journal widget
 }
 
 // NewUIManager creates a new UI manager
@@ -397,6 +398,14 @@ func (ui *UIManager) Update() InputResult {
 			ui.skills = nil
 		}
 	}
+	if ui.questJournal != nil {
+		questResult := ui.questJournal.Update()
+		result.Combine(questResult)
+		// Check if quest journal was closed
+		if !ui.questJournal.Visible {
+			ui.questJournal = nil
+		}
+	}
 
 	return result
 }
@@ -423,6 +432,9 @@ func (ui *UIManager) DrawPopups(screen *ebiten.Image) {
 	}
 	if ui.skills != nil {
 		ui.skills.Draw(screen)
+	}
+	if ui.questJournal != nil {
+		ui.questJournal.Draw(screen)
 	}
 }
 
@@ -605,9 +617,46 @@ func (ui *UIManager) HideSkills() {
 	}
 }
 
+// ShowQuestJournal creates and shows the quest journal widget for the given entity
+func (ui *UIManager) ShowQuestJournal(entity *ecs.Entity) error {
+	if entity == nil {
+		return fmt.Errorf("entity is nil")
+	}
+
+	// Get or create quest journal component
+	questJournal := entity.QuestJournal()
+	if questJournal == nil {
+		// Create a new quest journal component
+		questJournal = components.NewQuestJournalComponent()
+		entity.AddComponent(ecs.ComponentQuestJournal, questJournal)
+	}
+
+	// Create quest journal widget
+	journalX := (ScreenWidth - 800) / 2  // Center horizontally
+	journalY := (ScreenHeight - 600) / 2 // Center vertically
+
+	// Create new quest journal widget
+	ui.questJournal = NewQuestJournalWidget(journalX, journalY, 800, 600, questJournal)
+	ui.questJournal.Visible = true
+
+	return nil
+}
+
+// HideQuestJournal closes the quest journal widget
+func (ui *UIManager) HideQuestJournal() {
+	if ui.questJournal != nil {
+		ui.questJournal.Visible = false
+	}
+}
+
 // IsSkillsVisible returns true if skills widget is visible
 func (ui *UIManager) IsSkillsVisible() bool {
 	return ui.skills != nil && ui.skills.Visible
+}
+
+// IsQuestJournalVisible returns true if quest journal widget is visible
+func (ui *UIManager) IsQuestJournalVisible() bool {
+	return ui.questJournal != nil && ui.questJournal.Visible
 }
 
 // ToggleSkills toggles the skills widget visibility
@@ -617,6 +666,15 @@ func (ui *UIManager) ToggleSkills(entity *ecs.Entity) error {
 		return nil
 	}
 	return ui.ShowSkills(entity)
+}
+
+// ToggleQuestJournal toggles the quest journal widget visibility
+func (ui *UIManager) ToggleQuestJournal(entity *ecs.Entity) error {
+	if ui.IsQuestJournalVisible() {
+		ui.HideQuestJournal()
+		return nil
+	}
+	return ui.ShowQuestJournal(entity)
 }
 
 // IsInventoryVisible returns true if inventory widget is visible

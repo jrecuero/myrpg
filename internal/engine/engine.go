@@ -20,6 +20,7 @@ import (
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 	"github.com/jrecuero/myrpg/internal/gfx"
 	"github.com/jrecuero/myrpg/internal/logger"
+	"github.com/jrecuero/myrpg/internal/quests"
 	"github.com/jrecuero/myrpg/internal/skills"
 	"github.com/jrecuero/myrpg/internal/tactical"
 	"github.com/jrecuero/myrpg/internal/ui"
@@ -64,6 +65,9 @@ func NewGame() *Game {
 
 	// Initialize skills system
 	skills.InitializeSkillRegistry()
+
+	// Initialize quest system
+	quests.InitializeQuestRegistry()
 
 	// Set up battle system callbacks
 	battleSystem.SetMessageCallback(uiManager.AddMessage)
@@ -332,7 +336,7 @@ func (g *Game) CheckAndRemoveDeadEntities() {
 func (g *Game) InitializeGame() {
 	g.uiManager.AddMessage("Welcome to MyRPG!")
 	g.uiManager.AddMessage("Use arrow keys to move, TAB to switch between players")
-	g.uiManager.AddMessage("Press I for inventory, K for skills, Q for equipment, H for help, C near enemies for combat")
+	g.uiManager.AddMessage("Press I for inventory, K for skills, J for quests, Q for equipment, H for help, C near enemies for combat")
 	g.uiManager.AddMessage("In inventory: Right-click equipment to equip, drag items to move")
 	g.uiManager.AddMessage("In tactical mode: A to attack, E to end turn, R to reset movement, ESC to exit")
 	g.uiManager.AddMessage("Move back to previous positions to recover movement!")
@@ -410,6 +414,9 @@ func (g *Game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyK) && !g.uiManager.IsPopupVisible() {
 		g.toggleSkills()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyJ) && !g.uiManager.IsPopupVisible() {
+		g.toggleQuestJournal()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) && !g.uiManager.IsPopupVisible() {
 		g.showCharacterStats()
@@ -1453,5 +1460,39 @@ func (g *Game) toggleSkills() {
 		}
 		g.uiManager.AddMessage(fmt.Sprintf("Opened %s's skills", activePlayer.RPGStats().Name))
 		logger.Info("Skills opened for player: %s", activePlayer.RPGStats().Name)
+	}
+}
+
+// toggleQuestJournal shows/hides the quest journal for the active player
+func (g *Game) toggleQuestJournal() {
+	activePlayer := g.GetActivePlayer()
+	if activePlayer == nil || activePlayer.RPGStats() == nil {
+		g.uiManager.AddMessage("No active player to show quest journal for")
+		logger.Info("Attempted to toggle quest journal but no active player available")
+		return
+	}
+
+	// Check if player has quest journal component, if not create one
+	if activePlayer.QuestJournal() == nil {
+		// Create quest journal component for the player
+		questJournal := components.NewQuestJournalComponent()
+		activePlayer.AddComponent(ecs.ComponentQuestJournal, questJournal)
+		logger.Info("Created quest journal component for player %s", activePlayer.RPGStats().Name)
+	}
+
+	// Toggle quest journal visibility
+	if g.uiManager.IsQuestJournalVisible() {
+		g.uiManager.HideQuestJournal()
+		g.uiManager.AddMessage("Quest journal closed")
+		logger.Info("Quest journal closed for player: %s", activePlayer.RPGStats().Name)
+	} else {
+		err := g.uiManager.ShowQuestJournal(activePlayer)
+		if err != nil {
+			g.uiManager.AddMessage(fmt.Sprintf("Failed to show quest journal: %v", err))
+			logger.Error("Failed to show quest journal for player %s: %v", activePlayer.RPGStats().Name, err)
+			return
+		}
+		g.uiManager.AddMessage(fmt.Sprintf("Opened %s's quest journal", activePlayer.RPGStats().Name))
+		logger.Info("Quest journal opened for player: %s", activePlayer.RPGStats().Name)
 	}
 }
