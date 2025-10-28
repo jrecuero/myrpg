@@ -19,6 +19,7 @@ const (
 	ComponentInventory    = "inventory"
 	ComponentSkills       = "skills"
 	ComponentQuestJournal = "questjournal"
+	ComponentEvent        = "event"
 )
 
 // Common entity tags

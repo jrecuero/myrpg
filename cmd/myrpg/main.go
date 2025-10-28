@@ -78,28 +78,49 @@ func main() {
 	rogue := entities.CreatePlayerWithJob("Robin", constants.Player3StartX, constants.Player3StartY, components.JobRogue, 4)
 	game.AddEntity(rogue)
 
-	// Create and add enemy entities with different jobs and levels
-	goblin := entities.CreateEnemyWithJob("Goblin Scout", constants.Enemy1StartX, constants.Enemy1StartY, components.JobRogue, 2)
-	game.AddEntity(goblin)
+	// Create event entities instead of direct enemies
 
-	orcWarrior := entities.CreateEnemyWithJob("Orc Warrior", constants.Enemy2StartX, constants.Enemy2StartY, components.JobWarrior, 5)
-	game.AddEntity(orcWarrior)
+	// Battle events (replacing enemies)
+	battleEvent1 := entities.CreateBattleEvent("battle_goblin", "Goblin Encounter",
+		constants.Enemy1StartX, constants.Enemy1StartY,
+		[]string{"goblin_scout"}, "forest_clearing")
+	game.AddEntity(battleEvent1)
 
-	// Add more enemies with varied jobs and levels
-	koboldMage := entities.CreateEnemyWithJob("Kobold Mage", constants.Enemy3StartX, constants.Enemy3StartY, components.JobMage, 3)
-	game.AddEntity(koboldMage)
+	battleEvent2 := entities.CreateBattleEvent("battle_orc", "Orc Ambush",
+		constants.Enemy2StartX, constants.Enemy2StartY,
+		[]string{"orc_warrior"}, "mountain_pass")
+	game.AddEntity(battleEvent2)
 
-	banditArcher := entities.CreateEnemyWithJob("Bandit Archer", constants.Enemy4StartX, constants.Enemy4StartY, components.JobArcher, 4)
-	game.AddEntity(banditArcher)
+	// Chest events
+	chestEvent := entities.CreateChestEvent("chest_treasure", "Wooden Chest",
+		constants.Enemy3StartX, constants.Enemy3StartY,
+		[]string{"iron_sword", "health_potion"}, 50, false)
+	game.AddEntity(chestEvent)
 
-	orcShaman := entities.CreateEnemyWithJob("Orc Shaman", constants.Enemy5StartX, constants.Enemy5StartY, components.JobCleric, 6)
-	game.AddEntity(orcShaman)
+	// Dialog event (NPC)
+	npcEvent := entities.CreateDialogEvent("npc_elder", "Village Elder",
+		constants.Enemy4StartX, constants.Enemy4StartY,
+		"elder_001", "elder_intro")
+	game.AddEntity(npcEvent)
 
-	goblinThief := entities.CreateEnemyWithJob("Goblin Thief", constants.Enemy6StartX, constants.Enemy6StartY, components.JobRogue, 1)
-	game.AddEntity(goblinThief)
+	// Info event (sign)
+	signEvent := entities.CreateInfoEvent("sign_village", "Village Sign",
+		constants.Enemy5StartX, constants.Enemy5StartY,
+		"Welcome to Riverside Village",
+		"Population: 127\nFounded: Year 892\nMayor: Eldric Stormwind\n\nVisitors welcome!")
+	game.AddEntity(signEvent)
+
+	// Hidden trap event
+	trapEvent := entities.CreateTrapEvent("trap_spike", "Spike Trap",
+		constants.Enemy6StartX, constants.Enemy6StartY,
+		"Spike Pit", 15)
+	game.AddEntity(trapEvent)
 
 	// Configure attack animation duration (customizable)
 	game.SetAttackAnimationDuration(1500 * time.Millisecond) // 1.5 seconds for attack animation
+
+	// Set up event system handlers
+	game.SetupGameEventHandlers()
 
 	// Initialize the game with welcome messages
 	game.InitializeGame()

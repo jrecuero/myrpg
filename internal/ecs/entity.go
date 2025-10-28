@@ -157,6 +157,17 @@ func (e *Entity) QuestJournal() *components.QuestJournalComponent {
 	return nil
 }
 
+// Event retrieves the EventComponent from the entity.
+// returns a pointer to the EventComponent or nil if not found.
+func (e *Entity) Event() *components.EventComponent {
+	if comp, exists := e.GetComponent(ComponentEvent); exists {
+		if event, ok := comp.(*components.EventComponent); ok {
+			return event
+		}
+	}
+	return nil
+}
+
 // Animation retrieves the AnimationComponent from the entity.
 // returns a pointer to the AnimationComponent or nil if not found.
 func (e *Entity) Animation() *components.AnimationComponent {

@@ -18,6 +18,7 @@ import (
 	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
+	"github.com/jrecuero/myrpg/internal/events"
 	"github.com/jrecuero/myrpg/internal/gfx"
 	"github.com/jrecuero/myrpg/internal/logger"
 	"github.com/jrecuero/myrpg/internal/quests"
@@ -28,16 +29,17 @@ import (
 
 // Game represents the state of the game using an ECS architecture.
 type Game struct {
-	world              *ecs.World          // The game world containing all entities
-	activePlayerIndex  int                 // Index of the currently active player
-	tabKeyPressed      bool                // Track TAB key state to prevent multiple switches
-	uiManager          *ui.UIManager       // UI system for panels and messages
-	battleSystem       *BattleSystem       // Battle system for combat
-	tacticalManager    *TacticalManager    // Tactical combat system
-	partyManager       *PartyManager       // Party and team management
-	enemyGroupManager  *EnemyGroupManager  // Enemy group formation
-	tacticalDeployment *TacticalDeployment // Unit deployment for tactical combat
-	currentMode        GameMode            // Current game mode (exploration/tactical)
+	world              *ecs.World           // The game world containing all entities
+	activePlayerIndex  int                  // Index of the currently active player
+	tabKeyPressed      bool                 // Track TAB key state to prevent multiple switches
+	uiManager          *ui.UIManager        // UI system for panels and messages
+	battleSystem       *BattleSystem        // Battle system for combat
+	tacticalManager    *TacticalManager     // Tactical combat system
+	partyManager       *PartyManager        // Party and team management
+	enemyGroupManager  *EnemyGroupManager   // Enemy group formation
+	tacticalDeployment *TacticalDeployment  // Unit deployment for tactical combat
+	eventManager       *events.EventManager // Event system for interactive world elements
+	currentMode        GameMode             // Current game mode (exploration/tactical)
 }
 
 // NewGame creates a new game instance with an empty world
@@ -50,6 +52,9 @@ func NewGame() *Game {
 	enemyGroupManager := NewEnemyGroupManager(constants.EnemyGroupRange)                                 // Enemy group range from constants
 	tacticalDeployment := NewTacticalDeployment(tacticalManager.Grid)
 
+	// Initialize event system
+	eventManager := events.NewEventManager()
+
 	game := &Game{
 		world:              world,
 		activePlayerIndex:  constants.DefaultActivePlayerIndex,
@@ -60,6 +65,7 @@ func NewGame() *Game {
 		partyManager:       partyManager,
 		enemyGroupManager:  enemyGroupManager,
 		tacticalDeployment: tacticalDeployment,
+		eventManager:       eventManager,
 		currentMode:        ModeExploration, // Start in exploration mode
 	}
 
@@ -68,6 +74,9 @@ func NewGame() *Game {
 
 	// Initialize quest system
 	quests.InitializeQuestRegistry()
+
+	// Initialize event system handlers (will be set up after game creation)
+	// handlers will be registered in SetupGameEventHandlers() method
 
 	// Set up battle system callbacks
 	battleSystem.SetMessageCallback(uiManager.AddMessage)
@@ -95,6 +104,14 @@ func NewGame() *Game {
 	return game
 }
 
+// SetupGameEventHandlers initializes the game-specific event handlers
+func (g *Game) SetupGameEventHandlers() {
+	handlers := g.CreateGameEventHandlers()
+	for eventType, handler := range handlers {
+		g.eventManager.RegisterHandler(eventType, handler)
+	}
+}
+
 // AddEntity adds an entity to the game world and manages party system
 func (g *Game) AddEntity(entity *ecs.Entity) {
 	g.world.AddEntity(entity)
@@ -108,6 +125,14 @@ func (g *Game) AddEntity(entity *ecs.Entity) {
 		if g.partyManager.GetPartyLeader() == nil {
 			g.partyManager.SetPartyLeader(entity)
 		}
+
+		// Set player entity reference in event manager (handles multiple calls gracefully)
+		g.eventManager.SetPlayer(entity)
+	}
+
+	// Register event entities with the event manager
+	if entity.HasTag("event") || entity.Event() != nil {
+		g.eventManager.RegisterEntity(entity)
 	}
 }
 
@@ -450,6 +475,14 @@ func (g *Game) Update() error {
 func (g *Game) updateExploration() error {
 	// Update battle system first
 	g.battleSystem.Update()
+
+	// Update event system
+	if g.currentMode == ModeExploration {
+		g.eventManager.SetGameMode(components.GameModeExploration)
+	} else {
+		g.eventManager.SetGameMode(components.GameModeTactical)
+	}
+	g.eventManager.Update(1.0 / 60.0) // Assuming 60 FPS delta time
 
 	// Only handle movement and player switching if not in battle
 	if !g.battleSystem.IsInBattle() {
@@ -811,6 +844,22 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			// Fallback to static sprite
 			spriteC := entity.Sprite()
 			if spriteC != nil {
+				// Check if this is an event with mode restrictions
+				if eventC := entity.Event(); eventC != nil {
+					// Check if event is active in current game mode
+					var eventGameMode components.GameMode
+					if g.currentMode == ModeExploration {
+						eventGameMode = components.GameModeExploration
+					} else {
+						eventGameMode = components.GameModeTactical
+					}
+
+					// Only draw events that are active in the current game mode
+					if !eventC.IsActiveInMode(eventGameMode) {
+						continue // Skip this event entity
+					}
+				}
+
 				if isBackground {
 					// Clip background sprites to game world area
 					gfx.DrawSpriteClipped(screen, spriteC.Sprite,
@@ -818,6 +867,32 @@ func (g *Game) Draw(screen *ebiten.Image) {
 						0, constants.GameWorldY, constants.BackgroundWidth, constants.GameWorldHeight)
 				} else {
 					gfx.DrawSprite(screen, spriteC.Sprite, transform.X, transform.Y, spriteC.Scale)
+				}
+			} else {
+				// Check if this is a visible event entity without a sprite
+				if eventC := entity.Event(); eventC != nil && eventC.IsVisible() {
+					// Check if event is active in current game mode
+					var eventGameMode components.GameMode
+					if g.currentMode == ModeExploration {
+						eventGameMode = components.GameModeExploration
+					} else {
+						eventGameMode = components.GameModeTactical
+					}
+
+					// Only draw events that are active in the current game mode
+					if eventC.IsActiveInMode(eventGameMode) {
+						// Draw colored square for events without sprites
+						color := color.RGBA{
+							eventC.FallbackColor[0],
+							eventC.FallbackColor[1],
+							eventC.FallbackColor[2],
+							255,
+						}
+						vector.FillRect(screen,
+							float32(transform.X), float32(transform.Y),
+							float32(transform.Width), float32(transform.Height),
+							color, false)
+					}
 				}
 			}
 		}

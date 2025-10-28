@@ -73,3 +73,19 @@ const (
 	EndTurnAPCost  = 0 // Free action
 	WaitAPCost     = 0 // Free action
 )
+
+// Event System Color Constants
+// These colors are used for event entities when no custom sprite is provided
+var (
+	// Event Type Colors (RGB values)
+	EventColorBattle   = [3]uint8{200, 50, 50}   // Red-ish color for battle events
+	EventColorDialog   = [3]uint8{50, 150, 200}  // Blue-ish color for dialog events
+	EventColorChest    = [3]uint8{200, 200, 50}  // Yellow-ish color for chest events
+	EventColorDoor     = [3]uint8{150, 100, 50}  // Brown-ish color for door events
+	EventColorTrap     = [3]uint8{150, 50, 150}  // Purple-ish color for trap events
+	EventColorInfo     = [3]uint8{100, 200, 100} // Green-ish color for info events
+	EventColorQuest    = [3]uint8{255, 165, 0}   // Orange color for quest events
+	EventColorCutscene = [3]uint8{100, 100, 200} // Purple-blue for cutscene events
+	EventColorShop     = [3]uint8{200, 200, 200} // Silver-ish color for shop events
+	EventColorRest     = [3]uint8{100, 150, 255} // Light blue for rest events
+)

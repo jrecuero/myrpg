@@ -105,6 +105,7 @@ type UIManager struct {
 	inventory      *InventoryWidget      // Inventory management widget
 	skills         *SkillsWidget         // Skills and abilities widget
 	questJournal   *QuestJournalWidget   // Quest journal widget
+	infoWidget     *InfoWidget           // Event information display widget
 }
 
 // NewUIManager creates a new UI manager
@@ -129,6 +130,9 @@ func NewUIManager() *UIManager {
 
 	// Inventory and skills widgets will be initialized when player entity is available
 
+	// Create info widget centered
+	infoWidget := NewInfoWidget((ScreenWidth-400)/2, (ScreenHeight-300)/2, 400, 300)
+
 	return &UIManager{
 		messageSystem:  NewMessageSystem(50), // Keep last 50 messages
 		popupSelection: popupSelection,
@@ -138,6 +142,7 @@ func NewUIManager() *UIManager {
 		dialog:         dialog,
 		inventory:      nil, // Will be set when player entity is available
 		skills:         nil, // Will be set when player entity is available
+		infoWidget:     infoWidget,
 	}
 }
 
@@ -406,6 +411,10 @@ func (ui *UIManager) Update() InputResult {
 			ui.questJournal = nil
 		}
 	}
+	if ui.infoWidget != nil {
+		infoResult := ui.infoWidget.Update()
+		result.Combine(infoResult)
+	}
 
 	return result
 }
@@ -435,6 +444,9 @@ func (ui *UIManager) DrawPopups(screen *ebiten.Image) {
 	}
 	if ui.questJournal != nil {
 		ui.questJournal.Draw(screen)
+	}
+	if ui.infoWidget != nil {
+		ui.infoWidget.Draw(screen)
 	}
 }
 
@@ -690,5 +702,25 @@ func (ui *UIManager) IsPopupVisible() bool {
 	equipmentVisible := ui.equipment != nil && ui.equipment.IsVisible()
 	dialogVisible := ui.dialog != nil && ui.dialog.IsVisible()
 	inventoryVisible := ui.inventory != nil && ui.inventory.IsOpen()
-	return selectionVisible || infoVisible || statsVisible || equipmentVisible || dialogVisible || inventoryVisible
+	infoWidgetVisible := ui.infoWidget != nil && ui.infoWidget.IsVisible()
+	return selectionVisible || infoVisible || statsVisible || equipmentVisible || dialogVisible || inventoryVisible || infoWidgetVisible
+}
+
+// ShowInfoWidget displays the info widget with the specified content
+func (ui *UIManager) ShowInfoWidget(title, message, imagePath string) {
+	if ui.infoWidget != nil {
+		ui.infoWidget.Show(title, message, imagePath)
+	}
+}
+
+// HideInfoWidget hides the info widget
+func (ui *UIManager) HideInfoWidget() {
+	if ui.infoWidget != nil {
+		ui.infoWidget.Hide()
+	}
+}
+
+// IsInfoWidgetVisible returns true if the info widget is currently visible
+func (ui *UIManager) IsInfoWidgetVisible() bool {
+	return ui.infoWidget != nil && ui.infoWidget.IsVisible()
 }

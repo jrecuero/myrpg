@@ -1,0 +1,399 @@
+// Package components provides event-related components for the ECS system.
+// EventComponent enables entities to trigger various game events based on different conditions.
+package components
+
+import (
+	"time"
+)
+
+// TriggerCondition defines when an event should be triggered
+type TriggerCondition int
+
+const (
+	TriggerOnTouch      TriggerCondition = iota // Triggered when player touches/collides with entity
+	TriggerOnTimeout                            // Triggered after a specified time duration
+	TriggerOnRoomEntry                          // Triggered when player enters the room/area
+	TriggerOnProximity                          // Triggered when player is within range
+	TriggerOnInteract                           // Triggered when player explicitly interacts (e.g., press key)
+	TriggerOnQuestState                         // Triggered based on quest completion state
+	TriggerManual                               // Triggered manually by game logic
+)
+
+// EventType defines the type of event that will be executed
+type EventType int
+
+const (
+	EventBattle   EventType = iota // Start a tactical battle
+	EventDialog                    // Open dialog with NPC
+	EventChest                     // Open a chest/container
+	EventDoor                      // Move to another area/room
+	EventTrap                      // Trigger a trap
+	EventInfo                      // Display information to player
+	EventQuest                     // Trigger quest-related actions
+	EventCutscene                  // Play a cutscene or story sequence
+	EventShop                      // Open shop interface
+	EventRest                      // Trigger rest/save point
+)
+
+// EventState tracks the current state of an event
+type EventState int
+
+const (
+	EventActive    EventState = iota // Event is active and can be triggered
+	EventTriggered                   // Event has been triggered but may repeat
+	EventCompleted                   // Event is completed and won't trigger again
+	EventDisabled                    // Event is temporarily disabled
+)
+
+// EventData contains type-specific data for different event types
+type EventData struct {
+	// Battle event data
+	EnemyIDs  []string `json:"enemy_ids,omitempty"`  // IDs of enemies to spawn
+	BattleMap string   `json:"battle_map,omitempty"` // Map to use for battle
+	Ambush    bool     `json:"ambush,omitempty"`     // Whether this is an ambush battle
+
+	// Dialog event data
+	NPCID    string `json:"npc_id,omitempty"`    // ID of NPC to talk to
+	DialogID string `json:"dialog_id,omitempty"` // Specific dialog to start
+
+	// Chest event data
+	ItemIDs     []string `json:"item_ids,omitempty"`     // Items in the chest
+	Gold        int      `json:"gold,omitempty"`         // Gold in the chest
+	Locked      bool     `json:"locked,omitempty"`       // Whether chest is locked
+	KeyRequired string   `json:"key_required,omitempty"` // Key item needed to open
+
+	// Door/Travel event data
+	TargetMap string `json:"target_map,omitempty"` // Map to travel to
+	TargetX   int    `json:"target_x,omitempty"`   // X position on target map
+	TargetY   int    `json:"target_y,omitempty"`   // Y position on target map
+
+	// Trap event data
+	TrapType     string `json:"trap_type,omitempty"`     // Type of trap
+	Damage       int    `json:"damage,omitempty"`        // Damage dealt by trap
+	StatusEffect string `json:"status_effect,omitempty"` // Status effect applied
+
+	// Info event data
+	Title     string `json:"title,omitempty"`      // Info title
+	Message   string `json:"message,omitempty"`    // Info message
+	ImagePath string `json:"image_path,omitempty"` // Optional image to display
+
+	// Quest event data
+	QuestID     string `json:"quest_id,omitempty"`     // Quest to activate/complete
+	ObjectiveID string `json:"objective_id,omitempty"` // Specific objective to update
+
+	// General data
+	CustomData map[string]interface{} `json:"custom_data,omitempty"` // Flexible custom data
+}
+
+// EventConditionData contains data for evaluating trigger conditions
+type EventConditionData struct {
+	// Timeout condition
+	Duration time.Duration `json:"duration,omitempty"` // Time before trigger
+
+	// Proximity condition
+	Range float64 `json:"range,omitempty"` // Distance for proximity trigger
+
+	// Quest condition
+	RequiredQuest string `json:"required_quest,omitempty"` // Quest that must be completed
+	QuestState    string `json:"quest_state,omitempty"`    // Required quest state
+
+	// Custom condition data
+	ConditionData map[string]interface{} `json:"condition_data,omitempty"`
+}
+
+// GameMode represents the game mode context where events should be active
+type GameMode int
+
+const (
+	GameModeExploration GameMode = iota // Event active in exploration mode
+	GameModeTactical                    // Event active in tactical mode 
+	GameModeBoth                        // Event active in both modes
+)
+
+// EventComponent represents an interactive event in the game world
+type EventComponent struct {
+	ID               string                   // Unique identifier for this event
+	Name             string                   // Display name for this event
+	TriggerCondition TriggerCondition         // When this event should be triggered
+	EventType        EventType                // Type of event to execute
+	State            EventState               // Current state of the event
+	CanRepeat        bool                     // Whether the event can be triggered multiple times
+	EventData        EventData                // Type-specific event data
+	ConditionData    EventConditionData       // Data for trigger conditions
+	
+	// View context - controls which game mode this event is active in
+	ActiveInMode     GameMode                 // Which game mode(s) this event is active in
+	
+	// Visual properties for event representation
+	Visible       bool     // Whether the event is visible (false for hidden/traps)
+	SpritePath    string   // Path to custom sprite (optional)  
+	FallbackColor [3]uint8 // RGB color for colored square fallback
+	SpriteScale   float64  // Scale factor for sprite rendering
+	SpriteOffset  [2]float64 // X,Y offset for sprite positioning
+}
+type EventComponent struct {
+	ID               string              `json:"id"`                 // Unique event ID
+	Name             string              `json:"name"`               // Human-readable event name
+	Description      string              `json:"description"`        // Event description
+	TriggerCondition TriggerCondition    `json:"trigger_condition"`  // When this event triggers
+	EventType        EventType           `json:"event_type"`         // Type of event
+	EventData        EventData           `json:"event_data"`         // Type-specific event data
+	ConditionData    EventConditionData  `json:"condition_data"`     // Condition-specific data
+	State            EventState          `json:"state"`              // Current event state
+	Repeatable       bool                `json:"repeatable"`         // Can this event repeat?
+	Priority         int                 `json:"priority"`           // Event priority (higher = more important)
+	Cooldown         time.Duration       `json:"cooldown"`           // Cooldown between triggers
+	LastTriggered    time.Time           `json:"last_triggered"`     // When event was last triggered
+	Prerequisites    []string            `json:"prerequisites"`      // Other events that must complete first
+	TriggerCount     int                 `json:"trigger_count"`      // How many times event has been triggered
+	MaxTriggers      int                 `json:"max_triggers"`       // Maximum triggers (0 = unlimited)
+	
+	// Visual Properties
+	Visible          bool                `json:"visible"`            // Whether the event is visible to the player
+	SpritePath       string              `json:"sprite_path"`        // Path to custom sprite (optional)
+	FallbackColor    [3]uint8            `json:"fallback_color"`     // RGB color for fallback square rendering
+	SpriteScale      float64             `json:"sprite_scale"`       // Sprite scaling factor
+	SpriteOffsetX    int                 `json:"sprite_offset_x"`    // X offset for sprite positioning
+	SpriteOffsetY    int                 `json:"sprite_offset_y"`    // Y offset for sprite positioning
+}
+
+// NewEventComponent creates a new event component
+func NewEventComponent(id, name string, triggerCondition TriggerCondition, eventType EventType) *EventComponent {
+	// Set default fallback colors based on event type
+	defaultColor := [3]uint8{100, 100, 100} // Gray default
+	switch eventType {
+	case EventBattle:
+		defaultColor = [3]uint8{200, 50, 50} // Red for battles
+	case EventDialog:
+		defaultColor = [3]uint8{50, 150, 200} // Blue for NPCs/dialogs
+	case EventChest:
+		defaultColor = [3]uint8{200, 200, 50} // Yellow for treasure
+	case EventDoor:
+		defaultColor = [3]uint8{150, 100, 50} // Brown for doors
+	case EventTrap:
+		defaultColor = [3]uint8{150, 50, 150} // Purple for traps
+	case EventInfo:
+		defaultColor = [3]uint8{100, 200, 100} // Green for info
+	case EventQuest:
+		defaultColor = [3]uint8{200, 150, 50} // Orange for quests
+	case EventShop:
+		defaultColor = [3]uint8{50, 200, 200} // Cyan for shops
+	case EventRest:
+		defaultColor = [3]uint8{200, 200, 200} // White for rest points
+	}
+
+	return &EventComponent{
+		ID:               id,
+		Name:             name,
+		TriggerCondition: triggerCondition,
+		EventType:        eventType,
+		State:            EventActive,
+		Repeatable:       false,
+		Priority:         0,
+		EventData:        EventData{},
+		ConditionData:    EventConditionData{},
+		Prerequisites:    make([]string, 0),
+		TriggerCount:     0,
+		MaxTriggers:      0,
+		
+		// Visual properties
+		Visible:       true, // Events are visible by default
+		SpritePath:    "",   // No custom sprite by default
+		FallbackColor: defaultColor,
+		SpriteScale:   1.0,  // Normal scaling
+		SpriteOffsetX: 0,
+		SpriteOffsetY: 0,
+	}
+}
+
+// CanTrigger checks if the event can be triggered based on its current state
+func (e *EventComponent) CanTrigger() bool {
+	if e.State == EventDisabled || e.State == EventCompleted {
+		return false
+	}
+
+	// Check if we've exceeded max triggers
+	if e.MaxTriggers > 0 && e.TriggerCount >= e.MaxTriggers {
+		return false
+	}
+
+	// Check cooldown
+	if e.Cooldown > 0 && time.Since(e.LastTriggered) < e.Cooldown {
+		return false
+	}
+
+	return true
+}
+
+// Trigger marks the event as triggered and updates relevant fields
+func (e *EventComponent) Trigger() {
+	if !e.CanTrigger() {
+		return
+	}
+
+	e.TriggerCount++
+	e.LastTriggered = time.Now()
+	e.State = EventTriggered
+
+	// If not repeatable and we've triggered once, mark as completed
+	if !e.Repeatable && e.TriggerCount >= 1 {
+		e.State = EventCompleted
+	}
+
+	// If we've hit max triggers, mark as completed
+	if e.MaxTriggers > 0 && e.TriggerCount >= e.MaxTriggers {
+		e.State = EventCompleted
+	}
+}
+
+// Reset resets the event to its initial state
+func (e *EventComponent) Reset() {
+	e.State = EventActive
+	e.TriggerCount = 0
+	e.LastTriggered = time.Time{}
+}
+
+// SetRepeatable sets whether the event can be triggered multiple times
+func (e *EventComponent) SetRepeatable(repeatable bool) *EventComponent {
+	e.Repeatable = repeatable
+	return e
+}
+
+// SetPriority sets the event priority
+func (e *EventComponent) SetPriority(priority int) *EventComponent {
+	e.Priority = priority
+	return e
+}
+
+// SetCooldown sets the cooldown between event triggers
+func (e *EventComponent) SetCooldown(cooldown time.Duration) *EventComponent {
+	e.Cooldown = cooldown
+	return e
+}
+
+// SetMaxTriggers sets the maximum number of times this event can trigger
+func (e *EventComponent) SetMaxTriggers(max int) *EventComponent {
+	e.MaxTriggers = max
+	return e
+}
+
+// AddPrerequisite adds a prerequisite event that must complete before this event can trigger
+func (e *EventComponent) AddPrerequisite(eventID string) *EventComponent {
+	e.Prerequisites = append(e.Prerequisites, eventID)
+	return e
+}
+
+// SetEventData sets the event-specific data
+func (e *EventComponent) SetEventData(data EventData) *EventComponent {
+	e.EventData = data
+	return e
+}
+
+// SetConditionData sets the condition-specific data
+func (e *EventComponent) SetConditionData(data EventConditionData) *EventComponent {
+	e.ConditionData = data
+	return e
+}
+
+// GetTriggerConditionName returns a human-readable name for the trigger condition
+func (e *EventComponent) GetTriggerConditionName() string {
+	switch e.TriggerCondition {
+	case TriggerOnTouch:
+		return "On Touch"
+	case TriggerOnTimeout:
+		return "On Timeout"
+	case TriggerOnRoomEntry:
+		return "On Room Entry"
+	case TriggerOnProximity:
+		return "On Proximity"
+	case TriggerOnInteract:
+		return "On Interact"
+	case TriggerOnQuestState:
+		return "On Quest State"
+	case TriggerManual:
+		return "Manual"
+	default:
+		return "Unknown"
+	}
+}
+
+// GetEventTypeName returns a human-readable name for the event type
+func (e *EventComponent) GetEventTypeName() string {
+	switch e.EventType {
+	case EventBattle:
+		return "Battle"
+	case EventDialog:
+		return "Dialog"
+	case EventChest:
+		return "Chest"
+	case EventDoor:
+		return "Door"
+	case EventTrap:
+		return "Trap"
+	case EventInfo:
+		return "Info"
+	case EventQuest:
+		return "Quest"
+	case EventCutscene:
+		return "Cutscene"
+	case EventShop:
+		return "Shop"
+	case EventRest:
+		return "Rest"
+	default:
+		return "Unknown"
+	}
+}
+
+// SetVisible sets whether the event should be visible
+func (e *EventComponent) SetVisible(visible bool) *EventComponent {
+	e.Visible = visible
+	return e
+}
+
+// SetSprite sets a custom sprite for the event
+func (e *EventComponent) SetSprite(spritePath string) *EventComponent {
+	e.SpritePath = spritePath
+	return e
+}
+
+// SetFallbackColor sets the fallback color for when no sprite is available
+func (e *EventComponent) SetFallbackColor(r, g, b uint8) *EventComponent {
+	e.FallbackColor = [3]uint8{r, g, b}
+	return e
+}
+
+// SetSpriteScale sets the scaling factor for the sprite
+func (e *EventComponent) SetSpriteScale(scale float64) *EventComponent {
+	e.SpriteScale = scale
+	return e
+}
+
+// SetSpriteOffset sets the sprite positioning offset
+func (e *EventComponent) SetSpriteOffset(x, y int) *EventComponent {
+	e.SpriteOffsetX = x
+	e.SpriteOffsetY = y
+	return e
+}
+
+// IsVisible returns whether the event is currently visible
+func (e *EventComponent) IsVisible() bool {
+	return e.Visible
+}
+
+// HasCustomSprite returns whether the event has a custom sprite set
+func (e *EventComponent) HasCustomSprite() bool {
+	return e.SpritePath != ""
+}
+
+// ShouldTriggerOnCollision returns true if this event should trigger on collision
+func (e *EventComponent) ShouldTriggerOnCollision() bool {
+	switch e.TriggerCondition {
+	case TriggerOnTouch, TriggerOnProximity, TriggerOnInteract:
+		return true
+	case TriggerOnTimeout, TriggerOnRoomEntry, TriggerOnQuestState, TriggerManual:
+		return false
+	default:
+		return false
+	}
+}
