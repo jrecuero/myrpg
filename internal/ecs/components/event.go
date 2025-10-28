@@ -110,6 +110,13 @@ type EventComponent struct {
 	// View context - controls which game mode this event is active in
 	ActiveInMode GameMode // Which game mode(s) this event is active in
 
+	// Prerequisite system for event dependencies
+	Prerequisites []string      // List of event IDs that must be completed before this event can trigger
+	TriggerCount  int           // Number of times this event has been triggered
+	MaxTriggers   int           // Maximum number of times this event can trigger (0 = unlimited)
+	LastTriggered time.Time     // When this event was last triggered
+	Cooldown      time.Duration // Minimum time between triggers
+
 	// Visual properties for event representation
 	Visible       bool       // Whether the event is visible (false for hidden/traps)
 	SpritePath    string     // Path to custom sprite (optional)
@@ -158,6 +165,13 @@ func NewEventComponent(id, name string, triggerCondition TriggerCondition, event
 		ConditionData:    EventConditionData{},
 		ActiveInMode:     GameModeExploration, // Default to exploration mode
 
+		// Prerequisites and cooldown system
+		Prerequisites: make([]string, 0),
+		TriggerCount:  0,
+		MaxTriggers:   0,           // 0 means unlimited
+		LastTriggered: time.Time{}, // Zero time
+		Cooldown:      0,           // No cooldown by default
+
 		// Visual properties
 		Visible:       true, // Events are visible by default
 		SpritePath:    "",   // No custom sprite by default
@@ -180,7 +194,29 @@ func (e *EventComponent) SetActiveInMode(mode GameMode) *EventComponent {
 
 // CanTrigger checks if the event can be triggered based on its current state
 func (e *EventComponent) CanTrigger() bool {
-	return e.State == EventActive || (e.State == EventTriggered && e.CanRepeat)
+	// Check basic state
+	if e.State == EventDisabled || e.State == EventCompleted {
+		return false
+	}
+
+	// Check if not repeatable and already triggered
+	if !e.CanRepeat && e.State == EventTriggered {
+		return false
+	}
+
+	// Check trigger limits
+	if e.MaxTriggers > 0 && e.TriggerCount >= e.MaxTriggers {
+		return false
+	}
+
+	// Check cooldown
+	if e.Cooldown > 0 && !e.LastTriggered.IsZero() {
+		if time.Since(e.LastTriggered) < e.Cooldown {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Trigger marks the event as triggered and updates relevant fields
@@ -190,9 +226,11 @@ func (e *EventComponent) Trigger() {
 	}
 
 	e.State = EventTriggered
+	e.TriggerCount++
+	e.LastTriggered = time.Now()
 
-	// If not repeatable, mark as completed
-	if !e.CanRepeat {
+	// If not repeatable or hit max triggers, mark as completed
+	if !e.CanRepeat || (e.MaxTriggers > 0 && e.TriggerCount >= e.MaxTriggers) {
 		e.State = EventCompleted
 	}
 }
@@ -200,6 +238,8 @@ func (e *EventComponent) Trigger() {
 // Reset resets the event to its initial state
 func (e *EventComponent) Reset() {
 	e.State = EventActive
+	e.TriggerCount = 0
+	e.LastTriggered = time.Time{}
 }
 
 // SetRepeatable sets whether the event can be triggered multiple times
@@ -297,6 +337,25 @@ func (e *EventComponent) SetSpriteScale(scale float64) *EventComponent {
 // SetSpriteOffset sets the sprite positioning offset
 func (e *EventComponent) SetSpriteOffset(x, y float64) *EventComponent {
 	e.SpriteOffset = [2]float64{x, y}
+	return e
+}
+
+// SetPrerequisites sets the event prerequisites
+func (e *EventComponent) SetPrerequisites(prerequisites ...string) *EventComponent {
+	e.Prerequisites = make([]string, len(prerequisites))
+	copy(e.Prerequisites, prerequisites)
+	return e
+}
+
+// SetMaxTriggers sets the maximum number of times this event can be triggered
+func (e *EventComponent) SetMaxTriggers(maxTriggers int) *EventComponent {
+	e.MaxTriggers = maxTriggers
+	return e
+}
+
+// SetCooldown sets the cooldown duration between triggers
+func (e *EventComponent) SetCooldown(cooldown time.Duration) *EventComponent {
+	e.Cooldown = cooldown
 	return e
 }
 

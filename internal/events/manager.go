@@ -140,7 +140,18 @@ func (em *EventManager) Update(deltaTime float64) {
 
 // checkPrerequisites checks if all prerequisite events have been completed
 func (em *EventManager) checkPrerequisites(eventComp *components.EventComponent) bool {
-	// TODO: Add prerequisite support back if needed
+	// Check if the event has prerequisites defined
+	if len(eventComp.Prerequisites) == 0 {
+		return true
+	}
+
+	// Check if all prerequisite events have been completed
+	for _, prereqID := range eventComp.Prerequisites {
+		if !em.completedEvents[prereqID] {
+			return false
+		}
+	}
+
 	return true
 }
 
