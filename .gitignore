@@ -9,3 +9,8 @@ logs/
 /myrpg
 myrpg
 main
+
+# Ignore save files (user-generated data)
+saves/
+*.save
+*.sav
