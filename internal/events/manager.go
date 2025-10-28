@@ -421,3 +421,39 @@ func (em *EventManager) GetEventStats() map[string]interface{} {
 
 	return stats
 }
+
+// GetGameMode returns the current game mode
+func (em *EventManager) GetGameMode() components.GameMode {
+	return em.currentGameMode
+}
+
+// SetEventCompleted marks an event as completed in the completion tracking
+func (em *EventManager) SetEventCompleted(eventID string, completed bool) {
+	em.completedEvents[eventID] = completed
+	log.Printf("Event %s completion status set to %v", eventID, completed)
+}
+
+// GetCompletedEvents returns a copy of the completed events map
+func (em *EventManager) GetCompletedEvents() map[string]bool {
+	completed := make(map[string]bool)
+	for id, status := range em.completedEvents {
+		completed[id] = status
+	}
+	return completed
+}
+
+// LoadCompletedEvents sets the completed events from saved data
+func (em *EventManager) LoadCompletedEvents(completedEvents map[string]bool) {
+	em.completedEvents = make(map[string]bool)
+	for id, status := range completedEvents {
+		em.completedEvents[id] = status
+	}
+	log.Printf("Loaded %d completed event states", len(completedEvents))
+}
+
+// ClearCompletedEventsForReset removes all completed events from tracking (for new game)
+func (em *EventManager) ClearCompletedEventsForReset() {
+	em.completedEvents = make(map[string]bool)
+	em.eventHistory = make([]EventExecutionRecord, 0)
+	log.Printf("Cleared all event completion tracking for new game")
+}

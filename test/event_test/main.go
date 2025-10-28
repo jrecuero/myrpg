@@ -63,9 +63,8 @@ func (g *Game) createTestEvents() {
 
 	battleEvent := components.NewEventComponent("battle_001", "Goblin Encounter", components.TriggerOnTouch, components.EventBattle)
 	battleEvent.SetEventData(components.EventData{
-		EnemyIDs:  []string{"goblin_1", "goblin_2"},
+		Enemies:   []string{"goblin_1", "goblin_2"},
 		BattleMap: "forest_clearing",
-		Ambush:    false,
 	})
 	battleEntity.AddComponent(ecs.ComponentEvent, battleEvent)
 
@@ -78,9 +77,9 @@ func (g *Game) createTestEvents() {
 
 	chestEvent := components.NewEventComponent("chest_001", "Wooden Chest", components.TriggerOnTouch, components.EventChest)
 	chestEvent.SetEventData(components.EventData{
-		ItemIDs: []string{"iron_sword", "health_potion"},
-		Gold:    50,
-		Locked:  false,
+		Items:    []string{"iron_sword", "health_potion"},
+		Gold:     50,
+		IsLocked: false,
 	})
 	chestEntity.AddComponent(ecs.ComponentEvent, chestEvent)
 
@@ -93,7 +92,7 @@ func (g *Game) createTestEvents() {
 
 	dialogEvent := components.NewEventComponent("dialog_001", "Talk to Elder", components.TriggerOnProximity, components.EventDialog)
 	dialogEvent.SetConditionData(components.EventConditionData{
-		Range: 48, // 1.5 tiles
+		Distance: 48, // 1.5 tiles
 	})
 	dialogEvent.SetEventData(components.EventData{
 		NPCID:    "elder_001",

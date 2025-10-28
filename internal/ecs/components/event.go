@@ -54,6 +54,20 @@ const (
 	GameModeBoth                        // Event active in both modes
 )
 
+// String returns a string representation of the GameMode
+func (gm GameMode) String() string {
+	switch gm {
+	case GameModeExploration:
+		return "Exploration"
+	case GameModeTactical:
+		return "Tactical"
+	case GameModeBoth:
+		return "Both"
+	default:
+		return "Unknown"
+	}
+}
+
 // EventData contains type-specific data for different event types
 type EventData struct {
 	// Battle event data

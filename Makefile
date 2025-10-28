@@ -23,7 +23,55 @@ clean:
 	@echo "Cleaning build artifacts..."
 	rm -f ./bin/myrpg
 	rm -f ./myrpg
+	rm -f ./main
+	rm -f ./character_stats_test
+	rm -f ./component_test
+	rm -f ./dialog_test
+	rm -f ./equipment_test
+	rm -f ./event_persistence_test
+	rm -f ./event_test
+	rm -f ./event_visual_test
+	rm -f ./info_layout_test
+	rm -f ./info_popup_test
+	rm -f ./input_test
+	rm -f ./inventory_test
+	rm -f ./item_system_test
+	rm -f ./logic_test
+	rm -f ./popup_test
+	rm -f ./quest_test
+	rm -f ./skills_test
+	rm -f ./verify_events
 	@echo "✅ Clean complete"
+
+# Clean all build artifacts including test binaries
+clean-all: clean
+	@echo "Cleaning all test binaries..."
+	find . -maxdepth 1 -name "*_test" -type f -delete 2>/dev/null || true
+	find . -maxdepth 1 -name "test_*" -type f -delete 2>/dev/null || true
+	@echo "✅ All clean complete"
+
+# Build test binaries to bin directory (prevent root clutter)
+build-tests:
+	@echo "Building test binaries to bin directory..."
+	@mkdir -p bin
+	go build -o ./bin/character_stats_test ./test/character_stats_test
+	go build -o ./bin/component_test ./test/component_test
+	go build -o ./bin/dialog_test ./test/dialog_test
+	go build -o ./bin/equipment_test ./test/equipment_test
+	go build -o ./bin/event_persistence_test ./test/event_persistence_test
+	go build -o ./bin/event_test ./test/event_test
+	go build -o ./bin/event_visual_test ./test/event_visual_test
+	go build -o ./bin/info_layout_test ./test/info_layout_test
+	go build -o ./bin/info_popup_test ./test/info_popup_test
+	go build -o ./bin/input_test ./test/input_test
+	go build -o ./bin/inventory_test ./test/inventory_test
+	go build -o ./bin/item_system_test ./test/item_system_test
+	go build -o ./bin/logic_test ./test/logic_test
+	go build -o ./bin/popup_test ./test/popup_test
+	go build -o ./bin/quest_test ./test/quest_test
+	go build -o ./bin/skills_test ./test/skills_test
+	go build -o ./bin/verify_events ./test/verify_events
+	@echo "✅ Test binaries created in ./bin/"
 
 # Run all tests
 test: test-unit test-logic test-popup test-info-popup test-character-stats test-equipment test-dialog test-input
@@ -98,6 +146,8 @@ help:
 	@echo "  make build    - Build the game binary to ./bin/myrpg"
 	@echo "  make run      - Build and run the game"
 	@echo "  make clean    - Remove build artifacts"
+	@echo "  make clean-all - Remove all build artifacts including test binaries"
+	@echo "  make build-tests - Build all test binaries to ./bin/"
 	@echo "  make test     - Run all tests"
 	@echo "  make test-unit    - Run unit tests only"
 	@echo "  make test-logic   - Run logic verification tests"

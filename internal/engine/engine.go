@@ -22,6 +22,7 @@ import (
 	"github.com/jrecuero/myrpg/internal/gfx"
 	"github.com/jrecuero/myrpg/internal/logger"
 	"github.com/jrecuero/myrpg/internal/quests"
+	"github.com/jrecuero/myrpg/internal/save"
 	"github.com/jrecuero/myrpg/internal/skills"
 	"github.com/jrecuero/myrpg/internal/tactical"
 	"github.com/jrecuero/myrpg/internal/ui"
@@ -39,6 +40,7 @@ type Game struct {
 	enemyGroupManager  *EnemyGroupManager   // Enemy group formation
 	tacticalDeployment *TacticalDeployment  // Unit deployment for tactical combat
 	eventManager       *events.EventManager // Event system for interactive world elements
+	saveManager        *save.SaveManager    // Save system for game state persistence
 	currentMode        GameMode             // Current game mode (exploration/tactical)
 }
 
@@ -55,6 +57,9 @@ func NewGame() *Game {
 	// Initialize event system
 	eventManager := events.NewEventManager()
 
+	// Initialize save system
+	saveManager := save.NewSaveManager("saves") // Save files in "saves" directory
+
 	game := &Game{
 		world:              world,
 		activePlayerIndex:  constants.DefaultActivePlayerIndex,
@@ -66,6 +71,7 @@ func NewGame() *Game {
 		enemyGroupManager:  enemyGroupManager,
 		tacticalDeployment: tacticalDeployment,
 		eventManager:       eventManager,
+		saveManager:        saveManager,
 		currentMode:        ModeExploration, // Start in exploration mode
 	}
 
@@ -149,6 +155,58 @@ func (g *Game) SetAttackAnimationDuration(duration time.Duration) {
 // GetCurrentMode returns the current game mode
 func (g *Game) GetCurrentMode() GameMode {
 	return g.currentMode
+}
+
+// SaveEventState saves the current event state to disk
+func (g *Game) SaveEventState() error {
+	if g.saveManager == nil {
+		return fmt.Errorf("save manager not initialized")
+	}
+	return g.saveManager.SaveEventState(g.world, g.eventManager)
+}
+
+// LoadEventState loads event state from disk and applies it to the game
+func (g *Game) LoadEventState() error {
+	if g.saveManager == nil {
+		return fmt.Errorf("save manager not initialized")
+	}
+
+	saveData, err := g.saveManager.LoadEventState()
+	if err != nil {
+		return fmt.Errorf("failed to load event state: %v", err)
+	}
+
+	// Apply the loaded state to the world and event manager
+	if err := g.saveManager.ApplyEventState(g.world, g.eventManager, saveData); err != nil {
+		return fmt.Errorf("failed to apply event state: %v", err)
+	}
+
+	// Load completed events into the event manager
+	g.eventManager.LoadCompletedEvents(saveData.CompletedEvents)
+
+	return nil
+}
+
+// ClearEventState resets all events to their default state (for new game)
+func (g *Game) ClearEventState() error {
+	if g.saveManager == nil {
+		return fmt.Errorf("save manager not initialized")
+	}
+
+	// Clear save data
+	if err := g.saveManager.ClearEventState(g.world); err != nil {
+		return fmt.Errorf("failed to clear save state: %v", err)
+	}
+
+	// Clear event manager tracking
+	g.eventManager.ClearCompletedEventsForReset()
+
+	return nil
+}
+
+// GetSaveManager returns the save manager for external use
+func (g *Game) GetSaveManager() *save.SaveManager {
+	return g.saveManager
 }
 
 // SwitchToTacticalMode transitions to tactical combat mode with full party deployment
