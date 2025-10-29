@@ -41,6 +41,7 @@ type Game struct {
 	tacticalDeployment *TacticalDeployment  // Unit deployment for tactical combat
 	eventManager       *events.EventManager // Event system for interactive world elements
 	saveManager        *save.SaveManager    // Save system for game state persistence
+	viewManager        *ViewManager         // View system for managing different game views
 	currentMode        GameMode             // Current game mode (exploration/tactical)
 }
 
@@ -74,6 +75,9 @@ func NewGame() *Game {
 		saveManager:        saveManager,
 		currentMode:        ModeExploration, // Start in exploration mode
 	}
+
+	// Initialize view management system
+	game.viewManager = NewViewManager(game)
 
 	// Initialize skills system
 	skills.InitializeSkillRegistry()
@@ -215,6 +219,17 @@ func (g *Game) SwitchToTacticalMode(participants []*ecs.Entity) {
 		return // Already in tactical mode
 	}
 
+	// Use ViewManager to switch to tactical view
+	transitionData := map[string]interface{}{
+		"participants":  participants,
+		"previous_mode": g.currentMode,
+	}
+
+	if err := g.viewManager.SwitchToView(ViewTactical, transitionData); err != nil {
+		logger.Error("Failed to switch to tactical view: %v", err)
+		return
+	}
+
 	g.currentMode = ModeTactical
 
 	// Deploy full party instead of just the leader
@@ -275,6 +290,12 @@ func (g *Game) SwitchToTacticalMode(participants []*ecs.Entity) {
 func (g *Game) SwitchToExplorationMode() {
 	if g.currentMode == ModeExploration {
 		return // Already in exploration mode
+	}
+
+	// Use ViewManager to switch to exploration view
+	if err := g.viewManager.SwitchToView(ViewExploration, nil); err != nil {
+		logger.Error("Failed to switch to exploration view: %v", err)
+		return
 	}
 
 	g.currentMode = ModeExploration
@@ -447,7 +468,15 @@ func (g *Game) GetActivePlayer() *ecs.Entity {
 		// In exploration mode, always return the party leader
 		return g.partyManager.GetPartyLeader()
 	} else {
-		// In tactical mode, return active party member
+		// In tactical mode, get the current unit from the tactical combat system
+		if g.tacticalManager != nil && g.tacticalManager.IsActive {
+			currentUnit := g.tacticalManager.GetTurnBasedCombat().GetActiveUnit()
+			if currentUnit != nil && currentUnit.HasTag("player") {
+				return currentUnit
+			}
+		}
+
+		// Fallback to party member if tactical system doesn't have an active unit
 		partyMembers := g.partyManager.GetPartyForTactical()
 		if len(partyMembers) == 0 {
 			return nil
@@ -519,7 +548,12 @@ func (g *Game) Update() error {
 		return nil // Only process UI input, skip game logic
 	}
 
-	// Update based on current game mode
+	// Update view manager (handles view transitions and view-specific logic)
+	if err := g.viewManager.Update(1.0 / 60.0); err != nil { // Assume 60 FPS for delta time
+		return fmt.Errorf("view manager update failed: %v", err)
+	}
+
+	// Update based on current game mode (legacy system - will be gradually replaced by ViewManager)
 	switch g.currentMode {
 	case ModeExploration:
 		return g.updateExploration()
@@ -869,25 +903,19 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw game world background
 	g.uiManager.DrawGameWorldBackground(screen)
 
-	// Draw game entities based on current mode
-	for _, entity := range g.world.GetEntities() {
+	// Draw game entities based on current view using ViewManager
+	allEntities := g.world.GetEntities()
+	visibleEntities := g.viewManager.GetVisibleEntities(allEntities)
+
+	for _, entity := range visibleEntities {
 		transform := entity.Transform()
 		if transform == nil {
 			continue // Skip entities without a transform
 		}
 
-		// In exploration mode, only show party leader and enemies/objects
-		if g.currentMode == ModeExploration {
-			if entity.HasTag("player") {
-				// Only show the party leader in exploration mode
-				if entity != g.partyManager.GetPartyLeader() {
-					continue // Skip non-leader party members
-				}
-			}
-		} else if g.currentMode == ModeTactical {
-			// In tactical mode, all entities (including tactical participants)
-			// should be rendered at their current positions
-			// The tactical system will have repositioned tactical participants
+		// Skip entities that are not visible in the current view
+		if !g.viewManager.IsEntityVisible(entity) {
+			continue
 		}
 
 		// Check if this is a background entity that needs clipping
@@ -922,16 +950,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			if spriteC != nil {
 				// Check if this is an event with mode restrictions
 				if eventC := entity.Event(); eventC != nil {
-					// Check if event is active in current game mode
-					var eventGameMode components.GameMode
-					if g.currentMode == ModeExploration {
-						eventGameMode = components.GameModeExploration
-					} else {
-						eventGameMode = components.GameModeTactical
-					}
-
-					// Only draw events that are active in the current game mode
-					if !eventC.IsActiveInMode(eventGameMode) {
+					// Use ViewManager to check if event is active in current view
+					if !g.viewManager.IsEventActive(eventC) {
 						continue // Skip this event entity
 					}
 				}
@@ -947,16 +967,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			} else {
 				// Check if this is a visible event entity without a sprite
 				if eventC := entity.Event(); eventC != nil && eventC.IsVisible() {
-					// Check if event is active in current game mode
-					var eventGameMode components.GameMode
-					if g.currentMode == ModeExploration {
-						eventGameMode = components.GameModeExploration
-					} else {
-						eventGameMode = components.GameModeTactical
-					}
-
-					// Only draw events that are active in the current game mode
-					if eventC.IsActiveInMode(eventGameMode) {
+					// Use ViewManager to check if event is active in current view
+					if g.viewManager.IsEventActive(eventC) {
 						// Draw colored square for events without sprites
 						color := color.RGBA{
 							eventC.FallbackColor[0],
@@ -1646,4 +1658,61 @@ func (g *Game) toggleQuestJournal() {
 		g.uiManager.AddMessage(fmt.Sprintf("Opened %s's quest journal", activePlayer.RPGStats().Name))
 		logger.Info("Quest journal opened for player: %s", activePlayer.RPGStats().Name)
 	}
+}
+
+// View management helper methods
+
+// GetViewManager returns the view manager for external access
+func (g *Game) GetViewManager() *ViewManager {
+	return g.viewManager
+}
+
+// SwitchToDialogView switches to dialog view with context data
+func (g *Game) SwitchToDialogView(dialogData map[string]interface{}) error {
+	return g.viewManager.PushView(ViewDialog, dialogData)
+}
+
+// SwitchToInventoryView switches to inventory view
+func (g *Game) SwitchToInventoryView() error {
+	return g.viewManager.PushView(ViewInventory, nil)
+}
+
+// SwitchToShopView switches to shop view with shop data
+func (g *Game) SwitchToShopView(shopData map[string]interface{}) error {
+	return g.viewManager.PushView(ViewShop, shopData)
+}
+
+// SwitchToMenuView switches to game menu view
+func (g *Game) SwitchToMenuView() error {
+	return g.viewManager.PushView(ViewMenu, nil)
+}
+
+// SwitchToCutsceneView switches to cutscene view with cutscene data
+func (g *Game) SwitchToCutsceneView(cutsceneData map[string]interface{}) error {
+	return g.viewManager.PushView(ViewCutscene, cutsceneData)
+}
+
+// ReturnToPreviousView returns to the previous view (pops from view stack)
+func (g *Game) ReturnToPreviousView() error {
+	return g.viewManager.PopView()
+}
+
+// GetCurrentViewType returns the currently active view type
+func (g *Game) GetCurrentViewType() ViewType {
+	return g.viewManager.GetCurrentView()
+}
+
+// IsInView checks if the game is currently in a specific view
+func (g *Game) IsInView(viewType ViewType) bool {
+	return g.viewManager.GetCurrentView() == viewType
+}
+
+// RegisterCustomView allows registration of custom view configurations
+func (g *Game) RegisterCustomView(config *ViewConfiguration) {
+	g.viewManager.RegisterView(config)
+}
+
+// RegisterViewTransition allows registration of custom view transitions
+func (g *Game) RegisterViewTransition(transition *ViewTransition) {
+	g.viewManager.RegisterTransition(transition)
 }

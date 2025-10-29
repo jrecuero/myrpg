@@ -52,21 +52,29 @@ func (g *Game) handleBattleEvent(entity *ecs.Entity, eventComp *components.Event
 	}
 }
 
-// handleDialogEvent shows a dialog or message
+// handleDialogEvent switches to dialog view for NPC interactions
 func (g *Game) handleDialogEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
 	log.Printf("Dialog event triggered: %s", eventComp.Name)
 
-	// For now, show a message - later this could integrate with a full dialog system
-	message := fmt.Sprintf("You approach %s. They greet you warmly.", eventComp.Name)
-	g.uiManager.AddMessage(message)
+	// Switch to dialog view with context data
+	dialogData := map[string]interface{}{
+		"npc_name":  eventComp.Name,
+		"npc_id":    eventComp.EventData.NPCID,
+		"dialog_id": eventComp.EventData.DialogID,
+		"entity_id": entity.GetID(),
+	}
+
+	if err := g.SwitchToDialogView(dialogData); err != nil {
+		log.Printf("Failed to switch to dialog view: %v", err)
+		// Fallback to simple message
+		message := fmt.Sprintf("You approach %s. They greet you warmly.", eventComp.Name)
+		g.uiManager.AddMessage(message)
+	}
 
 	return &events.EventResult{
 		Success: true,
 		Message: fmt.Sprintf("Dialog with %s", eventComp.Name),
-		Data: map[string]interface{}{
-			"npc_id":    eventComp.EventData.NPCID,
-			"dialog_id": eventComp.EventData.DialogID,
-		},
+		Data:    dialogData,
 	}
 }
 
