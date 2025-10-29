@@ -15,6 +15,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/jrecuero/myrpg/cmd/myrpg/game/entities"
 	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
@@ -98,12 +99,30 @@ func NewGame() *Game {
 
 	// Set up state change callback to refresh movement highlighting when player turn starts
 	tacticalManager.GetTurnBasedCombat().SetStateChangeCallback(func(phase tactical.CombatPhase) {
+		logger.Debug("=== TURN STATE CHANGE: %v ===", phase)
+
 		if phase == tactical.CombatPhaseTeamTurn {
-			// Check if it's now a player turn and refresh movement highlighting for the engine's active player
-			if activePlayer := game.GetActivePlayer(); activePlayer != nil {
-				if activePlayer.HasTag("player") {
-					tacticalManager.HighlightMovementRangeForPlayer(activePlayer)
+			// Reset movement for ALL players when a new turn/round starts
+			allPartyMembers := game.partyManager.GetPartyForTactical()
+			logger.Debug("Resetting movement for all %d party members", len(allPartyMembers))
+
+			for _, player := range allPartyMembers {
+				if player != nil && player.HasTag("player") {
+					tacticalManager.ResetPlayerMovement(player)
+					logger.Debug("StateCallback: Reset movement for player: %s", player.RPGStats().Name)
 				}
+			}
+
+			// Get the active unit directly from the tactical system and highlight their range
+			if activeUnit := tacticalManager.GetTurnBasedCombat().GetActiveUnit(); activeUnit != nil {
+				if activeUnit.HasTag("player") {
+					tacticalManager.HighlightMovementRangeForPlayer(activeUnit)
+					logger.Debug("StateCallback: Highlighted movement for active player: %s", activeUnit.RPGStats().Name)
+				} else {
+					logger.Debug("StateCallback: Active unit is not a player: %s", activeUnit.GetID())
+				}
+			} else {
+				logger.Debug("StateCallback: No active unit found")
 			}
 		}
 	})
@@ -368,12 +387,67 @@ func (g *Game) IsTacticalMode() bool {
 // getAllCombatParticipants returns all entities with RPG stats (players and enemies)
 func (g *Game) getAllCombatParticipants() []*ecs.Entity {
 	participants := make([]*ecs.Entity, 0)
-	for _, entity := range g.world.GetEntities() {
-		if entity.RPGStats() != nil {
+	allEntities := g.world.GetEntities()
+
+	logger.Debug("🔍 COMBAT PARTICIPANTS ANALYSIS (called after enemy creation):")
+	logger.Debug("   Total entities in world: %d", len(allEntities))
+
+	for i, entity := range allEntities {
+		hasRPGStats := entity.RPGStats() != nil
+		hasTransform := entity.Transform() != nil
+		tags := entity.GetTags()
+
+		logger.Debug("   Entity %d: ID=%s, HasRPGStats=%t, HasTransform=%t, Tags=%v",
+			i, entity.GetID(), hasRPGStats, hasTransform, tags)
+
+		if hasRPGStats {
 			participants = append(participants, entity)
+			logger.Debug("   ✅ Added to combat participants: %s", entity.GetID())
+		} else if entity.HasTag("enemy") {
+			logger.Debug("   ⚠️  Enemy WITHOUT RPG stats: %s (Tags: %v)", entity.GetID(), tags)
 		}
 	}
+
+	logger.Debug("   📊 Final participant count: %d", len(participants))
 	return participants
+}
+
+// createEnemiesFromBattleEvent creates enemy entities based on battle event data
+func (g *Game) createEnemiesFromBattleEvent(eventComp *components.EventComponent) {
+	logger.Debug("🏗️  Creating enemies from battle event: %s", eventComp.Name)
+	logger.Debug("   Enemy list: %v", eventComp.EventData.Enemies)
+
+	if len(eventComp.EventData.Enemies) == 0 {
+		logger.Debug("   ⚠️  No enemies specified in battle event data")
+		return
+	}
+
+	// For each enemy ID in the event data, create an enemy entity
+	for i, enemyID := range eventComp.EventData.Enemies {
+		logger.Debug("   Creating enemy %d: %s", i, enemyID)
+
+		// Create enemy at a temporary position (will be positioned during tactical deployment)
+		enemy := entities.CreateEnemy(0, 0)
+
+		if enemy == nil {
+			logger.Debug("   ❌ Failed to create enemy %s", enemyID)
+			continue
+		}
+
+		// Add the enemy to the world
+		g.AddEntity(enemy)
+
+		logger.Debug("   ✅ Created and added enemy: %s (type: %s)", enemy.GetID(), enemyID)
+
+		// Verify the enemy was added
+		if stats := enemy.RPGStats(); stats != nil {
+			logger.Debug("   📊 Enemy stats: Name=%s, Job=%v, Level=%d", stats.Name, stats.Job, stats.Level)
+		} else {
+			logger.Debug("   ⚠️  Enemy has no RPG stats!")
+		}
+	}
+
+	logger.Debug("🏁 Enemy creation completed. Total created: %d", len(eventComp.EventData.Enemies))
 }
 
 // getNearbyEnemies returns enemies within the specified distance of the player
@@ -798,6 +872,22 @@ func (g *Game) updateTactical(uiInputResult ui.InputResult) error {
 				} else {
 					g.uiManager.AddMessage(fmt.Sprintf("%s ended their turn", activePlayer.RPGStats().Name))
 					logger.Info("Player %s ended their turn", activePlayer.RPGStats().Name)
+
+					// Reset movement for ALL players at the start of each new turn
+					// This ensures all players get fresh movement ranges, not just the active one
+					allPartyMembers := g.partyManager.GetPartyForTactical()
+					for _, player := range allPartyMembers {
+						if player != nil && player.HasTag("player") {
+							g.tacticalManager.ResetPlayerMovement(player)
+							logger.Debug("Reset movement for player: %s", player.RPGStats().Name)
+						}
+					}
+
+					// Highlight movement range for the new active player
+					if nextActivePlayer := g.GetActivePlayer(); nextActivePlayer != nil && nextActivePlayer.HasTag("player") {
+						g.tacticalManager.HighlightMovementRangeForPlayer(nextActivePlayer)
+						logger.Debug("Highlighted movement for new active player: %s", nextActivePlayer.RPGStats().Name)
+					}
 				}
 			}
 		} else {
@@ -903,22 +993,80 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw game world background
 	g.uiManager.DrawGameWorldBackground(screen)
 
-	// Draw game entities based on current view using ViewManager
+	// Draw game entities - use ViewManager for exploration, legacy logic for tactical (temporary)
 	allEntities := g.world.GetEntities()
-	visibleEntities := g.viewManager.GetVisibleEntities(allEntities)
+	var visibleEntities []*ecs.Entity
+
+	if g.currentMode == ModeExploration {
+		// Use ViewManager for exploration mode
+		visibleEntities = g.viewManager.GetVisibleEntities(allEntities)
+	} else if g.currentMode == ModeTactical {
+		// Use legacy logic for tactical mode (temporary fix) - show all entities
+		visibleEntities = allEntities
+
+		// Debug: Print what entities we have in tactical mode
+		logger.Debug("=== TACTICAL MODE ENTITY DEBUG ===")
+		logger.Debug("Total entities in world: %d", len(allEntities))
+
+		enemyCount := 0
+		playerCount := 0
+		backgroundCount := 0
+		otherCount := 0
+
+		for i, entity := range allEntities {
+			hasTransform := entity.Transform() != nil
+			tags := entity.GetTags()
+
+			// Count entity types
+			if entity.HasTag("enemy") {
+				enemyCount++
+				logger.Debug("ENEMY %d: ID=%s, Tags=%v, HasTransform=%t", i, entity.GetID(), tags, hasTransform)
+			} else if entity.HasTag("player") {
+				playerCount++
+				logger.Debug("PLAYER %d: ID=%s, Tags=%v, HasTransform=%t", i, entity.GetID(), tags, hasTransform)
+			} else if entity.HasTag("background") {
+				backgroundCount++
+				logger.Debug("BACKGROUND %d: ID=%s, Tags=%v, HasTransform=%t", i, entity.GetID(), tags, hasTransform)
+			} else {
+				otherCount++
+				logger.Debug("OTHER %d: ID=%s, Tags=%v, HasTransform=%t", i, entity.GetID(), tags, hasTransform)
+			}
+
+			if hasTransform {
+				t := entity.Transform()
+				logger.Debug("  → Position: X=%.1f, Y=%.1f, Size=%dx%d", t.X, t.Y, t.Width, t.Height)
+			} else {
+				logger.Debug("  → NO TRANSFORM - Entity will not be rendered!")
+			}
+		}
+
+		logger.Debug("ENTITY SUMMARY: %d enemies, %d players, %d backgrounds, %d others",
+			enemyCount, playerCount, backgroundCount, otherCount)
+
+		// Additional debugging for enemies specifically
+		if enemyCount == 0 {
+			logger.Debug("⚠️  NO ENEMIES FOUND IN WORLD!")
+			logger.Debug("Checking tactical manager participants...")
+			if g.tacticalManager.Participants != nil {
+				logger.Debug("Tactical participants: %d", len(g.tacticalManager.Participants))
+				for i, participant := range g.tacticalManager.Participants {
+					logger.Debug("Participant %d: ID=%s, Tags=%v", i, participant.GetID(), participant.GetTags())
+				}
+			} else {
+				logger.Debug("⚠️  Tactical manager participants is nil!")
+			}
+		}
+
+		logger.Debug("=== END TACTICAL ENTITY DEBUG ===")
+	} else {
+		visibleEntities = allEntities // Fallback
+	}
 
 	for _, entity := range visibleEntities {
 		transform := entity.Transform()
 		if transform == nil {
 			continue // Skip entities without a transform
-		}
-
-		// Skip entities that are not visible in the current view
-		if !g.viewManager.IsEntityVisible(entity) {
-			continue
-		}
-
-		// Check if this is a background entity that needs clipping
+		} // Check if this is a background entity that needs clipping
 		isBackground := entity.HasTag("background") || entity.Name == "Background"
 
 		// Check for animated sprite first, fallback to static sprite

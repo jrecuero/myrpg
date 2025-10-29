@@ -32,6 +32,9 @@ func (g *Game) CreateGameEventHandlers() map[components.EventType]events.EventHa
 func (g *Game) handleBattleEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
 	log.Printf("Battle event triggered: %s", eventComp.Name)
 
+	// Create enemy entities from the battle event data
+	g.createEnemiesFromBattleEvent(eventComp)
+
 	// Get all combat participants (all party members + any enemies)
 	participants := g.getAllCombatParticipants()
 
