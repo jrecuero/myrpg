@@ -10,6 +10,7 @@ Core game systems, implementations, and technical architecture:
 - **[Attack Animations](systems/ATTACK_ANIMATIONS.md)** - Detailed documentation for the sword attack animation system with customizable duration and visual feedback
 - **[Tactical Battle System](systems/TACTICAL_BATTLE_SYSTEM.md)** - Turn-based tactical combat system architecture (grid-based)
 - **[Classic Battle System](systems/CLASSIC_BATTLE_SYSTEM.md)** - Dragon Quest-style classic battle system (currently active)
+- **[Row-Based Formation System](systems/ROW_BASED_FORMATION_SYSTEM.md)** - Enhanced formation mechanics with front/back rows and attack reach
 - **[View System](systems/VIEW_SYSTEM.md)** - Comprehensive framework for managing game views, entity visibility, and state transitions
 - **[Combat Implementation Status](systems/COMBAT_IMPLEMENTATION_STATUS.md)** - Current state of combat system implementation
 - **[Combat UI Integration](systems/combat_ui_integration.md)** - Complete UI system for turn-based combat
@@ -78,6 +79,7 @@ docs/
 ├── systems/                           # Core game systems documentation
 │   ├── CLASSIC_BATTLE_SYSTEM.md       # Dragon Quest-style battles (active)
 │   ├── TACTICAL_BATTLE_SYSTEM.md      # Tactical grid-based battles (preserved)
+│   ├── ROW_BASED_FORMATION_SYSTEM.md  # Enhanced formation mechanics design
 │   ├── VIEW_SYSTEM.md                 # Game state and view management
 │   ├── ANIMATION_SYSTEM.md            # Character animation system
 │   ├── ATTACK_ANIMATIONS.md           # Attack visual effects

@@ -94,6 +94,32 @@ A 2D tactical RPG game built with Go and Ebiten engine, featuring grid-based com
   - Add inventory system to manage equipment and items
   - Add status effects (poison, bleeding, burning, stun, etc.)
 
+- [ ] **Classic Battle System Enhancements** 🎯 *NEW PRIORITY*
+  - **Phase 1: Combat Depth (2-3 weeks)**
+    - [ ] Enhanced damage calculation with critical hits (5-10% chance for 2x damage)
+    - [ ] Basic status effects system (Poison, Regeneration, Stun with duration tracking)
+    - [ ] MP system and basic spell variety (Fire, Ice, Lightning, Heal)
+    - [ ] Equipment stat integration (weapon/armor bonuses in combat)
+  - **Phase 2: Strategic Elements (2-3 weeks)**
+    - [ ] Advanced enemy AI with target prioritization (low HP, healers, vulnerable classes)
+    - [ ] **Row-Based Formation System** 🆕
+      - [ ] Front/Back row mechanics (Front row bottom for enemies, top for players)
+      - [ ] Attack reach system: Close combat (front-to-front only), Ranged (any-to-any)
+      - [ ] Auto-expose back row when front row is empty
+      - [ ] Formation bonuses and positioning effects
+    - [ ] Elemental damage types and resistances (2x/0.5x damage modifiers)
+    - [ ] Class-specific special abilities with unique effects
+  - **Phase 3: Polish & Features (2-3 weeks)**
+    - [ ] Visual effect enhancements (screen shake, particles, status icons)
+    - [ ] Battle rewards and loot system (XP, equipment drops, gold)
+    - [ ] Battle difficulty options and speed controls (1x, 2x, 4x)
+    - [ ] Advanced battle types (Boss encounters, ambush scenarios)
+  - **Quick Wins (1-2 days each)**
+    - [ ] Victory condition variety (survive X turns, defeat specific enemies)
+    - [ ] Enhanced battle log with color-coded damage types
+    - [ ] Battle speed controls integration
+    - [ ] Formation change animations
+
 - [ ] **Character Progression**
   - Level up system
   - Skill trees
