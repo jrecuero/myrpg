@@ -11,7 +11,9 @@ The `/docs` directory has been reorganized from a flat structure with 23+ files 
 ├── systems/                            # Core game systems (7 files)
 │   ├── ANIMATION_SYSTEM.md
 │   ├── ATTACK_ANIMATIONS.md
-│   ├── BATTLE_SYSTEM.md
+│   ├── TACTICAL_BATTLE_SYSTEM.md
+│   ├── CLASSIC_BATTLE_SYSTEM.md
+│   ├── VIEW_SYSTEM.md
 │   ├── COMBAT_IMPLEMENTATION_STATUS.md
 │   ├── combat_ui_integration.md
 │   ├── FFT_IMPLEMENTATION.md

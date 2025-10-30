@@ -9,7 +9,7 @@ All three requested tasks have been completed successfully:
 - **Result**: All documentation is now consolidated in one location
 - **Files moved**: 17 markdown files including:
   - `ANIMATION_SYSTEM.md`
-  - `BATTLE_SYSTEM.md`
+  - `TACTICAL_BATTLE_SYSTEM.md` (renamed from `BATTLE_SYSTEM.md`)
   - `COMBAT_IMPLEMENTATION_STATUS.md`
   - `FFT_IMPLEMENTATION.md`
   - `TACTICAL_ROADMAP.md`
@@ -49,7 +49,7 @@ file, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 /Users/jorecuer/go/src/github.com/jrecuero/myrpg/
 ├── docs/                    # All documentation consolidated here
 │   ├── ANIMATION_SYSTEM.md
-│   ├── BATTLE_SYSTEM.md
+│   ├── TACTICAL_BATTLE_SYSTEM.md
 │   ├── logging_system.md    # Our new logging documentation
 │   └── ... (21 other files)
 ├── logs/                    # Git ignored, cleaned on each run

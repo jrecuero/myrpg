@@ -8,9 +8,12 @@ Welcome to the MyRPG documentation! This directory contains comprehensive guides
 Core game systems, implementations, and technical architecture:
 - **[Animation System](systems/ANIMATION_SYSTEM.md)** - Complete guide to the flexible multi-state animation system supporting idle, walking, attack, and other character animations
 - **[Attack Animations](systems/ATTACK_ANIMATIONS.md)** - Detailed documentation for the sword attack animation system with customizable duration and visual feedback
-- **[Battle System](systems/BATTLE_SYSTEM.md)** - Turn-based tactical combat system architecture
+- **[Tactical Battle System](systems/TACTICAL_BATTLE_SYSTEM.md)** - Turn-based tactical combat system architecture (grid-based)
+- **[Classic Battle System](systems/CLASSIC_BATTLE_SYSTEM.md)** - Dragon Quest-style classic battle system (currently active)
+- **[View System](systems/VIEW_SYSTEM.md)** - Comprehensive framework for managing game views, entity visibility, and state transitions
 - **[Combat Implementation Status](systems/COMBAT_IMPLEMENTATION_STATUS.md)** - Current state of combat system implementation
 - **[Combat UI Integration](systems/combat_ui_integration.md)** - Complete UI system for turn-based combat
+- **[Event System](systems/EVENT_SYSTEM.md)** - Event handling and game interaction system
 - **[FFT Implementation](systems/FFT_IMPLEMENTATION.md)** - Final Fantasy Tactics-inspired tactical system
 - **[Movement Implementation](systems/MOVEMENT_IMPLEMENTATION_COMPLETE.md)** - Grid-based movement system
 
@@ -70,15 +73,25 @@ All documentation is kept up-to-date with the latest code changes and includes:
 ## 📁 Project Structure
 
 ```
-doc/
-├── README.md                    # This file - documentation index
-├── ANIMATION_SYSTEM.md          # Animation system guide
-├── ATTACK_ANIMATIONS.md         # Attack animation system
-├── BATTLE_FIXES.md             # Battle system improvements
-├── FFT_IMPLEMENTATION.md        # Final Fantasy Tactics implementation guide
-├── TACTICAL_ROADMAP.md          # Complete 6-phase tactical RPG roadmap
-├── DEVELOPMENT_PRIORITIES.md    # Development priorities and success metrics
-└── PHASE1_COMPLETE.md          # Phase 1 completion summary
+docs/
+├── README.md                          # This file - documentation index
+├── systems/                           # Core game systems documentation
+│   ├── CLASSIC_BATTLE_SYSTEM.md       # Dragon Quest-style battles (active)
+│   ├── TACTICAL_BATTLE_SYSTEM.md      # Tactical grid-based battles (preserved)
+│   ├── VIEW_SYSTEM.md                 # Game state and view management
+│   ├── ANIMATION_SYSTEM.md            # Character animation system
+│   ├── ATTACK_ANIMATIONS.md           # Attack visual effects
+│   └── EVENT_SYSTEM.md                # Game events and interactions
+├── debugging/                         # Bug fixes and diagnostics
+│   ├── BATTLE_FIXES.md                # Battle system improvements
+│   ├── combat_debugging_and_fixes.md  # Combat system debugging
+│   └── logging_system.md              # Development logging
+├── development/                       # Planning and roadmaps
+│   ├── TACTICAL_ROADMAP.md            # Development roadmap
+│   ├── DEVELOPMENT_PRIORITIES.md      # Current priorities
+│   └── TODO.md                        # Task lists
+└── project/                          # Project management
+    └── project_cleanup_completed.md   # Documentation organization
 ```
 
 ---
