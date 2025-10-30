@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -67,9 +68,19 @@ func getBattleActionMessage(action *classic.BattleAction) string {
 
 	switch action.ActionType {
 	case classic.ActionAttack:
-		return attackerName + " attacks " + targetName + "!"
+		baseMessage := attackerName + " attacks " + targetName + "!"
+		if action.DamageDealt > 0 {
+			return fmt.Sprintf("%s Deals %d damage! HP: %d/%d",
+				baseMessage, action.DamageDealt, action.TargetHPAfter, action.TargetMaxHP)
+		}
+		return baseMessage
 	case classic.ActionMagic:
-		return attackerName + " casts magic on " + targetName + "!"
+		baseMessage := attackerName + " casts magic on " + targetName + "!"
+		if action.DamageDealt > 0 {
+			return fmt.Sprintf("%s Deals %d damage! HP: %d/%d",
+				baseMessage, action.DamageDealt, action.TargetHPAfter, action.TargetMaxHP)
+		}
+		return baseMessage
 	case classic.ActionDefend:
 		return attackerName + " defends!"
 	case classic.ActionItem:
@@ -109,6 +120,12 @@ func (bss *BattleSystemSelector) StartBattle(game *Game, playerParty, enemyParty
 		return nil
 
 	case BattleSystemClassic:
+		// Set up battle end callback to return to exploration
+		bss.classicManager.SetOnBattleEnd(func(victory bool) {
+			logger.Debug("🏁 Classic battle ended, returning to exploration mode. Victory: %t", victory)
+			// The battle manager will handle its own cleanup in HandleBattleEndConfirmation
+		})
+
 		// Use new classic system
 		return bss.classicManager.StartBattle(playerParty, enemyParty)
 

@@ -63,7 +63,7 @@ func (g *Game) createTestEvents() {
 
 	battleEvent := components.NewEventComponent("battle_001", "Goblin Encounter", components.TriggerOnTouch, components.EventBattle)
 	battleEvent.SetEventData(components.EventData{
-		Enemies:   []string{"goblin_1", "goblin_2"},
+		Enemies:   []string{"goblin_1", "goblin_2", "goblin_3"},
 		BattleMap: "forest_clearing",
 	})
 	battleEntity.AddComponent(ecs.ComponentEvent, battleEvent)

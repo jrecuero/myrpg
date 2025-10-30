@@ -23,6 +23,8 @@ const (
 	BattleStateVictory
 	BattleStateDefeat
 	BattleStateEscaped
+	BattleStateWaitingForPlayerAction // Waiting for player to select an action
+	BattleStateWaitingForTarget       // Waiting for player to select a target
 )
 
 // BattleAction represents an action in the battle queue
@@ -32,6 +34,10 @@ type BattleAction struct {
 	Target     *ecs.Entity
 	Speed      int
 	Timestamp  time.Time
+	// Results populated after execution
+	DamageDealt   int
+	TargetHPAfter int
+	TargetMaxHP   int
 }
 
 // ActionType represents different types of battle actions
@@ -75,6 +81,14 @@ type BattleManager struct {
 	battleTime    time.Time
 	speedModifier float64
 
+	// Player turn management
+	currentPlayerEntity *ecs.Entity     // Player whose turn it is
+	selectedAction      ActionType      // Action the player selected
+	selectedTarget      *ecs.Entity     // Target the player selected
+	targetIndex         int             // Index for target selection navigation
+	availableTargets    []*ecs.Entity   // Available targets for current action
+	isDefending         map[string]bool // Track which entities are defending
+
 	// Callbacks
 	onBattleEnd      func(victory bool)
 	onActionExecuted func(action *BattleAction)
@@ -83,14 +97,17 @@ type BattleManager struct {
 // NewBattleManager creates a new Dragon Quest-style battle manager
 func NewBattleManager() *BattleManager {
 	return &BattleManager{
-		state:         BattleStateIdle,
-		battleStarted: false,
-		playerParty:   make([]*ecs.Entity, 0),
-		enemyParty:    make([]*ecs.Entity, 0),
-		activityQueue: make([]*ActivityEntry, 0),
-		actionQueue:   make([]*BattleAction, 0),
-		speedModifier: 1000.0, // milliseconds per speed point
-		battleTime:    time.Now(),
+		state:            BattleStateIdle,
+		battleStarted:    false,
+		playerParty:      make([]*ecs.Entity, 0),
+		enemyParty:       make([]*ecs.Entity, 0),
+		activityQueue:    make([]*ActivityEntry, 0),
+		actionQueue:      make([]*BattleAction, 0),
+		speedModifier:    1000.0, // milliseconds per speed point
+		battleTime:       time.Now(),
+		targetIndex:      0,
+		availableTargets: make([]*ecs.Entity, 0),
+		isDefending:      make(map[string]bool),
 	}
 }
 
@@ -212,6 +229,11 @@ func (bm *BattleManager) Update(deltaTime time.Duration) {
 
 // processActivityQueue checks for entities ready to act
 func (bm *BattleManager) processActivityQueue() {
+	// Don't process queue while waiting for player input
+	if bm.state == BattleStateWaitingForPlayerAction || bm.state == BattleStateWaitingForTarget {
+		return
+	}
+
 	for len(bm.activityQueue) > 0 {
 		entry := bm.activityQueue[0]
 
@@ -222,11 +244,19 @@ func (bm *BattleManager) processActivityQueue() {
 		// This entity is ready to act
 		bm.scheduleEntityAction(entry)
 
-		// Update the entity's next action time
-		entry.NextActionAt = bm.battleTime.Add(entry.ActionDelay)
+		// For player entities, don't update timing until action is completed
+		// For enemy entities, update timing immediately
+		if !bm.isPlayerEntity(entry.Entity) {
+			// Update the entity's next action time
+			entry.NextActionAt = bm.battleTime.Add(entry.ActionDelay)
 
-		// Re-sort the queue
-		bm.sortActivityQueue()
+			// Re-sort the queue
+			bm.sortActivityQueue()
+		} else {
+			// For player entities, we'll update timing after action completion
+			// Break here so we don't process more queue entries during player turn
+			break
+		}
 	}
 }
 
@@ -238,20 +268,14 @@ func (bm *BattleManager) scheduleEntityAction(entry *ActivityEntry) {
 	isPlayer := bm.isPlayerEntity(entity)
 
 	if isPlayer {
-		// For now, auto-attack (later this will be player choice)
-		target := bm.selectRandomTarget(bm.enemyParty)
-		if target != nil {
-			action := &BattleAction{
-				Entity:     entity,
-				ActionType: ActionAttack,
-				Target:     target,
-				Speed:      entry.Speed,
-				Timestamp:  bm.battleTime,
-			}
-			bm.actionQueue = append(bm.actionQueue, action)
+		// Set up player turn - wait for player input
+		bm.currentPlayerEntity = entity
+		bm.state = BattleStateWaitingForPlayerAction
+		bm.selectedAction = ActionAttack // Default selection
+		bm.targetIndex = 0
+		bm.updateAvailableTargets()
 
-			logger.Debug("🎯 Player %s scheduled attack on %s", entity.GetID(), target.GetID())
-		}
+		logger.Debug("🎯 Player %s turn - waiting for action selection", entity.GetID())
 	} else {
 		// Enemy AI - simple attack for now
 		target := bm.selectRandomTarget(bm.playerParty)
@@ -286,9 +310,31 @@ func (bm *BattleManager) processActionQueue() {
 
 // executeAction performs the actual battle action
 func (bm *BattleManager) executeAction(action *BattleAction) {
-	logger.Debug("⚔️  Executing action: %s attacks %s", action.Entity.GetID(), action.Target.GetID())
+	switch action.ActionType {
+	case ActionAttack:
+		bm.executeAttackAction(action, false)
+	case ActionMagic:
+		bm.executeAttackAction(action, true)
+	case ActionDefend:
+		bm.executeDefendAction(action)
+	default:
+		logger.Debug("⚠️  Unknown action type: %v", action.ActionType)
+	}
+}
 
-	// Simple damage calculation for now
+// executeAttackAction performs physical or magical attacks
+func (bm *BattleManager) executeAttackAction(action *BattleAction, isMagical bool) {
+	if action.Target == nil {
+		return
+	}
+
+	actionName := "attacks"
+	if isMagical {
+		actionName = "casts magic on"
+	}
+
+	logger.Debug("⚔️  Executing action: %s %s %s", action.Entity.GetID(), actionName, action.Target.GetID())
+
 	attacker := action.Entity.RPGStats()
 	defender := action.Target.RPGStats()
 
@@ -296,8 +342,23 @@ func (bm *BattleManager) executeAction(action *BattleAction) {
 		return
 	}
 
-	// Basic damage formula
-	damage := attacker.Level*5 + 10 // Simple calculation
+	// Basic damage formula - different for physical vs magical
+	var damage int
+	if isMagical {
+		// Magic damage based on level and potentially different stats
+		damage = attacker.Level*7 + 15 // Slightly higher base damage
+	} else {
+		// Physical damage
+		damage = attacker.Level*5 + 10
+	}
+
+	// Check if defender is defending (50% damage reduction)
+	if bm.isDefending[action.Target.GetID()] {
+		damage = damage / 2
+		logger.Debug("🛡️ %s is defending! Damage reduced to %d", action.Target.GetID(), damage)
+		// Clear defend status after taking damage
+		delete(bm.isDefending, action.Target.GetID())
+	}
 
 	// Apply damage
 	defender.CurrentHP -= damage
@@ -305,14 +366,30 @@ func (bm *BattleManager) executeAction(action *BattleAction) {
 		defender.CurrentHP = 0
 	}
 
-	logger.Debug("💥 %s takes %d damage! HP: %d/%d",
-		action.Target.GetID(), damage, defender.CurrentHP, defender.MaxHP)
+	// Store results in action for battle log
+	action.DamageDealt = damage
+	action.TargetHPAfter = defender.CurrentHP
+	action.TargetMaxHP = defender.MaxHP
+
+	damageText := "💥"
+	if isMagical {
+		damageText = "✨"
+	}
+
+	logger.Debug("%s %s takes %d damage! HP: %d/%d",
+		damageText, action.Target.GetID(), damage, defender.CurrentHP, defender.MaxHP)
 
 	// Check if target is defeated
 	if defender.CurrentHP <= 0 {
 		logger.Debug("💀 %s is defeated!", action.Target.GetID())
 		bm.removeFromActivityQueue(action.Target)
 	}
+}
+
+// executeDefendAction sets up the defend status
+func (bm *BattleManager) executeDefendAction(action *BattleAction) {
+	logger.Debug("🛡️ %s chooses to defend", action.Entity.GetID())
+	bm.isDefending[action.Entity.GetID()] = true
 }
 
 // Helper methods
@@ -392,7 +469,7 @@ func (bm *BattleManager) endBattle(victory bool) {
 	}
 
 	// Don't immediately end the battle - keep it active in victory/defeat state
-	// The battle will be ended after a delay or player input
+	// The battle will be ended after player input to return to exploration
 
 	// Schedule battle end after 3 seconds
 	go func() {
@@ -433,4 +510,179 @@ func (bm *BattleManager) SetOnBattleEnd(callback func(victory bool)) {
 
 func (bm *BattleManager) SetOnActionExecuted(callback func(action *BattleAction)) {
 	bm.onActionExecuted = callback
+}
+
+// Player input methods
+
+// updateAvailableTargets updates the list of available targets based on the selected action
+func (bm *BattleManager) updateAvailableTargets() {
+	bm.availableTargets = make([]*ecs.Entity, 0)
+
+	switch bm.selectedAction {
+	case ActionAttack, ActionMagic:
+		// Attack and magic target enemies
+		for _, enemy := range bm.enemyParty {
+			if stats := enemy.RPGStats(); stats != nil && stats.CurrentHP > 0 {
+				bm.availableTargets = append(bm.availableTargets, enemy)
+			}
+		}
+	case ActionDefend:
+		// Defend doesn't need a target
+		bm.availableTargets = []*ecs.Entity{}
+	}
+
+	// Reset target index if out of bounds
+	if bm.targetIndex >= len(bm.availableTargets) {
+		bm.targetIndex = 0
+	}
+}
+
+// GetCurrentPlayerEntity returns the entity whose turn it is
+func (bm *BattleManager) GetCurrentPlayerEntity() *ecs.Entity {
+	return bm.currentPlayerEntity
+}
+
+// GetSelectedAction returns the currently selected action
+func (bm *BattleManager) GetSelectedAction() ActionType {
+	return bm.selectedAction
+}
+
+// GetAvailableTargets returns the list of available targets
+func (bm *BattleManager) GetAvailableTargets() []*ecs.Entity {
+	return bm.availableTargets
+}
+
+// GetTargetIndex returns the current target selection index
+func (bm *BattleManager) GetTargetIndex() int {
+	return bm.targetIndex
+}
+
+// GetBattleState returns the current battle state
+func (bm *BattleManager) GetBattleState() BattleState {
+	return bm.state
+}
+
+// HandlePlayerInput processes player input during their turn
+func (bm *BattleManager) HandlePlayerInput(actionType ActionType) {
+	if bm.state != BattleStateWaitingForPlayerAction {
+		return
+	}
+
+	bm.selectedAction = actionType
+	bm.updateAvailableTargets()
+
+	if actionType == ActionDefend {
+		// Defend doesn't need target selection, execute immediately
+		bm.executePlayerAction()
+	} else {
+		// Switch to target selection mode
+		bm.state = BattleStateWaitingForTarget
+		if len(bm.availableTargets) > 0 {
+			bm.selectedTarget = bm.availableTargets[bm.targetIndex]
+		}
+	}
+}
+
+// HandleTargetNavigation handles arrow key navigation for target selection
+func (bm *BattleManager) HandleTargetNavigation(direction int) {
+	if bm.state != BattleStateWaitingForTarget || len(bm.availableTargets) == 0 {
+		return
+	}
+
+	bm.targetIndex += direction
+	if bm.targetIndex < 0 {
+		bm.targetIndex = len(bm.availableTargets) - 1
+	} else if bm.targetIndex >= len(bm.availableTargets) {
+		bm.targetIndex = 0
+	}
+
+	bm.selectedTarget = bm.availableTargets[bm.targetIndex]
+}
+
+// ConfirmTargetSelection confirms the target and executes the action
+func (bm *BattleManager) ConfirmTargetSelection() {
+	if bm.state != BattleStateWaitingForTarget {
+		return
+	}
+
+	bm.executePlayerAction()
+}
+
+// executePlayerAction creates and queues the player's action
+func (bm *BattleManager) executePlayerAction() {
+	if bm.currentPlayerEntity == nil {
+		return
+	}
+
+	// Find the activity entry for this player to get their speed
+	var playerSpeed int
+	for _, entry := range bm.activityQueue {
+		if entry.Entity == bm.currentPlayerEntity {
+			playerSpeed = entry.Speed
+			break
+		}
+	}
+
+	action := &BattleAction{
+		Entity:     bm.currentPlayerEntity,
+		ActionType: bm.selectedAction,
+		Target:     bm.selectedTarget,
+		Speed:      playerSpeed,
+		Timestamp:  bm.battleTime,
+	}
+
+	// Add defend status if defending
+	if bm.selectedAction == ActionDefend {
+		bm.isDefending[bm.currentPlayerEntity.GetID()] = true
+		logger.Debug("🛡️ %s is defending", bm.currentPlayerEntity.GetID())
+	}
+
+	bm.actionQueue = append(bm.actionQueue, action)
+
+	// Update the player's next action time and re-sort queue
+	for _, entry := range bm.activityQueue {
+		if entry.Entity == bm.currentPlayerEntity {
+			entry.NextActionAt = bm.battleTime.Add(entry.ActionDelay)
+			break
+		}
+	}
+	bm.sortActivityQueue()
+
+	// Reset player turn state
+	bm.currentPlayerEntity = nil
+	bm.selectedTarget = nil
+	bm.state = BattleStatePlayerTurn // Will return to normal processing
+
+	logger.Debug("✅ Player action queued: %v", bm.selectedAction)
+}
+
+// HandleBattleEndConfirmation handles player input to end the battle after victory/defeat
+func (bm *BattleManager) HandleBattleEndConfirmation() {
+	if bm.state == BattleStateVictory || bm.state == BattleStateDefeat {
+		victory := bm.state == BattleStateVictory
+		bm.battleStarted = false
+		bm.state = BattleStateIdle
+
+		// Call the battle end callback to return to exploration
+		if bm.onBattleEnd != nil {
+			bm.onBattleEnd(victory)
+		}
+
+		logger.Debug("🔄 Returning to exploration mode")
+	}
+}
+
+// IsWaitingForPlayerAction returns true if the battle is waiting for player input
+func (bm *BattleManager) IsWaitingForPlayerAction() bool {
+	return bm.state == BattleStateWaitingForPlayerAction
+}
+
+// IsWaitingForTarget returns true if the battle is waiting for target selection
+func (bm *BattleManager) IsWaitingForTarget() bool {
+	return bm.state == BattleStateWaitingForTarget
+}
+
+// IsShowingResult returns true if the battle is showing victory/defeat screen
+func (bm *BattleManager) IsShowingResult() bool {
+	return bm.state == BattleStateVictory || bm.state == BattleStateDefeat
 }

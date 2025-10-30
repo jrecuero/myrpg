@@ -16,6 +16,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/jrecuero/myrpg/cmd/myrpg/game/entities"
+	"github.com/jrecuero/myrpg/internal/battle/classic"
 	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
@@ -632,6 +633,9 @@ func (g *Game) Update() error {
 
 	// Update classic battle system (if active)
 	if g.battleSelector.IsClassicBattleActive() {
+		// Handle classic battle input
+		g.handleClassicBattleInput()
+
 		deltaTime := 16 * time.Millisecond // ~16ms for 60 FPS
 		g.battleSelector.UpdateClassicBattle(deltaTime)
 		// If classic battle is active, skip other game mode updates
@@ -993,8 +997,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// If classic battle is active, draw it and skip normal entity rendering
 	if g.battleSelector.IsClassicBattleActive() {
 		g.battleSelector.RenderClassicBattle(screen)
-		// Draw UI overlays on top of battle (bottom panel and popups)
-		g.uiManager.DrawBottomPanel(screen)
+		// Draw only popups on top of battle (no bottom panel to avoid overlap)
 		g.uiManager.DrawPopups(screen)
 		return
 	}
@@ -1869,4 +1872,46 @@ func (g *Game) RegisterCustomView(config *ViewConfiguration) {
 // RegisterViewTransition allows registration of custom view transitions
 func (g *Game) RegisterViewTransition(transition *ViewTransition) {
 	g.viewManager.RegisterTransition(transition)
+}
+
+// handleClassicBattleInput processes player input during classic battles
+func (g *Game) handleClassicBattleInput() {
+	battleManager := g.battleSelector.GetClassicBattleManager()
+	if battleManager == nil {
+		return
+	}
+
+	// Handle battle end confirmation
+	if battleManager.IsShowingResult() {
+		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
+			inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+			battleManager.HandleBattleEndConfirmation()
+		}
+		return
+	}
+
+	// Handle action selection
+	if battleManager.IsWaitingForPlayerAction() {
+		if inpututil.IsKeyJustPressed(ebiten.Key1) {
+			battleManager.HandlePlayerInput(classic.ActionAttack)
+		} else if inpututil.IsKeyJustPressed(ebiten.Key2) {
+			battleManager.HandlePlayerInput(classic.ActionMagic)
+		} else if inpututil.IsKeyJustPressed(ebiten.Key3) {
+			battleManager.HandlePlayerInput(classic.ActionDefend)
+		}
+		return
+	}
+
+	// Handle target selection
+	if battleManager.IsWaitingForTarget() {
+		if inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft) {
+			battleManager.HandleTargetNavigation(-1)
+		} else if inpututil.IsKeyJustPressed(ebiten.KeyArrowRight) {
+			battleManager.HandleTargetNavigation(1)
+		} else if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
+			inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+			battleManager.ConfirmTargetSelection()
+		}
+		return
+	}
 }

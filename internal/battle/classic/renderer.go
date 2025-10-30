@@ -1,4 +1,3 @@
-// Package classic implements rendering for Dragon Quest-style battles
 package classic
 
 import (
@@ -10,326 +9,331 @@ import (
 	"github.com/jrecuero/myrpg/internal/ecs"
 )
 
-// BattleRenderer handles rendering of the classic battle system
+// BattleRenderer handles rendering with new panel layout
 type BattleRenderer struct {
 	battleManager *BattleManager
+	screenWidth   int
+	screenHeight  int
 
-	// Screen dimensions
-	screenWidth  int
-	screenHeight int
-
-	// UI areas
-	battleAreaY      int
-	battleAreaHeight int
-	uiAreaY          int
-	uiAreaHeight     int
+	// Panel areas
+	enemyPanelX, enemyPanelY, enemyPanelWidth, enemyPanelHeight                         int
+	playerPanelX, playerPanelY, playerPanelWidth, playerPanelHeight                     int
+	actionPanelX, actionPanelY, actionPanelWidth, actionPanelHeight                     int
+	combinedLogPanelX, combinedLogPanelY, combinedLogPanelWidth, combinedLogPanelHeight int
+	battleLogPanelX, battleLogPanelY, battleLogPanelWidth, battleLogPanelHeight         int
 
 	// Colors
-	backgroundColor color.Color
-	playerAreaColor color.Color
-	enemyAreaColor  color.Color
-	textColor       color.Color
-	highlightColor  color.Color
-
-	// UI state
-	showActivityQueue bool
-	showBattleLog     bool
-	battleMessages    []string
-	maxLogMessages    int
+	backgroundColor, textColor, panelBorderColor, playerNameColor, enemyNameColor color.Color
+	battleMessages                                                                []string
+	maxLogMessages                                                                int
+	showActivityQueue                                                             bool
+	showBattleLog                                                                 bool
 }
 
-// NewBattleRenderer creates a new renderer for classic battles
+// NewBattleRenderer creates a new renderer with panel layout
 func NewBattleRenderer(battleManager *BattleManager, screenWidth, screenHeight int) *BattleRenderer {
+	// Calculate panel dimensions with adjusted widths
+	// Make left side wider (65%) for enemy/player panels, right side narrower (35%) for logs
+	leftWidth := int(float64(screenWidth) * 0.65)
+	rightWidth := screenWidth - leftWidth
+	topHeight := screenHeight / 3
+	middleHeight := screenHeight / 3
+	bottomHeight := screenHeight - topHeight - middleHeight
+
+	// Action panel takes only 40% of left width, allowing battle log to expand
+	actionPanelWidth := int(float64(leftWidth) * 0.4)
+	battleLogStartX := 10 + actionPanelWidth + 10        // Start after action panel with gap
+	battleLogWidth := screenWidth - battleLogStartX - 10 // Extend to screen edge
+
 	return &BattleRenderer{
-		battleManager:     battleManager,
-		screenWidth:       screenWidth,
-		screenHeight:      screenHeight,
-		battleAreaY:       50,
-		battleAreaHeight:  400,
-		uiAreaY:           450,
-		uiAreaHeight:      150,
-		backgroundColor:   color.RGBA{20, 20, 40, 255},    // Dark blue
-		playerAreaColor:   color.RGBA{20, 40, 20, 100},    // Dark green (transparent)
-		enemyAreaColor:    color.RGBA{40, 20, 20, 100},    // Dark red (transparent)
-		textColor:         color.RGBA{255, 255, 255, 255}, // White
-		highlightColor:    color.RGBA{255, 255, 0, 255},   // Yellow
-		showActivityQueue: true,
-		showBattleLog:     true,
+		battleManager: battleManager,
+		screenWidth:   screenWidth,
+		screenHeight:  screenHeight,
+
+		// Left column panels - now wider (65% of screen)
+		enemyPanelX: 10, enemyPanelY: 10,
+		enemyPanelWidth: leftWidth - 20, enemyPanelHeight: topHeight - 10,
+
+		playerPanelX: 10, playerPanelY: topHeight + 5,
+		playerPanelWidth: leftWidth - 20, playerPanelHeight: middleHeight - 10,
+
+		// Action panel - narrower (40% of left width)
+		actionPanelX: 10, actionPanelY: topHeight + middleHeight + 5,
+		actionPanelWidth: actionPanelWidth - 20, actionPanelHeight: bottomHeight - 15,
+
+		// Right column panels - narrower (35% of screen)
+		combinedLogPanelX: leftWidth + 5, combinedLogPanelY: 10,
+		combinedLogPanelWidth: rightWidth - 15, combinedLogPanelHeight: topHeight + middleHeight - 10,
+
+		// Battle log panel - expanded to use remaining space
+		battleLogPanelX: battleLogStartX, battleLogPanelY: topHeight + middleHeight + 5,
+		battleLogPanelWidth: battleLogWidth, battleLogPanelHeight: bottomHeight - 15,
+
+		backgroundColor:   color.RGBA{20, 20, 40, 255},
+		textColor:         color.RGBA{255, 255, 255, 255},
+		panelBorderColor:  color.RGBA{100, 100, 100, 255},
+		playerNameColor:   color.RGBA{100, 255, 100, 255},
+		enemyNameColor:    color.RGBA{255, 100, 100, 255},
 		battleMessages:    make([]string, 0),
 		maxLogMessages:    5,
+		showActivityQueue: true,
+		showBattleLog:     true,
 	}
 }
 
-// Render draws the entire battle scene
+// Render draws the entire battle scene with panel layout
 func (br *BattleRenderer) Render(screen *ebiten.Image) {
 	if !br.battleManager.IsActive() {
 		return
 	}
 
 	// Draw background
-	br.drawBackground(screen)
-
-	// Draw battle area
-	br.drawBattleArea(screen)
-
-	// Draw formations
-	br.drawFormations(screen)
-
-	// Draw UI
-	br.drawUI(screen)
-
-	// Draw battle messages
-	if br.showBattleLog {
-		br.drawBattleLog(screen)
-	}
-
-	// Draw activity queue
-	if br.showActivityQueue {
-		br.drawActivityQueue(screen)
-	}
-}
-
-// drawBackground renders the battle background
-func (br *BattleRenderer) drawBackground(screen *ebiten.Image) {
 	screen.Fill(br.backgroundColor)
 
-	// Draw battle area separator
-	ebitenutil.DrawLine(screen,
-		0, float64(br.battleAreaY+br.battleAreaHeight),
-		float64(br.screenWidth), float64(br.battleAreaY+br.battleAreaHeight),
-		color.RGBA{100, 100, 100, 255})
+	// Draw all panels
+	br.drawEnemyPanel(screen)
+	br.drawPlayerPanel(screen)
+	br.drawActionPanel(screen)
+	br.drawCombinedLogPanel(screen)
+	br.drawBattleLogPanel(screen)
 }
 
-// drawBattleArea renders the main battle visualization area
-func (br *BattleRenderer) drawBattleArea(screen *ebiten.Image) {
-	// Draw player area (bottom section)
-	playerAreaY := br.battleAreaY + br.battleAreaHeight - 150
-	ebitenutil.DrawRect(screen,
-		0, float64(playerAreaY),
-		float64(br.screenWidth), 150,
-		br.playerAreaColor)
+// Helper to draw panel with border
+func (br *BattleRenderer) drawPanel(screen *ebiten.Image, x, y, width, height int, bgColor color.RGBA, title string) {
+	// Background
+	ebitenutil.DrawRect(screen, float64(x), float64(y), float64(width), float64(height), bgColor)
 
-	// Draw enemy area (top section)
-	enemyAreaHeight := float64(br.battleAreaHeight - 150)
-	ebitenutil.DrawRect(screen,
-		0, float64(br.battleAreaY),
-		float64(br.screenWidth), enemyAreaHeight,
-		br.enemyAreaColor)
-}
+	// Border
+	border := 2.0
+	ebitenutil.DrawRect(screen, float64(x), float64(y), float64(width), border, br.panelBorderColor)
+	ebitenutil.DrawRect(screen, float64(x), float64(y+height-2), float64(width), border, br.panelBorderColor)
+	ebitenutil.DrawRect(screen, float64(x), float64(y), border, float64(height), br.panelBorderColor)
+	ebitenutil.DrawRect(screen, float64(x+width-2), float64(y), border, float64(height), br.panelBorderColor)
 
-// drawFormations renders both player and enemy formations
-func (br *BattleRenderer) drawFormations(screen *ebiten.Image) {
-	// Draw enemy formation
-	if enemyFormation := br.battleManager.GetEnemyFormation(); enemyFormation != nil {
-		br.drawFormation(screen, enemyFormation, true)
-	}
-
-	// Draw player formation
-	if playerFormation := br.battleManager.GetPlayerFormation(); playerFormation != nil {
-		br.drawFormation(screen, playerFormation, false)
+	// Title
+	if title != "" {
+		ebitenutil.DebugPrintAt(screen, title, x+5, y+5)
 	}
 }
 
-// drawFormation renders a specific formation
-func (br *BattleRenderer) drawFormation(screen *ebiten.Image, formation *Formation, isEnemy bool) {
-	positions := formation.GetAllPositions()
+// drawEnemyPanel draws enemies in top-left
+func (br *BattleRenderer) drawEnemyPanel(screen *ebiten.Image) {
+	br.drawPanel(screen, br.enemyPanelX, br.enemyPanelY, br.enemyPanelWidth, br.enemyPanelHeight,
+		color.RGBA{40, 20, 20, 100}, "Enemies")
 
-	for entity, pos := range positions {
-		br.drawEntity(screen, entity, pos, isEnemy)
+	// Draw enemy formations
+	if formation := br.battleManager.GetEnemyFormation(); formation != nil {
+		positions := formation.GetAllPositions()
+		for entity, pos := range positions {
+			br.drawEntity(screen, entity, pos, true)
+		}
 	}
 }
 
-// drawEntity renders a single entity in the formation
+// drawPlayerPanel draws players in middle-left
+func (br *BattleRenderer) drawPlayerPanel(screen *ebiten.Image) {
+	br.drawPanel(screen, br.playerPanelX, br.playerPanelY, br.playerPanelWidth, br.playerPanelHeight,
+		color.RGBA{20, 40, 20, 100}, "Players")
+
+	// Draw player formations
+	if formation := br.battleManager.GetPlayerFormation(); formation != nil {
+		positions := formation.GetAllPositions()
+		for entity, pos := range positions {
+			br.drawEntity(screen, entity, pos, false)
+		}
+	}
+}
+
+// drawActionPanel draws action menu in bottom-left
+func (br *BattleRenderer) drawActionPanel(screen *ebiten.Image) {
+	br.drawPanel(screen, br.actionPanelX, br.actionPanelY, br.actionPanelWidth, br.actionPanelHeight,
+		color.RGBA{40, 40, 60, 200}, "Actions")
+
+	state := br.battleManager.GetBattleState()
+	baseY := br.actionPanelY + 25
+
+	switch state {
+	case BattleStateWaitingForPlayerAction:
+		if player := br.battleManager.GetCurrentPlayerEntity(); player != nil {
+			name := "Player"
+			if stats := player.RPGStats(); stats != nil {
+				name = stats.Name
+			}
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s's Turn - Choose Action:", name), br.actionPanelX+10, baseY)
+			ebitenutil.DebugPrintAt(screen, "1. Physical Attack", br.actionPanelX+10, baseY+25)
+			ebitenutil.DebugPrintAt(screen, "2. Magical Attack", br.actionPanelX+10, baseY+45)
+			ebitenutil.DebugPrintAt(screen, "3. Defend", br.actionPanelX+10, baseY+65)
+		}
+	case BattleStateWaitingForTarget:
+		ebitenutil.DebugPrintAt(screen, "Select Target:", br.actionPanelX+10, baseY)
+		ebitenutil.DebugPrintAt(screen, "Use arrows, Enter to confirm", br.actionPanelX+10, baseY+20)
+	case BattleStateVictory:
+		ebitenutil.DebugPrintAt(screen, "VICTORY!", br.actionPanelX+10, baseY)
+		ebitenutil.DebugPrintAt(screen, "Press any key to continue...", br.actionPanelX+10, baseY+20)
+	case BattleStateDefeat:
+		ebitenutil.DebugPrintAt(screen, "DEFEAT!", br.actionPanelX+10, baseY)
+		ebitenutil.DebugPrintAt(screen, "Press any key to continue...", br.actionPanelX+10, baseY+20)
+	}
+}
+
+// drawCombinedLogPanel draws activity queue and player info in right-top
+func (br *BattleRenderer) drawCombinedLogPanel(screen *ebiten.Image) {
+	br.drawPanel(screen, br.combinedLogPanelX, br.combinedLogPanelY, br.combinedLogPanelWidth, br.combinedLogPanelHeight,
+		color.RGBA{30, 30, 50, 200}, "Activity Queue")
+
+	// Draw activity queue
+	queue := br.battleManager.GetActivityQueue()
+	baseY := br.combinedLogPanelY + 25
+	y := baseY
+
+	for i, entry := range queue {
+		if i >= 10 {
+			break
+		}
+
+		name := "Unknown"
+		prefix := "P:"
+
+		if stats := entry.Entity.RPGStats(); stats != nil {
+			name = stats.Name
+
+			// Check if enemy
+			if formation := br.battleManager.GetEnemyFormation(); formation != nil {
+				positions := formation.GetAllPositions()
+				for enemyEntity := range positions {
+					if enemyEntity == entry.Entity {
+						prefix = "E:"
+						break
+					}
+				}
+			}
+		}
+
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s %s", prefix, name), br.combinedLogPanelX+10, y)
+		y += 18
+	}
+
+	// Draw current player info below
+	if br.battleManager.GetBattleState() == BattleStateWaitingForPlayerAction {
+		if player := br.battleManager.GetCurrentPlayerEntity(); player != nil {
+			if stats := player.RPGStats(); stats != nil {
+				startY := br.combinedLogPanelY + 250
+				ebitenutil.DebugPrintAt(screen, "Current Player:", br.combinedLogPanelX+10, startY)
+				ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Name: %s", stats.Name), br.combinedLogPanelX+10, startY+20)
+				ebitenutil.DebugPrintAt(screen, fmt.Sprintf("HP: %d/%d", stats.CurrentHP, stats.MaxHP), br.combinedLogPanelX+10, startY+35)
+				ebitenutil.DebugPrintAt(screen, fmt.Sprintf("MP: %d/%d", stats.CurrentMP, stats.MaxMP), br.combinedLogPanelX+10, startY+50)
+			}
+		}
+	}
+}
+
+// drawBattleLogPanel draws combat messages in bottom-right
+func (br *BattleRenderer) drawBattleLogPanel(screen *ebiten.Image) {
+	br.drawPanel(screen, br.battleLogPanelX, br.battleLogPanelY, br.battleLogPanelWidth, br.battleLogPanelHeight,
+		color.RGBA{50, 30, 30, 200}, "Battle Log")
+
+	baseY := br.battleLogPanelY + 25
+	y := baseY
+
+	start := 0
+	if len(br.battleMessages) > br.maxLogMessages {
+		start = len(br.battleMessages) - br.maxLogMessages
+	}
+
+	for i := start; i < len(br.battleMessages); i++ {
+		ebitenutil.DebugPrintAt(screen, br.battleMessages[i], br.battleLogPanelX+10, y)
+		y += 18
+	}
+}
+
+// drawEntity draws individual entities with name/health above sprite
 func (br *BattleRenderer) drawEntity(screen *ebiten.Image, entity *ecs.Entity, pos Position, isEnemy bool) {
-	// Get entity stats to check if alive
 	stats := entity.RPGStats()
 	if stats == nil {
 		return
 	}
 
-	// Determine entity color based on status
-	entityColor := br.textColor
-	if stats.CurrentHP <= 0 {
-		entityColor = color.RGBA{100, 100, 100, 255} // Gray for defeated
-	} else if isEnemy {
-		entityColor = color.RGBA{255, 100, 100, 255} // Red for enemies
-	} else {
-		entityColor = color.RGBA{100, 255, 100, 255} // Green for players
+	// Check if selected target
+	isSelected := br.isSelectedTarget(entity)
+
+	// Draw highlight
+	if isSelected {
+		ebitenutil.DrawRect(screen, pos.X-3, pos.Y-3, 54, 54, color.RGBA{255, 255, 0, 150})
 	}
 
-	// Try to render sprite first
+	// Draw sprite or rectangle
 	if sprite := entity.Sprite(); sprite != nil && sprite.Sprite != nil && sprite.Sprite.Img != nil {
 		op := &ebiten.DrawImageOptions{}
-
-		// Apply color tint based on status
 		if stats.CurrentHP <= 0 {
-			op.ColorScale.Scale(0.5, 0.5, 0.5, 0.7) // Darken defeated entities
+			op.ColorScale.Scale(0.5, 0.5, 0.5, 0.7)
 		}
-
 		op.GeoM.Translate(pos.X, pos.Y)
 		screen.DrawImage(sprite.Sprite.Img, op)
 	} else {
-		// Fallback to colored rectangle
-		width, height := 48.0, 48.0
-		ebitenutil.DrawRect(screen, pos.X, pos.Y, width, height, entityColor)
+		entityColor := color.RGBA{100, 255, 100, 255}
+		if isEnemy {
+			entityColor = color.RGBA{255, 100, 100, 255}
+		}
+		if stats.CurrentHP <= 0 {
+			entityColor = color.RGBA{100, 100, 100, 255}
+		}
+		ebitenutil.DrawRect(screen, pos.X, pos.Y, 48, 48, entityColor)
 	}
 
-	// Draw entity name and HP
-	br.drawEntityInfo(screen, entity, pos, isEnemy)
-}
-
-// drawEntityInfo renders entity name and health information
-func (br *BattleRenderer) drawEntityInfo(screen *ebiten.Image, entity *ecs.Entity, pos Position, isEnemy bool) {
-	stats := entity.RPGStats()
-	if stats == nil {
-		return
-	}
-
-	// Entity name
-	nameY := pos.Y - 15
-	if isEnemy {
-		nameY = pos.Y + 60 // Below enemy sprites
-	}
-
-	// Simple text rendering (you might want to use a proper font)
+	// Draw name and health above sprite
 	name := stats.Name
 	if len(name) > 8 {
-		name = name[:8] // Truncate long names
+		name = name[:8]
 	}
-
-	ebitenutil.DebugPrintAt(screen, name, int(pos.X), int(nameY))
-
-	// HP bar
-	hpBarY := nameY + 15
-	br.drawHealthBar(screen, pos.X, hpBarY, 48, 6, stats.CurrentHP, stats.MaxHP)
+	ebitenutil.DebugPrintAt(screen, name, int(pos.X), int(pos.Y-25))
+	br.drawHealthBar(screen, pos.X, pos.Y-10, 48, 6, stats.CurrentHP, stats.MaxHP)
 }
 
-// drawHealthBar renders a health bar
+// isSelectedTarget checks if entity is the selected target
+func (br *BattleRenderer) isSelectedTarget(entity *ecs.Entity) bool {
+	if br.battleManager.GetBattleState() != BattleStateWaitingForTarget {
+		return false
+	}
+
+	targets := br.battleManager.GetAvailableTargets()
+	index := br.battleManager.GetTargetIndex()
+
+	if index >= 0 && index < len(targets) {
+		return targets[index] == entity
+	}
+	return false
+}
+
+// drawHealthBar renders health bar
 func (br *BattleRenderer) drawHealthBar(screen *ebiten.Image, x, y, width, height float64, currentHP, maxHP int) {
-	// Background (empty health)
+	if maxHP <= 0 {
+		return
+	}
+
+	// Background
 	ebitenutil.DrawRect(screen, x, y, width, height, color.RGBA{100, 0, 0, 255})
 
-	// Foreground (current health)
-	if maxHP > 0 {
-		healthPercent := float64(currentHP) / float64(maxHP)
-		healthWidth := width * healthPercent
+	// Health
+	percentage := float64(currentHP) / float64(maxHP)
+	healthWidth := width * percentage
 
-		healthColor := color.RGBA{0, 255, 0, 255} // Green
-		if healthPercent < 0.3 {
-			healthColor = color.RGBA{255, 0, 0, 255} // Red
-		} else if healthPercent < 0.6 {
-			healthColor = color.RGBA{255, 255, 0, 255} // Yellow
-		}
+	var healthColor color.RGBA
+	if percentage > 0.6 {
+		healthColor = color.RGBA{0, 255, 0, 255}
+	} else if percentage > 0.3 {
+		healthColor = color.RGBA{255, 255, 0, 255}
+	} else {
+		healthColor = color.RGBA{255, 0, 0, 255}
+	}
 
+	if healthWidth > 0 {
 		ebitenutil.DrawRect(screen, x, y, healthWidth, height, healthColor)
-	}
-
-	// Border
-	ebitenutil.DrawRect(screen, x-1, y-1, width+2, 1, br.textColor)      // Top
-	ebitenutil.DrawRect(screen, x-1, y+height, width+2, 1, br.textColor) // Bottom
-	ebitenutil.DrawRect(screen, x-1, y, 1, height, br.textColor)         // Left
-	ebitenutil.DrawRect(screen, x+width, y, 1, height, br.textColor)     // Right
-}
-
-// drawUI renders the bottom UI area
-func (br *BattleRenderer) drawUI(screen *ebiten.Image) {
-	// UI background
-	ebitenutil.DrawRect(screen,
-		0, float64(br.uiAreaY),
-		float64(br.screenWidth), float64(br.uiAreaHeight),
-		color.RGBA{40, 40, 60, 255})
-
-	// Battle state info
-	state := br.battleManager.GetState()
-	stateText := br.getBattleStateText(state)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Battle State: %s", stateText), 10, br.uiAreaY+10)
-
-	// Instructions
-	ebitenutil.DebugPrintAt(screen, "Classic Battle System - Dragon Quest Style", 10, br.uiAreaY+30)
-	ebitenutil.DebugPrintAt(screen, "Speed-based turns, formations, activity queue", 10, br.uiAreaY+45)
-}
-
-// drawActivityQueue renders the activity queue
-func (br *BattleRenderer) drawActivityQueue(screen *ebiten.Image) {
-	queue := br.battleManager.GetActivityQueue()
-	if len(queue) == 0 {
-		return
-	}
-
-	// Draw activity queue title
-	queueX := br.screenWidth - 200
-	queueY := 60
-	ebitenutil.DebugPrintAt(screen, "Activity Queue:", queueX, queueY)
-
-	// Draw top 5 entities in queue
-	maxDisplay := 5
-	if len(queue) < maxDisplay {
-		maxDisplay = len(queue)
-	}
-
-	for i := 0; i < maxDisplay; i++ {
-		entry := queue[i]
-		y := queueY + 20 + (i * 15)
-
-		name := "Unknown"
-		if stats := entry.Entity.RPGStats(); stats != nil {
-			name = stats.Name
-		}
-
-		timeUntilAction := entry.NextActionAt.Sub(br.battleManager.battleTime)
-
-		text := fmt.Sprintf("%d. %s (%.1fs)", i+1, name, timeUntilAction.Seconds())
-		ebitenutil.DebugPrintAt(screen, text, queueX, y)
-	}
-}
-
-// drawBattleLog renders recent battle messages
-func (br *BattleRenderer) drawBattleLog(screen *ebiten.Image) {
-	if len(br.battleMessages) == 0 {
-		return
-	}
-
-	logX := 10
-	logY := br.uiAreaY + 70
-
-	ebitenutil.DebugPrintAt(screen, "Battle Log:", logX, logY)
-
-	for i, message := range br.battleMessages {
-		y := logY + 15 + (i * 12)
-		ebitenutil.DebugPrintAt(screen, message, logX, y)
-	}
-}
-
-// getBattleStateText converts battle state to readable text
-func (br *BattleRenderer) getBattleStateText(state BattleState) string {
-	switch state {
-	case BattleStateIdle:
-		return "Idle"
-	case BattleStatePlayerTurn:
-		return "Player Turn"
-	case BattleStateEnemyTurn:
-		return "Enemy Turn"
-	case BattleStateAnimation:
-		return "Animation"
-	case BattleStateVictory:
-		return "Victory!"
-	case BattleStateDefeat:
-		return "Defeat"
-	case BattleStateEscaped:
-		return "Escaped"
-	default:
-		return "Unknown"
 	}
 }
 
 // AddBattleMessage adds a message to the battle log
 func (br *BattleRenderer) AddBattleMessage(message string) {
 	br.battleMessages = append(br.battleMessages, message)
-
-	// Keep only the most recent messages
-	if len(br.battleMessages) > br.maxLogMessages {
-		br.battleMessages = br.battleMessages[1:]
-	}
 }
 
 // SetShowActivityQueue toggles activity queue display

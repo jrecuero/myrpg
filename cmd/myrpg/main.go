@@ -83,12 +83,12 @@ func main() {
 	// Battle events (replacing enemies)
 	battleEvent1 := entities.CreateBattleEvent("battle_goblin", "Goblin Encounter",
 		constants.Enemy1StartX, constants.Enemy1StartY,
-		[]string{"goblin_scout"}, "forest_clearing")
+		[]string{"goblin_scout", "goblin_warrior", "goblin_archer"}, "forest_clearing")
 	game.AddEntity(battleEvent1)
 
 	battleEvent2 := entities.CreateBattleEvent("battle_orc", "Orc Ambush",
 		constants.Enemy2StartX, constants.Enemy2StartY,
-		[]string{"orc_warrior"}, "mountain_pass")
+		[]string{"orc_warrior", "orc_shaman"}, "mountain_pass")
 	game.AddEntity(battleEvent2)
 
 	// Chest events

@@ -39,7 +39,7 @@ func NewPlayerFormation(players []*ecs.Entity) *Formation {
 		maxPerRow:    2, // 2x2 formation for players
 		isEnemy:      false,
 		screenX:      100, // Left side for players
-		screenY:      400, // Bottom of screen
+		screenY:      290, // Bottom of expanded battle area, above UI
 		entityWidth:  64,
 		entityHeight: 64,
 		spacing:      80, // Space between entities in same row
