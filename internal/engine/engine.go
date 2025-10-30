@@ -455,37 +455,40 @@ func (g *Game) createEnemiesFromBattleEvent(eventComp *components.EventComponent
 	logger.Debug("🏁 Enemy creation completed. Total created: %d", len(eventComp.EventData.Enemies))
 }
 
-// getNearbyEnemies returns enemies within the specified distance of the player
-func (g *Game) getNearbyEnemies(player *ecs.Entity, distance float64) []*ecs.Entity {
+// GetNearbyEnemies returns enemies within the specified distance of the given entity.
+// This method is useful for AI behavior, area-of-effect abilities, proximity detection,
+// and other game mechanics that need to find nearby hostile entities.
+// Distance calculation uses squared distance for performance (avoids sqrt operation).
+func (g *Game) GetNearbyEnemies(entity *ecs.Entity, distance float64) []*ecs.Entity {
 	enemies := make([]*ecs.Entity, 0)
-	playerT := player.Transform()
-	if playerT == nil {
+	entityT := entity.Transform()
+	if entityT == nil {
 		return enemies
 	}
 
-	for _, entity := range g.world.GetEntities() {
-		// Skip the player itself and entities without RPG stats
-		if entity == player || entity.RPGStats() == nil {
+	for _, otherEntity := range g.world.GetEntities() {
+		// Skip the entity itself and entities without RPG stats
+		if otherEntity == entity || otherEntity.RPGStats() == nil {
 			continue
 		}
 
 		// Skip other players - only get enemies
-		if entity.HasTag(ecs.TagPlayer) {
+		if otherEntity.HasTag(ecs.TagPlayer) {
 			continue
 		}
 
-		entityT := entity.Transform()
-		if entityT == nil {
+		otherEntityT := otherEntity.Transform()
+		if otherEntityT == nil {
 			continue
 		}
 
 		// Calculate distance
-		dx := playerT.X - entityT.X
-		dy := playerT.Y - entityT.Y
+		dx := entityT.X - otherEntityT.X
+		dy := entityT.Y - otherEntityT.Y
 		dist := dx*dx + dy*dy // Square distance (avoid sqrt for performance)
 
 		if dist <= distance*distance {
-			enemies = append(enemies, entity)
+			enemies = append(enemies, otherEntity)
 		}
 	}
 
@@ -803,7 +806,7 @@ func (g *Game) updateExploration() error {
 		// Battles are now exclusively Dragon Quest-style via battle events
 		/*
 			if ebiten.IsKeyPressed(ebiten.KeySpace) {
-				nearbyEnemies := g.getNearbyEnemies(activePlayer, 100.0) // Within 100 pixels
+				nearbyEnemies := g.GetNearbyEnemies(activePlayer, 100.0) // Within 100 pixels
 				if len(nearbyEnemies) > 0 {
 					// Always include ALL combat participants, not just nearby ones
 					participants := g.getAllCombatParticipants()
@@ -1006,10 +1009,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	allEntities := g.world.GetEntities()
 	var visibleEntities []*ecs.Entity
 
-	if g.currentMode == ModeExploration {
+	switch g.currentMode {
+	case ModeExploration:
 		// Use ViewManager for exploration mode
 		visibleEntities = g.viewManager.GetVisibleEntities(allEntities)
-	} else if g.currentMode == ModeTactical {
+	case ModeTactical:
 		// Use legacy logic for tactical mode (temporary fix) - show all entities
 		visibleEntities = allEntities
 
@@ -1067,7 +1071,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 
 		logger.Debug("=== END TACTICAL ENTITY DEBUG ===")
-	} else {
+	default:
 		visibleEntities = allEntities // Fallback
 	}
 
