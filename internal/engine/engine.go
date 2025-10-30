@@ -31,19 +31,20 @@ import (
 
 // Game represents the state of the game using an ECS architecture.
 type Game struct {
-	world              *ecs.World           // The game world containing all entities
-	activePlayerIndex  int                  // Index of the currently active player
-	tabKeyPressed      bool                 // Track TAB key state to prevent multiple switches
-	uiManager          *ui.UIManager        // UI system for panels and messages
-	battleSystem       *BattleSystem        // Battle system for combat
-	tacticalManager    *TacticalManager     // Tactical combat system
-	partyManager       *PartyManager        // Party and team management
-	enemyGroupManager  *EnemyGroupManager   // Enemy group formation
-	tacticalDeployment *TacticalDeployment  // Unit deployment for tactical combat
-	eventManager       *events.EventManager // Event system for interactive world elements
-	saveManager        *save.SaveManager    // Save system for game state persistence
-	viewManager        *ViewManager         // View system for managing different game views
-	currentMode        GameMode             // Current game mode (exploration/tactical)
+	world              *ecs.World            // The game world containing all entities
+	activePlayerIndex  int                   // Index of the currently active player
+	tabKeyPressed      bool                  // Track TAB key state to prevent multiple switches
+	uiManager          *ui.UIManager         // UI system for panels and messages
+	battleSystem       *BattleSystem         // Battle system for combat
+	tacticalManager    *TacticalManager      // Tactical combat system
+	partyManager       *PartyManager         // Party and team management
+	enemyGroupManager  *EnemyGroupManager    // Enemy group formation
+	tacticalDeployment *TacticalDeployment   // Unit deployment for tactical combat
+	eventManager       *events.EventManager  // Event system for interactive world elements
+	saveManager        *save.SaveManager     // Save system for game state persistence
+	viewManager        *ViewManager          // View system for managing different game views
+	battleSelector     *BattleSystemSelector // Battle system selector (tactical vs classic)
+	currentMode        GameMode              // Current game mode (exploration/tactical)
 }
 
 // NewGame creates a new game instance with an empty world
@@ -79,6 +80,9 @@ func NewGame() *Game {
 
 	// Initialize view management system
 	game.viewManager = NewViewManager(game)
+
+	// Initialize battle system selector
+	game.battleSelector = NewBattleSystemSelector(constants.ScreenWidth, constants.ScreenHeight)
 
 	// Initialize skills system
 	skills.InitializeSkillRegistry()
@@ -514,10 +518,9 @@ func (g *Game) CheckAndRemoveDeadEntities() {
 func (g *Game) InitializeGame() {
 	g.uiManager.AddMessage("Welcome to MyRPG!")
 	g.uiManager.AddMessage("Use arrow keys to move, TAB to switch between players")
-	g.uiManager.AddMessage("Press I for inventory, K for skills, J for quests, Q for equipment, H for help, C near enemies for combat")
+	g.uiManager.AddMessage("Press I for inventory, K for skills, J for quests, Q for equipment, H for help")
+	g.uiManager.AddMessage("Touch red battle events to enter Dragon Quest-style battles")
 	g.uiManager.AddMessage("In inventory: Right-click equipment to equip, drag items to move")
-	g.uiManager.AddMessage("In tactical mode: A to attack, E to end turn, R to reset movement, ESC to exit")
-	g.uiManager.AddMessage("Move back to previous positions to recover movement!")
 
 	// Add message about the current active player
 	activePlayer := g.GetActivePlayer()
@@ -626,6 +629,18 @@ func (g *Game) Update() error {
 	if err := g.viewManager.Update(1.0 / 60.0); err != nil { // Assume 60 FPS for delta time
 		return fmt.Errorf("view manager update failed: %v", err)
 	}
+
+	// Update classic battle system (if active)
+	if g.battleSelector.IsClassicBattleActive() {
+		deltaTime := 16 * time.Millisecond // ~16ms for 60 FPS
+		g.battleSelector.UpdateClassicBattle(deltaTime)
+		// If classic battle is active, skip other game mode updates
+		return nil
+	}
+
+	// Note: Battle system toggle disabled for production
+	// The tactical battle system code is preserved but not accessible via UI
+	// Classic Dragon Quest-style battles are now the default and only active system
 
 	// Update based on current game mode (legacy system - will be gradually replaced by ViewManager)
 	switch g.currentMode {
@@ -777,25 +792,21 @@ func (g *Game) updateExploration() error {
 		// Check and remove dead entities after movement
 		g.CheckAndRemoveDeadEntities()
 
-		// Enhanced tactical combat triggers
+		// Note: Manual tactical mode triggers disabled
+		// Classic Dragon Quest-style battles are triggered by battle events only
 
-		// Option 1: Manual tactical mode (T key) - for testing and manual control
-		if ebiten.IsKeyPressed(ebiten.KeyT) {
-			participants := g.getAllCombatParticipants()
-			if len(participants) > 1 {
-				g.SwitchToTacticalMode(participants)
+		// Legacy tactical trigger (Spacebar) - disabled in production
+		// Battles are now exclusively Dragon Quest-style via battle events
+		/*
+			if ebiten.IsKeyPressed(ebiten.KeySpace) {
+				nearbyEnemies := g.getNearbyEnemies(activePlayer, 100.0) // Within 100 pixels
+				if len(nearbyEnemies) > 0 {
+					// Always include ALL combat participants, not just nearby ones
+					participants := g.getAllCombatParticipants()
+					g.SwitchToTacticalMode(participants)
+				}
 			}
-		}
-
-		// Option 2: Smart tactical trigger (Spacebar) - when enemies are nearby
-		if ebiten.IsKeyPressed(ebiten.KeySpace) {
-			nearbyEnemies := g.getNearbyEnemies(activePlayer, 100.0) // Within 100 pixels
-			if len(nearbyEnemies) > 0 {
-				// Always include ALL combat participants, not just nearby ones
-				participants := g.getAllCombatParticipants()
-				g.SwitchToTacticalMode(participants)
-			}
-		}
+		*/
 	}
 
 	return nil
@@ -958,31 +969,17 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// Prepare UI data based on current mode
-	var uiMode ui.GameMode
+	// Prepare UI data - always use exploration UI since tactical UI is disabled
+	var uiMode ui.GameMode = ui.ModeExploration
 	var partyStats []*components.RPGStatsComponent
 	var gridPosition string
 
-	if g.currentMode == ModeExploration {
-		uiMode = ui.ModeExploration
-		// Get all party members' stats for exploration view
-		partyMembers := g.partyManager.GetPartyForTactical()
-		for _, member := range partyMembers {
-			if member != nil {
-				if stats := member.RPGStats(); stats != nil {
-					partyStats = append(partyStats, stats)
-				}
-			}
-		}
-	} else {
-		uiMode = ui.ModeTactical
-		// Get grid position for tactical view
-		if activePlayer != nil {
-			if transform := activePlayer.Transform(); transform != nil {
-				gridPos := g.worldToGridPos(transform.X, transform.Y)
-				gridPosition = fmt.Sprintf("(%d, %d)", gridPos.X, gridPos.Y)
-			} else {
-				gridPosition = "Unknown"
+	// Get all party members' stats for exploration view
+	partyMembers := g.partyManager.GetPartyForTactical()
+	for _, member := range partyMembers {
+		if member != nil {
+			if stats := member.RPGStats(); stats != nil {
+				partyStats = append(partyStats, stats)
 			}
 		}
 	}
@@ -992,6 +989,15 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Draw game world background
 	g.uiManager.DrawGameWorldBackground(screen)
+
+	// If classic battle is active, draw it and skip normal entity rendering
+	if g.battleSelector.IsClassicBattleActive() {
+		g.battleSelector.RenderClassicBattle(screen)
+		// Draw UI overlays on top of battle (bottom panel and popups)
+		g.uiManager.DrawBottomPanel(screen)
+		g.uiManager.DrawPopups(screen)
+		return
+	}
 
 	// Draw game entities - use ViewManager for exploration, legacy logic for tactical (temporary)
 	allEntities := g.world.GetEntities()
@@ -1545,25 +1551,25 @@ func (g *Game) showTestInfoPopup() {
 	helpContent := `GAME HELP & INFORMATION
 
 BASIC CONTROLS:
-• Arrow Keys: Move player/units
-• TAB: Switch between Exploration and Tactical modes
-• SPACE: Enter tactical combat (in exploration)
-• T: Enter tactical mode manually
-• E: End turn (in tactical mode)
+• Arrow Keys: Move player around the world
+• TAB: Switch between party members
+• I: Open inventory
+• K: Open skills menu  
+• J: Open quests menu
 • Q: Open equipment menu
-• A: Attack (when adjacent to enemy)
+• H: Show this help
 • ESC: Exit to desktop
 
 EXPLORATION MODE:
 - Move freely around the world
-- Search for items and encounters
-- Switch to tactical mode for combat
+- Touch red battle events to start combat
+- Interact with chests, NPCs, and other events
 
-TACTICAL MODE:
-- Grid-based movement system
-- Turn-based combat mechanics
-- Plan strategic unit positioning
-- Use attacks and abilities
+DRAGON QUEST BATTLES:
+- Classic formation-based combat
+- Speed determines turn order
+- Enemy formation at top, players at bottom
+- Watch activity queue for turn order
 
 POPUP WIDGETS:
 • P: Test selection popup

@@ -28,7 +28,7 @@ func (g *Game) CreateGameEventHandlers() map[components.EventType]events.EventHa
 	return handlers
 }
 
-// handleBattleEvent integrates battle events with the tactical combat system
+// handleBattleEvent integrates battle events with the selected battle system
 func (g *Game) handleBattleEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
 	log.Printf("Battle event triggered: %s", eventComp.Name)
 
@@ -38,19 +38,37 @@ func (g *Game) handleBattleEvent(entity *ecs.Entity, eventComp *components.Event
 	// Get all combat participants (all party members + any enemies)
 	participants := g.getAllCombatParticipants()
 
+	// Separate players and enemies
+	playerParty := g.partyManager.GetPartyForTactical()
+	enemyParty := make([]*ecs.Entity, 0)
+
+	for _, participant := range participants {
+		if participant.RPGStats() != nil && participant.HasTag("enemy") {
+			enemyParty = append(enemyParty, participant)
+		}
+	}
+
 	// Add message about the encounter
 	g.uiManager.AddMessage(fmt.Sprintf("A %s appears!", eventComp.Name))
 
-	// Start tactical mode
-	g.SwitchToTacticalMode(participants)
+	// Use battle system selector to start the appropriate battle system
+	if err := g.battleSelector.StartBattle(g, playerParty, enemyParty); err != nil {
+		log.Printf("Failed to start battle: %v", err)
+		g.uiManager.AddMessage("Failed to start battle!")
+		return &events.EventResult{
+			Success: false,
+			Message: fmt.Sprintf("Battle failed: %v", err),
+		}
+	}
 
 	return &events.EventResult{
 		Success: true,
 		Message: fmt.Sprintf("Battle started: %s", eventComp.Name),
 		Data: map[string]interface{}{
-			"enemy_ids":    eventComp.EventData.Enemies,
-			"battle_map":   eventComp.EventData.BattleMap,
-			"event_entity": entity.GetID(),
+			"enemy_ids":     eventComp.EventData.Enemies,
+			"battle_map":    eventComp.EventData.BattleMap,
+			"event_entity":  entity.GetID(),
+			"battle_system": g.battleSelector.GetBattleSystem(),
 		},
 	}
 }

@@ -156,26 +156,23 @@ type GameMode int
 
 const (
 	ModeExploration GameMode = iota // Free movement exploration
-	ModeTactical                    // Grid-based tactical combat
+	ModeTactical                    // Grid-based tactical combat (preserved for compatibility)
 )
 
-// DrawTopPanel renders the player information panel based on game mode
+// DrawTopPanel renders the player information panel - always shows exploration view
 func (ui *UIManager) DrawTopPanel(screen *ebiten.Image, activePlayer *components.RPGStatsComponent, gameMode GameMode, partyMembers []*components.RPGStatsComponent, gridPosition string) {
 	// Draw background
 	vector.FillRect(screen, 0, 0, constants.BackgroundWidth, TopPanelHeight, TopPanelColor, false)
 
-	if gameMode == ModeExploration {
-		ui.drawExplorationPanel(screen, partyMembers)
-	} else {
-		ui.drawTacticalPanel(screen, activePlayer, gridPosition)
-	}
+	// Always use exploration panel - tactical UI is disabled
+	ui.drawExplorationPanel(screen, partyMembers)
 }
 
 // drawExplorationPanel renders the exploration mode UI
 func (ui *UIManager) drawExplorationPanel(screen *ebiten.Image, partyMembers []*components.RPGStatsComponent) {
 	// Header
 	ebitenutil.DebugPrintAt(screen, "=== EXPLORATION MODE ===", 10, 8)
-	ebitenutil.DebugPrintAt(screen, "Keys: Arrow Keys=Move, TAB=Switch Player, T/Space=Combat Mode", 10, 22)
+	ebitenutil.DebugPrintAt(screen, "Keys: Arrow Keys=Move, TAB=Switch Player, I=Inventory, H=Help", 10, 22)
 
 	// Party members info (simplified: name, class, level)
 	if len(partyMembers) == 0 {
@@ -193,85 +190,8 @@ func (ui *UIManager) drawExplorationPanel(screen *ebiten.Image, partyMembers []*
 	}
 }
 
-// drawTacticalPanel renders the tactical mode UI
-func (ui *UIManager) drawTacticalPanel(screen *ebiten.Image, activePlayer *components.RPGStatsComponent, gridPosition string) {
-	// Header
-	ebitenutil.DebugPrintAt(screen, "=== TACTICAL COMBAT ===", 10, 8)
-	ebitenutil.DebugPrintAt(screen, "Keys: Arrow Keys=Move, TAB=Switch Unit, U=Undo, Q=Return", 10, 22)
-
-	if activePlayer == nil {
-		ebitenutil.DebugPrintAt(screen, "No active player", 10, 40)
-		return
-	}
-
-	// Active player info (left side)
-	playerInfo := fmt.Sprintf("Active: %s (%s Level %d)",
-		activePlayer.Name, activePlayer.Job.String(), activePlayer.Level)
-	ebitenutil.DebugPrintAt(screen, playerInfo, 10, 40)
-
-	// Grid position (left side, second line)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Position: %s", gridPosition), 10, 52)
-
-	// Health and Mana (right side)
-	hpMpInfo := fmt.Sprintf("HP: %d/%d  MP: %d/%d",
-		activePlayer.CurrentHP, activePlayer.MaxHP,
-		activePlayer.CurrentMP, activePlayer.MaxMP)
-	ebitenutil.DebugPrintAt(screen, hpMpInfo, 400, 40)
-
-	// Combat stats (right side, second line)
-	combatInfo := fmt.Sprintf("ATK: %d  DEF: %d  SPD: %d",
-		activePlayer.Attack, activePlayer.Defense, activePlayer.Speed)
-	ebitenutil.DebugPrintAt(screen, combatInfo, 400, 52)
-
-	// HP Bar (visual representation) - moved higher and made more compact
-	ui.drawHealthBar(screen, 10, 68, 200, 10, activePlayer.CurrentHP, activePlayer.MaxHP)
-
-	// MP Bar (visual representation) - moved higher
-	ui.drawManaBar(screen, 220, 68, 150, 10, activePlayer.CurrentMP, activePlayer.MaxMP)
-}
-
-// drawHealthBar draws a visual health bar
-func (ui *UIManager) drawHealthBar(screen *ebiten.Image, x, y, width, height float32, current, max int) {
-	// Background (dark red)
-	vector.FillRect(screen, x, y, width, height, color.RGBA{60, 20, 20, 255}, false)
-
-	// Health bar (bright red to green based on percentage)
-	if max > 0 {
-		percentage := float32(current) / float32(max)
-		barWidth := width * percentage
-
-		// Color changes from red to yellow to green
-		var barColor color.RGBA
-		if percentage > 0.6 {
-			barColor = color.RGBA{0, 200, 0, 255} // Green
-		} else if percentage > 0.3 {
-			barColor = color.RGBA{200, 200, 0, 255} // Yellow
-		} else {
-			barColor = color.RGBA{200, 0, 0, 255} // Red
-		}
-
-		vector.FillRect(screen, x, y, barWidth, height, barColor, false)
-	}
-
-	// Border
-	vector.StrokeRect(screen, x, y, width, height, 1, color.RGBA{255, 255, 255, 255}, false)
-}
-
-// drawManaBar draws a visual mana bar
-func (ui *UIManager) drawManaBar(screen *ebiten.Image, x, y, width, height float32, current, max int) {
-	// Background (dark blue)
-	vector.FillRect(screen, x, y, width, height, color.RGBA{20, 20, 60, 255}, false)
-
-	// Mana bar (blue)
-	if max > 0 {
-		percentage := float32(current) / float32(max)
-		barWidth := width * percentage
-		vector.FillRect(screen, x, y, barWidth, height, color.RGBA{0, 100, 255, 255}, false)
-	}
-
-	// Border
-	vector.StrokeRect(screen, x, y, width, height, 1, color.RGBA{255, 255, 255, 255}, false)
-}
+// Note: Tactical UI functions removed - tactical mode is disabled
+// The game now uses only exploration UI and classic battle system
 
 // DrawBottomPanel renders the command output and messages panel
 func (ui *UIManager) DrawBottomPanel(screen *ebiten.Image) {

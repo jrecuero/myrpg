@@ -46,7 +46,7 @@ func CreateEnemy(x, y float64) *ecs.Entity {
 	enemy.AddComponent(ecs.ComponentTransform, components.NewTransform(x, y, 32, 32))
 	enemy.AddComponent(ecs.ComponentSprite, components.NewSpriteComponent(enemySprite, 1.0, 0, 0))
 	enemy.AddComponent(ecs.ComponentCollider, components.NewColliderComponent(true, 32, 32, 0, 0))
-	enemy.AddComponent(ecs.ComponentRPGStats, components.NewRPGStatsComponent("Goblin", components.JobRogue, 1))
+	enemy.AddComponent(ecs.ComponentRPGStats, components.NewRPGStatsComponent("Goblin", components.JobWarrior, 5)) // Level 5 warrior for stronger enemy
 	enemy.AddTag(ecs.TagEnemy)
 
 	return enemy
