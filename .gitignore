@@ -7,8 +7,7 @@ logs/
 # Ignore build artifacts
 /bin/
 /myrpg
-myrpg
-main
+/main
 
 # Ignore save files (user-generated data)
 saves/
