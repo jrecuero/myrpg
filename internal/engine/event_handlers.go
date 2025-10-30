@@ -3,11 +3,11 @@ package engine
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
 	"github.com/jrecuero/myrpg/internal/events"
+	"github.com/jrecuero/myrpg/internal/logger"
 )
 
 // CreateGameEventHandlers creates event handlers that integrate with the game engine
@@ -30,7 +30,7 @@ func (g *Game) CreateGameEventHandlers() map[components.EventType]events.EventHa
 
 // handleBattleEvent integrates battle events with the selected battle system
 func (g *Game) handleBattleEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
-	log.Printf("Battle event triggered: %s", eventComp.Name)
+	logger.Info("Battle event triggered: %s", eventComp.Name)
 
 	// Create enemy entities from the battle event data
 	g.createEnemiesFromBattleEvent(eventComp)
@@ -52,8 +52,10 @@ func (g *Game) handleBattleEvent(entity *ecs.Entity, eventComp *components.Event
 	g.uiManager.AddMessage(fmt.Sprintf("A %s appears!", eventComp.Name))
 
 	// Use battle system selector to start the appropriate battle system
-	if err := g.battleSelector.StartBattle(g, playerParty, enemyParty); err != nil {
-		log.Printf("Failed to start battle: %v", err)
+	// Start battle using the battle system selector
+	err := g.battleSelector.StartBattle(g, playerParty, enemyParty)
+	if err != nil {
+		logger.Error("Failed to start battle: %v", err)
 		g.uiManager.AddMessage("Failed to start battle!")
 		return &events.EventResult{
 			Success: false,
@@ -75,7 +77,7 @@ func (g *Game) handleBattleEvent(entity *ecs.Entity, eventComp *components.Event
 
 // handleDialogEvent switches to dialog view for NPC interactions
 func (g *Game) handleDialogEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
-	log.Printf("Dialog event triggered: %s", eventComp.Name)
+	logger.Info("Dialog event triggered: %s", eventComp.Name)
 
 	// Switch to dialog view with context data
 	dialogData := map[string]interface{}{
@@ -86,7 +88,7 @@ func (g *Game) handleDialogEvent(entity *ecs.Entity, eventComp *components.Event
 	}
 
 	if err := g.SwitchToDialogView(dialogData); err != nil {
-		log.Printf("Failed to switch to dialog view: %v", err)
+		logger.Info("Failed to switch to dialog view: %v", err)
 		// Fallback to simple message
 		message := fmt.Sprintf("You approach %s. They greet you warmly.", eventComp.Name)
 		g.uiManager.AddMessage(message)
@@ -101,7 +103,7 @@ func (g *Game) handleDialogEvent(entity *ecs.Entity, eventComp *components.Event
 
 // handleChestEvent shows loot information using the info widget
 func (g *Game) handleChestEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
-	log.Printf("Chest event triggered: %s", eventComp.Name)
+	logger.Info("Chest event triggered: %s", eventComp.Name)
 
 	// Check if locked
 	if eventComp.EventData.IsLocked {
@@ -147,7 +149,7 @@ func (g *Game) handleChestEvent(entity *ecs.Entity, eventComp *components.EventC
 
 // handleDoorEvent handles area transitions
 func (g *Game) handleDoorEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
-	log.Printf("Door event triggered: %s", eventComp.Name)
+	logger.Info("Door event triggered: %s", eventComp.Name)
 
 	message := fmt.Sprintf("You approach %s. The path leads to %s.",
 		eventComp.Name, eventComp.EventData.TargetMap)
@@ -168,7 +170,7 @@ func (g *Game) handleDoorEvent(entity *ecs.Entity, eventComp *components.EventCo
 
 // handleTrapEvent handles trap activation
 func (g *Game) handleTrapEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
-	log.Printf("Trap event triggered: %s", eventComp.Name)
+	logger.Info("Trap event triggered: %s", eventComp.Name)
 
 	damage := eventComp.EventData.Damage
 	trapType := eventComp.EventData.TrapType
@@ -200,7 +202,7 @@ func (g *Game) handleTrapEvent(entity *ecs.Entity, eventComp *components.EventCo
 
 // handleInfoEvent displays information using the info widget
 func (g *Game) handleInfoEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
-	log.Printf("Info event triggered: %s", eventComp.Name)
+	logger.Info("Info event triggered: %s", eventComp.Name)
 
 	title := eventComp.EventData.Title
 	message := eventComp.EventData.Message
@@ -224,7 +226,7 @@ func (g *Game) handleInfoEvent(entity *ecs.Entity, eventComp *components.EventCo
 
 // handleQuestEvent handles quest-related events
 func (g *Game) handleQuestEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
-	log.Printf("Quest event triggered: %s", eventComp.Name)
+	logger.Info("Quest event triggered: %s", eventComp.Name)
 
 	message := fmt.Sprintf("Quest event: %s", eventComp.Name)
 	g.uiManager.AddMessage(message)
@@ -242,7 +244,7 @@ func (g *Game) handleQuestEvent(entity *ecs.Entity, eventComp *components.EventC
 
 // handleCutsceneEvent handles cutscene events
 func (g *Game) handleCutsceneEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
-	log.Printf("Cutscene event triggered: %s", eventComp.Name)
+	logger.Info("Cutscene event triggered: %s", eventComp.Name)
 
 	message := fmt.Sprintf("Cutscene: %s", eventComp.Name)
 	g.uiManager.AddMessage(message)
@@ -255,7 +257,7 @@ func (g *Game) handleCutsceneEvent(entity *ecs.Entity, eventComp *components.Eve
 
 // handleShopEvent handles shop events
 func (g *Game) handleShopEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
-	log.Printf("Shop event triggered: %s", eventComp.Name)
+	logger.Info("Shop event triggered: %s", eventComp.Name)
 
 	message := fmt.Sprintf("Welcome to %s!", eventComp.Name)
 	g.uiManager.AddMessage(message)
@@ -269,7 +271,7 @@ func (g *Game) handleShopEvent(entity *ecs.Entity, eventComp *components.EventCo
 
 // handleRestEvent handles rest/save points
 func (g *Game) handleRestEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *events.EventResult {
-	log.Printf("Rest event triggered: %s", eventComp.Name)
+	logger.Info("Rest event triggered: %s", eventComp.Name)
 
 	message := fmt.Sprintf("You rest at %s. Your health is restored!", eventComp.Name)
 

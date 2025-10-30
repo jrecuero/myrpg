@@ -3,10 +3,10 @@ package events
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
+	"github.com/jrecuero/myrpg/internal/logger"
 )
 
 // CreateDefaultHandlers creates and returns default event handlers for all event types
@@ -29,7 +29,7 @@ func CreateDefaultHandlers() map[components.EventType]EventHandler {
 
 // HandleBattleEvent handles battle-related events
 func HandleBattleEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *EventResult {
-	log.Printf("Battle event triggered: %s", eventComp.Name)
+	logger.Info("Battle event triggered: %s", eventComp.Name)
 
 	data := make(map[string]interface{})
 
@@ -55,7 +55,7 @@ func HandleBattleEvent(entity *ecs.Entity, eventComp *components.EventComponent,
 
 // HandleDialogEvent handles dialog-related events
 func HandleDialogEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *EventResult {
-	log.Printf("Dialog event triggered: %s", eventComp.Name)
+	logger.Info("Dialog event triggered: %s", eventComp.Name)
 
 	data := make(map[string]interface{})
 
@@ -79,7 +79,7 @@ func HandleDialogEvent(entity *ecs.Entity, eventComp *components.EventComponent,
 
 // HandleChestEvent handles chest/container-related events
 func HandleChestEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *EventResult {
-	log.Printf("Chest event triggered: %s", eventComp.Name)
+	logger.Info("Chest event triggered: %s", eventComp.Name)
 
 	// Check if chest is locked and player has key
 	if eventComp.EventData.IsLocked {
@@ -116,7 +116,7 @@ func HandleChestEvent(entity *ecs.Entity, eventComp *components.EventComponent, 
 
 // HandleDoorEvent handles door/travel-related events
 func HandleDoorEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *EventResult {
-	log.Printf("Door event triggered: %s", eventComp.Name)
+	logger.Info("Door event triggered: %s", eventComp.Name)
 
 	data := make(map[string]interface{})
 
@@ -138,7 +138,7 @@ func HandleDoorEvent(entity *ecs.Entity, eventComp *components.EventComponent, p
 
 // HandleTrapEvent handles trap-related events
 func HandleTrapEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *EventResult {
-	log.Printf("Trap event triggered: %s", eventComp.Name)
+	logger.Info("Trap event triggered: %s", eventComp.Name)
 
 	data := make(map[string]interface{})
 	data["trap_type"] = eventComp.EventData.TrapType
@@ -164,7 +164,7 @@ func HandleTrapEvent(entity *ecs.Entity, eventComp *components.EventComponent, p
 
 // HandleInfoEvent handles information display events
 func HandleInfoEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *EventResult {
-	log.Printf("Info event triggered: %s", eventComp.Name)
+	logger.Info("Info event triggered: %s", eventComp.Name)
 
 	data := make(map[string]interface{})
 	data["title"] = eventComp.EventData.Title
@@ -187,7 +187,7 @@ func HandleInfoEvent(entity *ecs.Entity, eventComp *components.EventComponent, p
 
 // HandleQuestEvent handles quest-related events
 func HandleQuestEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *EventResult {
-	log.Printf("Quest event triggered: %s", eventComp.Name)
+	logger.Info("Quest event triggered: %s", eventComp.Name)
 
 	data := make(map[string]interface{})
 
@@ -215,7 +215,7 @@ func HandleQuestEvent(entity *ecs.Entity, eventComp *components.EventComponent, 
 
 // HandleCutsceneEvent handles cutscene/story events
 func HandleCutsceneEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *EventResult {
-	log.Printf("Cutscene event triggered: %s", eventComp.Name)
+	logger.Info("Cutscene event triggered: %s", eventComp.Name)
 
 	data := make(map[string]interface{})
 	data["cutscene_id"] = eventComp.ID
@@ -238,7 +238,7 @@ func HandleCutsceneEvent(entity *ecs.Entity, eventComp *components.EventComponen
 
 // HandleShopEvent handles shop-related events
 func HandleShopEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *EventResult {
-	log.Printf("Shop event triggered: %s", eventComp.Name)
+	logger.Info("Shop event triggered: %s", eventComp.Name)
 
 	data := make(map[string]interface{})
 	data["shop_id"] = eventComp.ID
@@ -261,7 +261,7 @@ func HandleShopEvent(entity *ecs.Entity, eventComp *components.EventComponent, p
 
 // HandleRestEvent handles rest/save point events
 func HandleRestEvent(entity *ecs.Entity, eventComp *components.EventComponent, player *ecs.Entity) *EventResult {
-	log.Printf("Rest event triggered: %s", eventComp.Name)
+	logger.Info("Rest event triggered: %s", eventComp.Name)
 
 	data := make(map[string]interface{})
 	data["rest_point_id"] = eventComp.ID

@@ -4,13 +4,13 @@ package events
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"sort"
 	"time"
 
 	"github.com/jrecuero/myrpg/internal/ecs"
 	"github.com/jrecuero/myrpg/internal/ecs/components"
+	"github.com/jrecuero/myrpg/internal/logger"
 )
 
 // EventResult represents the result of an event execution
@@ -272,7 +272,7 @@ func (em *EventManager) checkQuestStateTrigger(eventComp *components.EventCompon
 func (em *EventManager) executeEvent(entity *ecs.Entity, eventComp *components.EventComponent) {
 	handler, exists := em.handlers[eventComp.EventType]
 	if !exists {
-		log.Printf("No handler registered for event type: %s", eventComp.GetEventTypeName())
+		logger.Error("No handler registered for event type: %s", eventComp.GetEventTypeName())
 		return
 	}
 
@@ -298,7 +298,7 @@ func (em *EventManager) executeEvent(entity *ecs.Entity, eventComp *components.E
 		delete(em.activeEvents, eventComp.ID)
 	}
 
-	log.Printf("Event executed: %s (%s) - Success: %t, Message: %s",
+	logger.Info("Event executed: %s (%s) - Success: %t, Message: %s",
 		eventComp.Name, eventComp.GetEventTypeName(), result.Success, result.Message)
 }
 
@@ -446,7 +446,7 @@ func (em *EventManager) GetGameMode() components.GameMode {
 // SetEventCompleted marks an event as completed in the completion tracking
 func (em *EventManager) SetEventCompleted(eventID string, completed bool) {
 	em.completedEvents[eventID] = completed
-	log.Printf("Event %s completion status set to %v", eventID, completed)
+	logger.Info("Event %s completion status set to %v", eventID, completed)
 }
 
 // GetCompletedEvents returns a copy of the completed events map
@@ -464,12 +464,12 @@ func (em *EventManager) LoadCompletedEvents(completedEvents map[string]bool) {
 	for id, status := range completedEvents {
 		em.completedEvents[id] = status
 	}
-	log.Printf("Loaded %d completed event states", len(completedEvents))
+	logger.Info("Loaded %d completed event states", len(completedEvents))
 }
 
 // ClearCompletedEventsForReset removes all completed events from tracking (for new game)
 func (em *EventManager) ClearCompletedEventsForReset() {
 	em.completedEvents = make(map[string]bool)
 	em.eventHistory = make([]EventExecutionRecord, 0)
-	log.Printf("Cleared all event completion tracking for new game")
+	logger.Info("Cleared all event completion tracking for new game")
 }
