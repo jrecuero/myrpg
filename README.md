@@ -103,6 +103,7 @@ Comprehensive documentation is available in the [`docs/`](docs/) directory:
 - **[Animation System](docs/systems/ANIMATION_SYSTEM.md)** - Multi-state character animations with sprite sheet support
 - **[Attack Animations](docs/systems/ATTACK_ANIMATIONS.md)** - Combat visual feedback and sword attack system  
 - **[Classic Battle System](docs/systems/CLASSIC_BATTLE_SYSTEM.md)** - Dragon Quest-style turn-based combat (active)
+- **[Combat Panel Layout](docs/systems/COMBAT_PANEL_LAYOUT.md)** - Complete combat interface layout specifications and positioning
 - **[Tactical Battle System](docs/systems/TACTICAL_BATTLE_SYSTEM.md)** - Grid-based tactical combat system
 - **[Row-Based Formation System](docs/systems/ROW_BASED_FORMATION_SYSTEM.md)** - Enhanced formation mechanics with front/back rows
 - **[View System](docs/systems/VIEW_SYSTEM.md)** - Game view management and entity visibility framework

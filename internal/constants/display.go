@@ -38,3 +38,61 @@ const (
 	GridOffsetX = 50.0
 	GridOffsetY = float64(GameWorldY)
 )
+
+// Combat Panel Layout Constants
+const (
+	// Panel Separations - 5 pixels everywhere
+	PanelMargin    = 5 // Margin from screen edges
+	PanelSeparator = 5 // Separation between panels
+
+	// Main Panel Specifications (adjusted for 5px margins/separators)
+	EnemyPanelWidth  = 791 // 1000 - 5 - 5 - 5 - 194 = 791
+	EnemyPanelHeight = 222 // Reduced slightly to fit height
+	EnemyPanelX      = PanelMargin
+	EnemyPanelY      = PanelMargin
+
+	PlayerPanelWidth  = 791
+	PlayerPanelHeight = 222
+	PlayerPanelX      = PanelMargin
+	PlayerPanelY      = EnemyPanelY + EnemyPanelHeight + PanelSeparator
+
+	CombinedLogPanelWidth  = 194
+	CombinedLogPanelHeight = 449 // Aligned to match Battle Log Panel Y position
+	CombinedLogPanelX      = EnemyPanelX + EnemyPanelWidth + PanelSeparator
+	CombinedLogPanelY      = PanelMargin
+
+	ActionMenuPanelWidth  = 194
+	ActionMenuPanelHeight = 136 // Same height as Battle Log Panel
+	ActionMenuPanelX      = EnemyPanelX + EnemyPanelWidth + PanelSeparator
+	ActionMenuPanelY      = CombinedLogPanelY + CombinedLogPanelHeight + PanelSeparator
+
+	BattleLogPanelWidth  = 791
+	BattleLogPanelHeight = 136 // Same height as Action Menu Panel
+	BattleLogPanelX      = PanelMargin
+	BattleLogPanelY      = PlayerPanelY + PlayerPanelHeight + PanelSeparator
+
+	// Formation Layout within Enemy/Player Panels
+	// Two rows: back row and front row
+	FormationMarginLeft   = 2
+	FormationMarginRight  = 2
+	FormationMarginTop    = 2
+	FormationMarginBottom = 11
+	FormationRowSeparator = 2
+
+	// Row dimensions
+	FormationRowWidth  = 787 // 791 - 2 (left) - 2 (right)
+	FormationRowHeight = 105
+
+	// Back row positioning
+	BackRowX = FormationMarginLeft
+	BackRowY = FormationMarginTop
+
+	// Front row positioning (below back row)
+	FrontRowX = FormationMarginLeft
+	FrontRowY = BackRowY + FormationRowHeight + FormationRowSeparator
+
+	// Entity display within rows
+	EntityDisplayMarginTop    = 5
+	EntityDisplayMarginBottom = 5
+	EntitySpriteBoxSize       = 95 // 95x95 box for sprite, health bar, and name
+)

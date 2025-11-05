@@ -6,6 +6,8 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/jrecuero/myrpg/internal/constants"
 	"github.com/jrecuero/myrpg/internal/ecs"
 )
 
@@ -30,44 +32,38 @@ type BattleRenderer struct {
 	showBattleLog                                                                 bool
 }
 
-// NewBattleRenderer creates a new renderer with panel layout
+// NewBattleRenderer creates a new renderer with panel layout using constants
 func NewBattleRenderer(battleManager *BattleManager, screenWidth, screenHeight int) *BattleRenderer {
-	// Calculate panel dimensions with adjusted widths
-	// Make left side wider (65%) for enemy/player panels, right side narrower (35%) for logs
-	leftWidth := int(float64(screenWidth) * 0.65)
-	rightWidth := screenWidth - leftWidth
-	topHeight := screenHeight / 3
-	middleHeight := screenHeight / 3
-	bottomHeight := screenHeight - topHeight - middleHeight
-
-	// Action panel takes only 40% of left width, allowing battle log to expand
-	actionPanelWidth := int(float64(leftWidth) * 0.4)
-	battleLogStartX := 10 + actionPanelWidth + 10        // Start after action panel with gap
-	battleLogWidth := screenWidth - battleLogStartX - 10 // Extend to screen edge
-
 	return &BattleRenderer{
 		battleManager: battleManager,
 		screenWidth:   screenWidth,
 		screenHeight:  screenHeight,
 
-		// Left column panels - now wider (65% of screen)
-		enemyPanelX: 10, enemyPanelY: 10,
-		enemyPanelWidth: leftWidth - 20, enemyPanelHeight: topHeight - 10,
+		// Use exact panel dimensions from constants
+		enemyPanelX:      constants.EnemyPanelX,
+		enemyPanelY:      constants.EnemyPanelY,
+		enemyPanelWidth:  constants.EnemyPanelWidth,
+		enemyPanelHeight: constants.EnemyPanelHeight,
 
-		playerPanelX: 10, playerPanelY: topHeight + 5,
-		playerPanelWidth: leftWidth - 20, playerPanelHeight: middleHeight - 10,
+		playerPanelX:      constants.PlayerPanelX,
+		playerPanelY:      constants.PlayerPanelY,
+		playerPanelWidth:  constants.PlayerPanelWidth,
+		playerPanelHeight: constants.PlayerPanelHeight,
 
-		// Action panel - narrower (40% of left width)
-		actionPanelX: 10, actionPanelY: topHeight + middleHeight + 5,
-		actionPanelWidth: actionPanelWidth - 20, actionPanelHeight: bottomHeight - 15,
+		actionPanelX:      constants.ActionMenuPanelX,
+		actionPanelY:      constants.ActionMenuPanelY,
+		actionPanelWidth:  constants.ActionMenuPanelWidth,
+		actionPanelHeight: constants.ActionMenuPanelHeight,
 
-		// Right column panels - narrower (35% of screen)
-		combinedLogPanelX: leftWidth + 5, combinedLogPanelY: 10,
-		combinedLogPanelWidth: rightWidth - 15, combinedLogPanelHeight: topHeight + middleHeight - 10,
+		combinedLogPanelX:      constants.CombinedLogPanelX,
+		combinedLogPanelY:      constants.CombinedLogPanelY,
+		combinedLogPanelWidth:  constants.CombinedLogPanelWidth,
+		combinedLogPanelHeight: constants.CombinedLogPanelHeight,
 
-		// Battle log panel - expanded to use remaining space
-		battleLogPanelX: battleLogStartX, battleLogPanelY: topHeight + middleHeight + 5,
-		battleLogPanelWidth: battleLogWidth, battleLogPanelHeight: bottomHeight - 15,
+		battleLogPanelX:      constants.BattleLogPanelX,
+		battleLogPanelY:      constants.BattleLogPanelY,
+		battleLogPanelWidth:  constants.BattleLogPanelWidth,
+		battleLogPanelHeight: constants.BattleLogPanelHeight,
 
 		backgroundColor:   color.RGBA{20, 20, 40, 255},
 		textColor:         color.RGBA{255, 255, 255, 255},
@@ -116,31 +112,25 @@ func (br *BattleRenderer) drawPanel(screen *ebiten.Image, x, y, width, height in
 	}
 }
 
-// drawEnemyPanel draws enemies in top-left
+// drawEnemyPanel draws enemies in two-row formation
 func (br *BattleRenderer) drawEnemyPanel(screen *ebiten.Image) {
 	br.drawPanel(screen, br.enemyPanelX, br.enemyPanelY, br.enemyPanelWidth, br.enemyPanelHeight,
 		color.RGBA{40, 20, 20, 100}, "Enemies")
 
-	// Draw enemy formations
+	// Draw enemy formations in back and front rows
 	if formation := br.battleManager.GetEnemyFormation(); formation != nil {
-		positions := formation.GetAllPositions()
-		for entity, pos := range positions {
-			br.drawEntity(screen, entity, pos, true)
-		}
+		br.drawFormationRows(screen, formation, br.enemyPanelX, br.enemyPanelY, true)
 	}
 }
 
-// drawPlayerPanel draws players in middle-left
+// drawPlayerPanel draws players in two-row formation
 func (br *BattleRenderer) drawPlayerPanel(screen *ebiten.Image) {
 	br.drawPanel(screen, br.playerPanelX, br.playerPanelY, br.playerPanelWidth, br.playerPanelHeight,
 		color.RGBA{20, 40, 20, 100}, "Players")
 
-	// Draw player formations
+	// Draw player formations in back and front rows
 	if formation := br.battleManager.GetPlayerFormation(); formation != nil {
-		positions := formation.GetAllPositions()
-		for entity, pos := range positions {
-			br.drawEntity(screen, entity, pos, false)
-		}
+		br.drawFormationRows(screen, formation, br.playerPanelX, br.playerPanelY, false)
 	}
 }
 
@@ -344,4 +334,95 @@ func (br *BattleRenderer) SetShowActivityQueue(show bool) {
 // SetShowBattleLog toggles battle log display
 func (br *BattleRenderer) SetShowBattleLog(show bool) {
 	br.showBattleLog = show
+}
+
+// drawFormationRows draws entities in back and front row formation layout
+func (br *BattleRenderer) drawFormationRows(screen *ebiten.Image, formation *Formation, panelX, panelY int, isEnemy bool) {
+	// Get back and front row entities
+	backRowEntities := formation.GetBackRowEntities()
+	frontRowEntities := formation.GetFrontRowEntities()
+
+	// Draw back row
+	br.drawFormationRow(screen, backRowEntities, panelX+constants.BackRowX, panelY+constants.BackRowY, isEnemy, "Back Row")
+
+	// Draw front row
+	br.drawFormationRow(screen, frontRowEntities, panelX+constants.FrontRowX, panelY+constants.FrontRowY, isEnemy, "Front Row")
+}
+
+// drawFormationRow draws a single row of entities
+func (br *BattleRenderer) drawFormationRow(screen *ebiten.Image, entities []*ecs.Entity, rowX, rowY int, isEnemy bool, rowLabel string) {
+	if len(entities) == 0 {
+		return
+	}
+
+	// Calculate how many entities can fit horizontally with proper spacing
+	maxEntitiesPerRow := constants.FormationRowWidth / constants.EntitySpriteBoxSize
+	entitySpacing := constants.FormationRowWidth / maxEntitiesPerRow
+
+	// Draw entities in the row, centered vertically in the 95px available space
+	for i, entity := range entities {
+		if i >= maxEntitiesPerRow {
+			break // Don't overflow the row
+		}
+
+		// Calculate position for this entity within the 95x95 box
+		entityX := rowX + (i * entitySpacing) + (entitySpacing-constants.EntitySpriteBoxSize)/2
+		entityY := rowY + constants.EntityDisplayMarginTop
+
+		br.drawEntityInBox(screen, entity, entityX, entityY, isEnemy)
+	}
+}
+
+// drawEntityInBox draws an entity within a 95x95 box with sprite, health bar, and name
+func (br *BattleRenderer) drawEntityInBox(screen *ebiten.Image, entity *ecs.Entity, x, y int, isEnemy bool) {
+	stats := entity.RPGStats()
+	if stats == nil {
+		return
+	}
+
+	// Check if selected target
+	isSelected := br.isSelectedTarget(entity)
+
+	// Draw selection highlight around the entire box
+	if isSelected {
+		// Highlight the entire 95x95 box
+		vector.FillRect(screen, float32(x-2), float32(y-2), float32(constants.EntitySpriteBoxSize+4), float32(constants.EntitySpriteBoxSize+4), color.RGBA{255, 255, 0, 150}, false)
+	}
+
+	// Calculate sprite position (centered horizontally, with room for health bar and name)
+	spriteSize := 32 // Standard sprite size
+	spriteX := x + (constants.EntitySpriteBoxSize-spriteSize)/2
+	spriteY := y + 20 // Leave room for name at top
+
+	// Draw sprite or rectangle
+	if sprite := entity.Sprite(); sprite != nil && sprite.Sprite != nil && sprite.Sprite.Img != nil {
+		op := &ebiten.DrawImageOptions{}
+		if stats.CurrentHP <= 0 {
+			op.ColorScale.Scale(0.5, 0.5, 0.5, 0.7)
+		}
+		op.GeoM.Translate(float64(spriteX), float64(spriteY))
+		screen.DrawImage(sprite.Sprite.Img, op)
+	} else {
+		entityColor := color.RGBA{100, 255, 100, 255}
+		if isEnemy {
+			entityColor = color.RGBA{255, 100, 100, 255}
+		}
+		if stats.CurrentHP <= 0 {
+			entityColor = color.RGBA{100, 100, 100, 255}
+		}
+		vector.FillRect(screen, float32(spriteX), float32(spriteY), float32(spriteSize), float32(spriteSize), entityColor, false)
+	}
+
+	// Draw name above sprite (truncated to fit)
+	name := stats.Name
+	if len(name) > 8 {
+		name = name[:8]
+	}
+	nameX := x + (constants.EntitySpriteBoxSize-len(name)*6)/2 // Center the text
+	ebitenutil.DebugPrintAt(screen, name, nameX, y+5)
+
+	// Draw health bar below sprite
+	healthBarY := spriteY + spriteSize + 5
+	healthBarWidth := constants.EntitySpriteBoxSize - 10 // Leave 5px margin on each side
+	br.drawHealthBar(screen, float64(x+5), float64(healthBarY), float64(healthBarWidth), 6, stats.CurrentHP, stats.MaxHP)
 }
