@@ -39,7 +39,13 @@ func (g *Game) handleBattleEvent(entity *ecs.Entity, eventComp *components.Event
 	participants := g.getAllCombatParticipants()
 
 	// Separate players and enemies
-	playerParty := g.partyManager.GetPartyForTactical()
+	// Use appropriate method based on battle system
+	var playerParty []*ecs.Entity
+	if g.battleSelector.GetBattleSystem() == BattleSystemClassic {
+		playerParty = g.partyManager.GetPartyForClassic()
+	} else {
+		playerParty = g.partyManager.GetPartyForTactical()
+	}
 	enemyParty := make([]*ecs.Entity, 0)
 
 	for _, participant := range participants {

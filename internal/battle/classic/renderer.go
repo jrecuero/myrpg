@@ -281,17 +281,23 @@ func (br *BattleRenderer) drawEntity(screen *ebiten.Image, entity *ecs.Entity, p
 
 // isSelectedTarget checks if entity is the selected target
 func (br *BattleRenderer) isSelectedTarget(entity *ecs.Entity) bool {
-	if br.battleManager.GetBattleState() != BattleStateWaitingForTarget {
+	state := br.battleManager.GetBattleState()
+	if state != BattleStateWaitingForTarget {
 		return false
 	}
 
 	targets := br.battleManager.GetAvailableTargets()
 	index := br.battleManager.GetTargetIndex()
 
-	if index >= 0 && index < len(targets) {
-		return targets[index] == entity
+	// Add bounds checking to prevent flashing due to index inconsistencies
+	if len(targets) == 0 || index < 0 || index >= len(targets) {
+		return false
 	}
-	return false
+
+	// Direct entity comparison to avoid any ID-based confusion
+	isSelected := targets[index] == entity
+
+	return isSelected
 }
 
 // drawHealthBar renders health bar
@@ -385,8 +391,8 @@ func (br *BattleRenderer) drawEntityInBox(screen *ebiten.Image, entity *ecs.Enti
 
 	// Draw selection highlight around the entire box
 	if isSelected {
-		// Highlight the entire 95x95 box
-		vector.FillRect(screen, float32(x-2), float32(y-2), float32(constants.EntitySpriteBoxSize+4), float32(constants.EntitySpriteBoxSize+4), color.RGBA{255, 255, 0, 150}, false)
+		// Highlight the entire 95x95 box with more opaque yellow
+		vector.FillRect(screen, float32(x-2), float32(y-2), float32(constants.EntitySpriteBoxSize+4), float32(constants.EntitySpriteBoxSize+4), color.RGBA{255, 255, 0, 255}, false)
 	}
 
 	// Calculate sprite position (centered horizontally, with room for health bar and name)

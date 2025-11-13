@@ -63,6 +63,14 @@ type CombatUI struct {
 	HoveredPosition    *tactical.GridPos
 	SelectedTarget     *ecs.Entity
 
+	// Current context for action calculations
+	CurrentCombatManager *tactical.TurnBasedCombatManager
+	CurrentActiveUnit    *ecs.Entity
+
+	// Stability flags to prevent constant recalculation
+	TargetsCalculatedForUnit *ecs.Entity
+	MovesCalculatedForUnit   *ecs.Entity
+
 	// UI Layout
 	ButtonAreaX, ButtonAreaY  float32
 	ButtonWidth, ButtonHeight float32
@@ -152,7 +160,19 @@ func (cui *CombatUI) Update(combatManager *tactical.TurnBasedCombatManager, acti
 	// Only show UI during player turns
 	if !combatManager.IsPlayerTurn() {
 		cui.State = CombatUIStateNone
+		cui.CurrentCombatManager = nil
+		cui.CurrentActiveUnit = nil
 		return nil
+	}
+
+	// Store current context
+	cui.CurrentCombatManager = combatManager
+
+	// Initialize targets when active unit changes
+	if cui.CurrentActiveUnit != activeUnit {
+		cui.CurrentActiveUnit = activeUnit
+		cui.initializeValidActions()
+		cui.State = CombatUIStateSelectingAction // Reset to action selection
 	}
 
 	// Update valid actions for current unit
@@ -182,26 +202,12 @@ func (cui *CombatUI) updateValidActions(combatManager *tactical.TurnBasedCombatM
 		return
 	}
 
-	// Update button states based on available AP
+	// Update button states based on available AP (without recalculating targets every frame)
 	for _, button := range cui.ActionButtons {
 		switch button.ActionType {
 		case tactical.ActionMove:
-			cui.ValidMovePositions = combatManager.GetValidMovesForUnit(activeUnit)
 			button.Enabled = len(cui.ValidMovePositions) > 0 && actionPoints.Current >= constants.MovementAPCost
 		case tactical.ActionAttack:
-			newTargets := combatManager.GetValidAttackTargetsForUnit(activeUnit)
-			// Only log when target count changes to reduce spam
-			if len(newTargets) != len(cui.ValidAttackTargets) {
-				logger.UI("Found %d valid attack targets for %s (AP: %d/%d)",
-					len(newTargets), activeUnit.GetID(), actionPoints.Current, actionPoints.Maximum)
-				// Also log to console for immediate user feedback
-				if len(newTargets) == 0 {
-					logger.Warn("⚠️  No enemies in attack range (must be adjacent) for %s\n", activeUnit.GetID())
-				} else {
-					logger.Debug("✅ Found %d valid attack targets for %s\n", len(newTargets), activeUnit.GetID())
-				}
-			}
-			cui.ValidAttackTargets = newTargets
 			button.Enabled = len(cui.ValidAttackTargets) > 0 && actionPoints.Current >= constants.AttackAPCost
 		case tactical.ActionWait:
 			button.Enabled = true // End turn is always available
@@ -211,6 +217,28 @@ func (cui *CombatUI) updateValidActions(combatManager *tactical.TurnBasedCombatM
 	// Set state to action selection if not already in a selection mode
 	if cui.State == CombatUIStateNone {
 		cui.State = CombatUIStateSelectingAction
+	}
+}
+
+// initializeValidActions calculates valid actions when a unit's turn starts
+func (cui *CombatUI) initializeValidActions() {
+	// Clear previous action state
+	cui.SelectedAction = 0 // Reset to no action selected
+	cui.ValidMovePositions = cui.ValidMovePositions[:0]
+	cui.ValidAttackTargets = cui.ValidAttackTargets[:0]
+	cui.HoveredPosition = nil
+	cui.SelectedTarget = nil
+
+	// Reset calculation flags for new unit
+	cui.TargetsCalculatedForUnit = nil
+	cui.MovesCalculatedForUnit = nil
+
+	// Pre-calculate valid moves for efficiency
+	if cui.CurrentCombatManager != nil && cui.CurrentActiveUnit != nil {
+		cui.ValidMovePositions = cui.CurrentCombatManager.GetValidMovesForUnit(cui.CurrentActiveUnit)
+		cui.MovesCalculatedForUnit = cui.CurrentActiveUnit
+		logger.Debug("Initialized valid actions for %s: %d moves available",
+			cui.CurrentActiveUnit.GetID(), len(cui.ValidMovePositions))
 	}
 }
 
@@ -258,8 +286,21 @@ func (cui *CombatUI) selectAction(actionType tactical.ActionType) {
 
 	switch actionType {
 	case tactical.ActionMove:
+		// Calculate move positions only if not already calculated for this unit
+		if cui.CurrentCombatManager != nil && cui.CurrentActiveUnit != nil && cui.MovesCalculatedForUnit != cui.CurrentActiveUnit {
+			cui.ValidMovePositions = cui.CurrentCombatManager.GetValidMovesForUnit(cui.CurrentActiveUnit)
+			cui.MovesCalculatedForUnit = cui.CurrentActiveUnit
+			logger.Debug("✅ Calculated %d valid move positions for %s", len(cui.ValidMovePositions), cui.CurrentActiveUnit.GetID())
+		}
 		cui.State = CombatUIStateSelectingMoveTarget
 	case tactical.ActionAttack:
+		// Calculate valid attack targets only if not already calculated for this unit
+		if cui.CurrentCombatManager != nil && cui.CurrentActiveUnit != nil && cui.TargetsCalculatedForUnit != cui.CurrentActiveUnit {
+			cui.ValidAttackTargets = cui.CurrentCombatManager.GetValidAttackTargetsForUnit(cui.CurrentActiveUnit)
+			cui.TargetsCalculatedForUnit = cui.CurrentActiveUnit
+			logger.Debug("✅ Calculated %d valid attack targets for %s", len(cui.ValidAttackTargets), cui.CurrentActiveUnit.GetID())
+		}
+
 		// Only enter attack target selection if there are valid targets
 		if len(cui.ValidAttackTargets) > 0 {
 			cui.State = CombatUIStateSelectingAttackTarget
@@ -271,6 +312,7 @@ func (cui *CombatUI) selectAction(actionType tactical.ActionType) {
 			message2 := "💡 Tip: Use the Move button to get within 1 tile of an enemy"
 			logger.UI("%s", message1)
 			logger.UI("%s", message2)
+			logger.Warn("⚠️  No enemies in attack range when attack selected")
 			// Stay in action selection mode
 			cui.State = CombatUIStateSelectingAction
 		}

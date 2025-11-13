@@ -89,6 +89,10 @@ type BattleManager struct {
 	availableTargets    []*ecs.Entity   // Available targets for current action
 	isDefending         map[string]bool // Track which entities are defending
 
+	// Debug tracking for target flashing issue
+	lastSelectedTargetID string    // Track last selected target to detect rapid changes
+	lastTargetChangeTime time.Time // Track timing to prevent rapid changes
+
 	// Callbacks
 	onBattleEnd      func(victory bool)
 	onActionExecuted func(action *BattleAction)
@@ -97,17 +101,19 @@ type BattleManager struct {
 // NewBattleManager creates a new Dragon Quest-style battle manager
 func NewBattleManager() *BattleManager {
 	return &BattleManager{
-		state:            BattleStateIdle,
-		battleStarted:    false,
-		playerParty:      make([]*ecs.Entity, 0),
-		enemyParty:       make([]*ecs.Entity, 0),
-		activityQueue:    make([]*ActivityEntry, 0),
-		actionQueue:      make([]*BattleAction, 0),
-		speedModifier:    1000.0, // milliseconds per speed point
-		battleTime:       time.Now(),
-		targetIndex:      0,
-		availableTargets: make([]*ecs.Entity, 0),
-		isDefending:      make(map[string]bool),
+		state:                BattleStateIdle,
+		battleStarted:        false,
+		playerParty:          make([]*ecs.Entity, 0),
+		enemyParty:           make([]*ecs.Entity, 0),
+		activityQueue:        make([]*ActivityEntry, 0),
+		actionQueue:          make([]*BattleAction, 0),
+		speedModifier:        1000.0, // milliseconds per speed point
+		battleTime:           time.Now(),
+		targetIndex:          0,
+		availableTargets:     make([]*ecs.Entity, 0),
+		isDefending:          make(map[string]bool),
+		lastSelectedTargetID: "",          // Initialize target tracking
+		lastTargetChangeTime: time.Time{}, // Initialize timing
 	}
 }
 
@@ -129,6 +135,26 @@ func (bm *BattleManager) StartBattle(playerParty, enemyParty []*ecs.Entity) erro
 	// Initialize formations
 	bm.playerFormation = NewPlayerFormation(playerParty)
 	bm.enemyFormation = NewEnemyFormation(enemyParty)
+
+	// Debug: Log formation positions AFTER formation setup
+	logger.Debug("🎭 Player formation positions after setup:")
+	if bm.playerFormation != nil {
+		positions := bm.playerFormation.GetAllPositions()
+
+		// Also log actual entity transforms after formation
+		logger.Debug("🧭 Player positions AFTER formation:")
+		for i, player := range playerParty {
+			if transform := player.Transform(); transform != nil {
+				logger.Debug("   [%d] %s: (%.1f, %.1f)", i, player.GetID(), transform.X, transform.Y)
+			}
+		}
+		for entity, pos := range positions {
+			if stats := entity.RPGStats(); stats != nil {
+				logger.Debug("   %s at position (%.1f, %.1f) Row: %d, Index: %d",
+					stats.Name, pos.X, pos.Y, pos.Row, pos.Index)
+			}
+		}
+	}
 
 	// Initialize activity queue
 	bm.initializeActivityQueue()
@@ -516,6 +542,7 @@ func (bm *BattleManager) SetOnActionExecuted(callback func(action *BattleAction)
 
 // updateAvailableTargets updates the list of available targets based on the selected action
 func (bm *BattleManager) updateAvailableTargets() {
+	oldTargetCount := len(bm.availableTargets)
 	bm.availableTargets = make([]*ecs.Entity, 0)
 
 	switch bm.selectedAction {
@@ -531,9 +558,22 @@ func (bm *BattleManager) updateAvailableTargets() {
 		bm.availableTargets = []*ecs.Entity{}
 	}
 
+	newTargetCount := len(bm.availableTargets)
+
+	// Log only significant target changes
+	if oldTargetCount != newTargetCount {
+		logger.Debug("🎯 Available targets updated: %d→%d for action %d",
+			oldTargetCount, newTargetCount, bm.selectedAction)
+	}
+
 	// Reset target index if out of bounds
 	if bm.targetIndex >= len(bm.availableTargets) {
 		bm.targetIndex = 0
+		if len(bm.availableTargets) > 0 {
+			bm.selectedTarget = bm.availableTargets[bm.targetIndex]
+		} else {
+			bm.selectedTarget = nil
+		}
 	}
 }
 
@@ -568,8 +608,11 @@ func (bm *BattleManager) HandlePlayerInput(actionType ActionType) {
 		return
 	}
 
-	bm.selectedAction = actionType
-	bm.updateAvailableTargets()
+	// Only update targets if action type actually changed
+	if bm.selectedAction != actionType {
+		bm.selectedAction = actionType
+		bm.updateAvailableTargets()
+	}
 
 	if actionType == ActionDefend {
 		// Defend doesn't need target selection, execute immediately
@@ -589,14 +632,40 @@ func (bm *BattleManager) HandleTargetNavigation(direction int) {
 		return
 	}
 
-	bm.targetIndex += direction
-	if bm.targetIndex < 0 {
-		bm.targetIndex = len(bm.availableTargets) - 1
-	} else if bm.targetIndex >= len(bm.availableTargets) {
-		bm.targetIndex = 0
+	// Prevent rapid target changes (debouncing)
+	now := time.Now()
+	if now.Sub(bm.lastTargetChangeTime) < 150*time.Millisecond {
+		return
 	}
 
-	bm.selectedTarget = bm.availableTargets[bm.targetIndex]
+	// Store current state for validation
+	oldIndex := bm.targetIndex
+	targetCount := len(bm.availableTargets)
+
+	// Ensure current index is valid before proceeding
+	if oldIndex < 0 || oldIndex >= targetCount {
+		bm.targetIndex = 0
+		oldIndex = 0
+	}
+
+	// Calculate new index with proper bounds checking
+	var newIndex int
+	if direction > 0 {
+		// Going right
+		newIndex = (oldIndex + 1) % targetCount
+	} else {
+		// Going left
+		newIndex = (oldIndex - 1 + targetCount) % targetCount
+	}
+
+	// Double-check the new index is valid
+	if newIndex >= 0 && newIndex < targetCount {
+		bm.targetIndex = newIndex
+		bm.selectedTarget = bm.availableTargets[bm.targetIndex]
+
+		// Update timing for debouncing
+		bm.lastTargetChangeTime = now
+	}
 }
 
 // ConfirmTargetSelection confirms the target and executes the action

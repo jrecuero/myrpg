@@ -239,7 +239,9 @@ func (g *Game) GetSaveManager() *save.SaveManager {
 
 // SwitchToTacticalMode transitions to tactical combat mode with full party deployment
 func (g *Game) SwitchToTacticalMode(participants []*ecs.Entity) {
+	logger.Debug("🔄 SwitchToTacticalMode called (current mode: %v)", g.currentMode)
 	if g.currentMode == ModeTactical {
+		logger.Debug("⚠️  Already in tactical mode, skipping")
 		return // Already in tactical mode
 	}
 
@@ -256,8 +258,8 @@ func (g *Game) SwitchToTacticalMode(participants []*ecs.Entity) {
 
 	g.currentMode = ModeTactical
 
-	// Deploy full party instead of just the leader
-	partyMembers := g.partyManager.GetPartyForTactical()
+	// Deploy full party instead of just the leader (use sorted version for consistent deployment)
+	partyMembers := g.partyManager.GetPartyForTacticalDeployment()
 
 	// Get enemy entities from participants
 	var enemies []*ecs.Entity
@@ -284,8 +286,11 @@ func (g *Game) SwitchToTacticalMode(participants []*ecs.Entity) {
 	}
 
 	// Deploy entities to tactical grid
+	logger.Debug("🚀 Starting party deployment...")
 	g.tacticalDeployment.DeployParty(partyMembers)
+	logger.Debug("👹 Starting enemy deployment...")
 	g.tacticalDeployment.DeployEnemies(enemies)
+	logger.Debug("✅ Deployment complete")
 
 	// Debug: Check unit positions after deployment
 	logger.Debug("Unit positions after deployment:")
@@ -689,6 +694,16 @@ func (g *Game) updateExploration() error {
 			}
 		} else {
 			g.tabKeyPressed = false
+		}
+
+		// Handle 'T' key for toggling battle system (Tactical vs Classic)
+		if inpututil.IsKeyJustPressed(ebiten.KeyT) {
+			g.battleSelector.ToggleBattleSystem()
+			if g.battleSelector.GetBattleSystem() == BattleSystemTactical {
+				logger.Info("🎯 Switched to Tactical Battle System")
+			} else {
+				logger.Info("⚔️  Switched to Classic Battle System")
+			}
 		}
 
 		// Get the currently active player
@@ -1909,8 +1924,10 @@ func (g *Game) handleClassicBattleInput() {
 	// Handle target selection
 	if battleManager.IsWaitingForTarget() {
 		if inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft) {
+			logger.Debug("⬅️ Left arrow pressed - navigating targets")
 			battleManager.HandleTargetNavigation(-1)
 		} else if inpututil.IsKeyJustPressed(ebiten.KeyArrowRight) {
+			logger.Debug("➡️ Right arrow pressed - navigating targets")
 			battleManager.HandleTargetNavigation(1)
 		} else if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
 			inpututil.IsKeyJustPressed(ebiten.KeySpace) {

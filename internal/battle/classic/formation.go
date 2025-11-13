@@ -2,8 +2,9 @@
 package classic
 
 import (
+	"sort"
+
 	"github.com/jrecuero/myrpg/internal/ecs"
-	"github.com/jrecuero/myrpg/internal/logger"
 )
 
 // Position represents a 2D position in the battle formation
@@ -72,9 +73,6 @@ func NewEnemyFormation(enemies []*ecs.Entity) *Formation {
 
 // arrangeEntities positions all entities in the formation
 func (f *Formation) arrangeEntities() {
-	logger.Debug("📐 Arranging %s formation with %d entities",
-		f.getFormationType(), len(f.entities))
-
 	entityIndex := 0
 
 	for row := 0; row < f.rows && entityIndex < len(f.entities); row++ {
@@ -110,9 +108,6 @@ func (f *Formation) arrangeEntities() {
 				transform.X = x
 				transform.Y = y
 			}
-
-			logger.Debug("   %s positioned at (%.1f, %.1f) - Row %d, Index %d",
-				entity.GetID(), x, y, row, i)
 
 			entityIndex++
 		}
@@ -179,35 +174,16 @@ func (f *Formation) RemoveEntity(entity *ecs.Entity) {
 
 	// Rearrange remaining entities
 	f.arrangeEntities()
-
-	logger.Debug("📐 Removed %s from %s formation, reorganized remaining %d entities",
-		entity.GetID(), f.getFormationType(), len(f.entities))
 }
 
 // GetFrontRowEntities returns entities in the front row (closest to enemies)
 func (f *Formation) GetFrontRowEntities() []*ecs.Entity {
-	frontRow := make([]*ecs.Entity, 0)
-
-	for entity, pos := range f.positions {
-		if pos.Row == 0 { // Front row is row 0
-			frontRow = append(frontRow, entity)
-		}
-	}
-
-	return frontRow
+	return f.GetEntitiesInRow(0) // Front row is row 0
 }
 
 // GetBackRowEntities returns entities in the back row
 func (f *Formation) GetBackRowEntities() []*ecs.Entity {
-	backRow := make([]*ecs.Entity, 0)
-
-	for entity, pos := range f.positions {
-		if pos.Row == f.rows-1 { // Back row is the last row
-			backRow = append(backRow, entity)
-		}
-	}
-
-	return backRow
+	return f.GetEntitiesInRow(f.rows - 1) // Back row is the last row
 }
 
 // IsEntityInFrontRow checks if an entity is in the front row
@@ -216,14 +192,31 @@ func (f *Formation) IsEntityInFrontRow(entity *ecs.Entity) bool {
 	return exists && pos.Row == 0
 }
 
-// GetEntitiesInRow returns all entities in a specific row
+// GetEntitiesInRow returns all entities in a specific row, sorted by their index within the row
 func (f *Formation) GetEntitiesInRow(row int) []*ecs.Entity {
-	entities := make([]*ecs.Entity, 0)
+	// Collect entities and their positions
+	type entityWithPos struct {
+		entity *ecs.Entity
+		pos    Position
+	}
+
+	entitiesWithPos := make([]entityWithPos, 0)
 
 	for entity, pos := range f.positions {
 		if pos.Row == row {
-			entities = append(entities, entity)
+			entitiesWithPos = append(entitiesWithPos, entityWithPos{entity, pos})
 		}
+	}
+
+	// Sort by Index within the row to ensure consistent ordering
+	sort.Slice(entitiesWithPos, func(i, j int) bool {
+		return entitiesWithPos[i].pos.Index < entitiesWithPos[j].pos.Index
+	})
+
+	// Extract just the entities
+	entities := make([]*ecs.Entity, len(entitiesWithPos))
+	for i, ewp := range entitiesWithPos {
+		entities[i] = ewp.entity
 	}
 
 	return entities

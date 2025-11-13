@@ -47,7 +47,7 @@ func NewBattleSystemSelector(screenWidth, screenHeight int) *BattleSystemSelecto
 	})
 
 	return &BattleSystemSelector{
-		currentSystem:   BattleSystemClassic, // Default to classic for testing
+		currentSystem:   BattleSystemClassic, // Default to classic mode
 		classicManager:  classicManager,
 		classicRenderer: classicRenderer,
 	}

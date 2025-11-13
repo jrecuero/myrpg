@@ -46,6 +46,14 @@ func (pm *PartyManager) AddPartyMember(member *ecs.Entity) bool {
 	}
 
 	pm.PartyMembers = append(pm.PartyMembers, member)
+	logger.Debug("➕ Added %s to party (now %d members)", member.GetID(), len(pm.PartyMembers))
+
+	// Debug: Show current party order
+	logger.Debug("🏃‍♂️ Current party order after adding %s:", member.GetID())
+	for i, m := range pm.PartyMembers {
+		logger.Debug("  [%d] %s", i, m.GetID())
+	}
+
 	return true
 }
 
@@ -79,7 +87,52 @@ func (pm *PartyManager) isInParty(entity *ecs.Entity) bool {
 
 // GetPartyForTactical returns all party members for tactical combat
 func (pm *PartyManager) GetPartyForTactical() []*ecs.Entity {
-	return append([]*ecs.Entity{}, pm.PartyMembers...) // Return copy
+	return append([]*ecs.Entity{}, pm.PartyMembers...) // Return copy in original order
+}
+
+// GetPartyForClassic returns all party members for classic battles in consistent order
+func (pm *PartyManager) GetPartyForClassic() []*ecs.Entity {
+	// Debug: Show original party order for classic battles
+	logger.Debug("🗡️  Classic battle party order:")
+	for i, member := range pm.PartyMembers {
+		if stats := member.RPGStats(); stats != nil {
+			logger.Debug("   [%d] %s (ID: %s)", i, stats.Name, member.GetID())
+		} else {
+			logger.Debug("   [%d] %s (no stats)", i, member.GetID())
+		}
+	}
+
+	// For classic battles, return exact original order (no sorting)
+	return append([]*ecs.Entity{}, pm.PartyMembers...)
+}
+
+// GetPartyForTacticalDeployment returns party members sorted for consistent deployment
+func (pm *PartyManager) GetPartyForTacticalDeployment() []*ecs.Entity {
+	// Debug: Show original party order
+	logger.Debug("🔍 Original PartyMembers order:")
+	for i, member := range pm.PartyMembers {
+		logger.Debug("  Original[%d]: %s", i, member.GetID())
+	}
+
+	// Create a copy and sort by ID to ensure consistent ordering
+	partyCopy := append([]*ecs.Entity{}, pm.PartyMembers...)
+
+	// Sort by entity ID to ensure deterministic positioning
+	for i := 0; i < len(partyCopy)-1; i++ {
+		for j := i + 1; j < len(partyCopy); j++ {
+			if partyCopy[i].GetID() > partyCopy[j].GetID() {
+				partyCopy[i], partyCopy[j] = partyCopy[j], partyCopy[i]
+			}
+		}
+	}
+
+	// Debug: Show sorted order
+	logger.Debug("🔍 Sorted PartyMembers for deployment:")
+	for i, member := range partyCopy {
+		logger.Debug("  Sorted[%d]: %s", i, member.GetID())
+	}
+
+	return partyCopy
 }
 
 // GetPartyLeader returns the current party leader
@@ -188,6 +241,12 @@ func NewTacticalDeployment(grid *tactical.Grid) *TacticalDeployment {
 func (td *TacticalDeployment) DeployParty(party []*ecs.Entity) map[*ecs.Entity]tactical.GridPos {
 	positions := make(map[*ecs.Entity]tactical.GridPos)
 
+	// Debug: Show party order before deployment
+	logger.Debug("🏃‍♂️ Deploying %d party members in order:", len(party))
+	for i, member := range party {
+		logger.Debug("  [%d] %s", i, member.GetID())
+	}
+
 	deployedCount := 0
 	for _, member := range party {
 		if deployedCount >= td.PlayerZone.Width*td.PlayerZone.Height {
@@ -211,8 +270,9 @@ func (td *TacticalDeployment) DeployParty(party []*ecs.Entity) map[*ecs.Entity]t
 			positions[member] = gridPos
 			td.Grid.SetOccupied(gridPos, true, member.GetID())
 
-			// Debug: Log deployment
-			logger.Debug("Deployed unit %s at grid pos (%d,%d)", member.GetID(), gridPos.X, gridPos.Y)
+			// Debug: Log deployment with detailed info
+			logger.Debug("🚀 DEPLOYED: %s at Grid(%d,%d) [count=%d, row=%d, col=%d]",
+				member.GetID(), gridPos.X, gridPos.Y, deployedCount, row, col)
 
 			// Update entity transform to match grid position with offset
 			if transform := member.Transform(); transform != nil {
@@ -221,8 +281,9 @@ func (td *TacticalDeployment) DeployParty(party []*ecs.Entity) map[*ecs.Entity]t
 				transform.X = worldX + constants.GridOffsetX
 				transform.Y = worldY + constants.GridOffsetY // 110px top panel + 2px separator
 
-				// Debug: Log world coordinates
-				logger.Debug("Unit %s world coords: (%.1f,%.1f)", member.GetID(), transform.X, transform.Y)
+				// Debug: Log world coordinates with more detail
+				logger.Debug("📍 Unit %s world coords: (%.1f,%.1f) from grid (%d,%d)",
+					member.GetID(), transform.X, transform.Y, gridPos.X, gridPos.Y)
 			}
 
 			deployedCount++
